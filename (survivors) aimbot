@@ -38,16 +38,23 @@ local originalWS, originalJP, originalAutoRotate = nil, nil, nil
 
 local function getValidTarget()
     local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
-    if killersFolder then
-        for _, name in ipairs(aimTargets) do
-            local target = killersFolder:FindFirstChild(name)
-            if target and target:FindFirstChild("HumanoidRootPart") then
-                return target.HumanoidRootPart
+    if not killersFolder then return nil end
+
+    local nearestHRP, nearestDist = nil, math.huge
+    for _, killer in ipairs(killersFolder:GetChildren()) do
+        local hrp = killer:FindFirstChild("HumanoidRootPart")
+        local hum = killer:FindFirstChild("Humanoid")
+        if hrp and hum and hum.Health > 0 then
+            local dist = (hrp.Position - HRP.Position).Magnitude
+            if dist < nearestDist then
+                nearestDist = dist
+                nearestHRP = hrp
             end
         end
     end
-    return nil
+    return nearestHRP
 end
+
 
 local function getPlayingAnimationIds()
     local ids = {}
