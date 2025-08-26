@@ -1,7 +1,6 @@
 -- Config
 local active = false
 local aimDuration = 1
-local lp = Players.LocalPlayer
 local aimTargets = { "Jason", "c00lkidd", "JohnDoe", "1x1x1x1", "Noli" }
 local trackedAnimations = {
     ["103601716322988"] = true,
@@ -30,7 +29,7 @@ local RunService = game:GetService("RunService")
 -- Locals
 local LocalPlayer = Players.LocalPlayer
 local client = LocalPlayer
-
+local lp = Players.LocalPlayer
 -- State
 local Humanoid, HRP = nil, nil
 local lastTriggerTime = 0
