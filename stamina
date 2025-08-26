@@ -1,9 +1,7 @@
 loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
 wait(0.1)
-loadstring(game:HttpGet("https://raw.githubusercontent.com/MaybeNotMandy/forsaken/refs/heads/main/sae"))()
-wait(0.2)
 loadstring(game:HttpGet("https://pastebin.com/raw/Sg7YR1pp"))()
-wait(0.3)
+wait(0.2)
 -- [ Services ]
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -20,13 +18,13 @@ RunService.RenderStepped:Connect(function()
 	local humanoid = Character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
 		if humanoid.Health >= 200 then
-			Module.MaxStamina = 150
-			Module.StaminaGain = 55
-			Module.StaminaLoss = 10
-			Module.SprintSpeed = 29
+			Module.MaxStamina = 110
+			Module.StaminaGain = 45
+			Module.StaminaLoss = 7
+			Module.SprintSpeed = 30
 		else
-			Module.MaxStamina = 125
-			Module.StaminaGain = 55
+			Module.MaxStamina = 100
+			Module.StaminaGain = 45
 			Module.StaminaLoss = 7
 			Module.SprintSpeed = 28
 		end
