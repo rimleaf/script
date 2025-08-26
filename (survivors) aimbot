@@ -1,6 +1,7 @@
 -- Config
 local active = false
 local aimDuration = 1
+local lp = Players.LocalPlayer
 local aimTargets = { "Jason", "c00lkidd", "JohnDoe", "1x1x1x1", "Noli" }
 local trackedAnimations = {
     ["103601716322988"] = true,
@@ -36,25 +37,25 @@ local lastTriggerTime = 0
 local aiming = false
 local originalWS, originalJP, originalAutoRotate = nil, nil, nil
 
-local function getValidTarget()
-    local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
-    if not killersFolder then return nil end
+local killersFolder = workspace:WaitForChild("Players"):WaitForChild("Killers")
 
-    local nearestHRP, nearestDist = nil, math.huge
+local function getValidTarget()
+    local char = lp.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    local nearest, nearestDist = nil, math.huge
     for _, killer in ipairs(killersFolder:GetChildren()) do
-        local hrp = killer:FindFirstChild("HumanoidRootPart")
-        local hum = killer:FindFirstChild("Humanoid")
-        if hrp and hum and hum.Health > 0 then
-            local dist = (hrp.Position - HRP.Position).Magnitude
-            if dist < nearestDist then
+        local kr = killer:FindFirstChild("HumanoidRootPart")
+        if kr then
+            local dist = (kr.Position - root.Position).Magnitude
+            if dist <= apRange and dist < nearestDist then
+                nearest = kr
                 nearestDist = dist
-                nearestHRP = hrp
             end
         end
     end
-    return nearestHRP
+    return nearest
 end
-
 
 local function getPlayingAnimationIds()
     local ids = {}
