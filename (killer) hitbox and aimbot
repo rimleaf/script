@@ -1,0 +1,160 @@
+local srvPlayers = game:GetService("Players")
+local srvRun = game:GetService("RunService")
+
+local client = srvPlayers.LocalPlayer
+repeat task.wait() until client and client.Character
+
+local char = client.Character
+local humanoid = char:WaitForChild("Humanoid")
+local animator = humanoid:WaitForChild("Animator")
+local root = char:WaitForChild("HumanoidRootPart")
+
+client.CharacterAdded:Connect(function(newChar)
+	char = newChar
+	humanoid = char:WaitForChild("Humanoid")
+	animator = humanoid:WaitForChild("Animator")
+	root = char:WaitForChild("HumanoidRootPart")
+end)
+
+local attackIds = {
+	'rbxassetid://83829782357897', --// Slash, 1x1x1x1
+	'rbxassetid://126830014841198', --// Slash, Jason
+	'rbxassetid://126355327951215', --// Behead, Jason
+	'rbxassetid://105458270463374', --// Slash, JohnDoe
+	'rbxassetid://18885909645', --// Attack, c00lkidd
+	'rbxassetid://94162446513587', --// Slash, JohnDoe, Skin: !Joner
+	'rbxassetid://93069721274110', --// Slash, JohnDoe, Skin: AnnihilationJohnDoe
+	'rbxassetid://97433060861952', --// Slash, JohnDoe, Skin: #SK
+	'rbxassetid://121293883585738', --// Slash, 1x1x1x1, Skin: Fleskhjerta1x1x1x1
+	'rbxassetid://92173139187970', --// Slash, 1x1x1x1, Skin: Hacklord1x1x1x1
+	'rbxassetid://125403313786645', --// Slash, Jason, Skin: Subject0Jason
+	'rbxassetid://81639435858902', --// Behead, Jason, Skin: WhitePumpkinJason
+	'rbxassetid://120112897026015', --// Slash, Jason, Skin: WhitePumpkinJason
+	'rbxassetid://82113744478546', --// Behead, Jason, Skin: KillerKyleJason
+	'rbxassetid://118298475669935', --// Slash, Jason, Skin: KillerKyleJason
+	'rbxassetid://82113744478546', --// Behead, Jason, Skin: #SmartestJason
+	'rbxassetid://118298475669935', --// Slash, Jason, Skin: #SmartestJason
+	'rbxassetid://126681776859538', --// Behead, Jason, Skin: PursuerJason
+	'rbxassetid://109667959938617', --// Slash, Jason, Skin: PursuerJason
+	'rbxassetid://74707328554358', --// Slash, Jason, Skin: #DeadRabbitsJason
+	'rbxassetid://133336594357903', --// Behead, Jason, Skin: #DeadRabbitsJason
+	'rbxassetid://82113744478546', --// Behead, Jason, Skin: RetroJason
+	'rbxassetid://118298475669935', --// Slash, Jason, Skin: RetroJason
+	'rbxassetid://70371667919898', --// Attack, c00lkidd, Skin: MafiosoC00l
+	'rbxassetid://131543461321709', --// Attack, c00lkidd, Skin: SaviorC00l
+	'rbxassetid://136323728355613', --// Swing, Noli
+    'rbxassetid://109230267448394', --// Swing, Noli, Skin: All
+};
+
+-- Prediction function
+local function getPredictedPosition(hrp, hum)
+    if not hrp or not hum then return hrp.Position end
+
+    local moveDir = hum.MoveDirection
+    local velocity = hrp.Velocity
+    local predictionTime = 0.45
+
+    if moveDir.Magnitude < 1 and velocity.Magnitude < 1 then
+        return hrp.Position
+    end
+
+    local offset
+    if moveDir.Magnitude > 0.1 then
+        offset = moveDir.Unit * hum.WalkSpeed * predictionTime
+    else
+        offset = velocity * predictionTime
+    end
+
+    if offset.Magnitude > 6 then
+        offset = offset.Unit * 6
+    end
+
+    return hrp.Position + offset
+end
+
+-- Check if Killer
+local function isKiller()
+	return workspace.Players:FindFirstChild("Killers") and workspace.Players.Killers:FindFirstChild(client.Name) ~= nil
+end
+
+-- Get nearest Survivor
+local function getClosestSurvivor()
+	local folder = workspace.Players:FindFirstChild("Survivors")
+	if not folder then return nil end
+
+	local closest, dist = nil, math.huge
+	for _, model in ipairs(folder:GetChildren()) do
+		local hrp = model:FindFirstChild("HumanoidRootPart")
+		local hum = model:FindFirstChild("Humanoid")
+		if hrp and hum and hum.Health > 0 then
+			local d = (hrp.Position - root.Position).Magnitude
+			if d < dist then
+				closest, dist = model, d
+			end
+		end
+	end
+	return closest
+end
+
+-- Active aimbot state
+local aimbotTrack = nil
+local aimbotEnd = 0
+
+srvRun.Heartbeat:Connect(function()
+	if not root or not isKiller() then return end
+
+	-- Detect if we started an attack animation
+	if not aimbotTrack then
+		for _, track in humanoid:GetPlayingAnimationTracks() do
+			local animId = track.Animation and track.Animation.AnimationId
+			if animId and table.find(attackIds, animId) and (track.TimePosition / track.Length < 0.75) then
+				aimbotTrack = track
+				aimbotEnd = tick() + 0.45
+				break
+			end
+		end
+	end
+
+	-- If aiming, check if still valid
+	if aimbotTrack then
+		-- stop aim if animation ended OR time expired
+		if not aimbotTrack.IsPlaying or tick() >= aimbotEnd then
+			aimbotTrack = nil
+			return
+		end
+
+		-- aim at nearest survivor
+		local target = getClosestSurvivor()
+		if target then
+			local hrp = target:FindFirstChild("HumanoidRootPart")
+			local hum = target:FindFirstChild("Humanoid")
+			if hrp and hum then
+				local predicted = getPredictedPosition(hrp, hum)
+				cam.CFrame = CFrame.lookAt(cam.CFrame.Position, predicted)
+			end
+		end
+	end
+end)
+
+srvRun.Heartbeat:Connect(function()
+	if not root then return end
+
+	local attack = false
+	for _, track in humanoid:GetPlayingAnimationTracks() do
+		local animId = track.Animation and track.Animation.AnimationId
+		if animId and table.find(attackIds, animId) and (track.TimePosition / track.Length < 0.75) then
+			attack = true
+			break
+		end
+	end
+
+	if not attack then return end
+
+	local look = root.CFrame.LookVector
+	local original = root.Velocity
+	local strength = 45
+
+	root.Velocity = look * strength
+	srvRun.RenderStepped:Wait()
+	root.Velocity = original
+end)
