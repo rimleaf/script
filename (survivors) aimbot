@@ -179,24 +179,7 @@ RunService.RenderStepped:Connect(function()
         Humanoid.AutoRotate = false
         HRP.AssemblyAngularVelocity = Vector3.zero
 
-        local targetHRP = nil
-        do
-            local nearestDist = math.huge
-            for _, plr in ipairs(Players:GetPlayers()) do
-                if plr ~= client and plr.Character then
-                    local hum = plr.Character:FindFirstChildOfClass("Humanoid")
-                    local root = plr.Character:FindFirstChild("HumanoidRootPart")
-                    -- ✅ skip dead
-                    if hum and hum.Health > 0 and root then
-                        local dist = (root.Position - HRP.Position).Magnitude
-                        if dist < nearestDist then
-                            nearestDist = dist
-                            targetHRP = root
-                        end
-                    end
-                end
-            end
-        end
+        local targetHRP = getValidTarget()
 
         if targetHRP then
             local vel = targetHRP.AssemblyLinearVelocity
