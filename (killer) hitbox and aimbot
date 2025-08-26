@@ -112,7 +112,6 @@ srvRun.Heartbeat:Connect(function()
 
 	-- If aiming, check if still valid
 	if aimbotTrack then
-		-- stop aim if animation ended OR time expired
 		if not aimbotTrack.IsPlaying or tick() >= aimbotEnd then
 			aimbotTrack = nil
 			return
@@ -125,7 +124,8 @@ srvRun.Heartbeat:Connect(function()
 			local hum = target:FindFirstChild("Humanoid")
 			if hrp and hum then
 				local predicted = getPredictedPosition(hrp, hum)
-				hrp.CFrame = CFrame.lookAt(hrp.CFrame.Position, predicted)
+				-- FIX: rotate *our own root*, not theirs
+				root.CFrame = CFrame.lookAt(root.Position, predicted)
 			end
 		end
 	end
