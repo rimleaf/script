@@ -79,8 +79,6 @@ RunService.RenderStepped:Connect(function()
 
     local playing = getPlayingAnimationIds()
     local triggered = false
-
-    -- check normal tracked animations
     for id in pairs(trackedAnimations) do
         if playing[id] then
             triggered = true
@@ -106,26 +104,26 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- normal tracked aimbot trigger
+    -- normal tracked aimbot
     if triggered then
         lastTriggerTime = tick()
         aiming = true
     end
 
-    -- aiming logic
     local function AimForDuration(duration, projSpeed, forgiveness, leadFactor)
         local start = tick()
         while tick() - start < duration do
             local nearestHRP, nearestDist = nil, math.huge
-
             for _, plr in ipairs(Players:GetPlayers()) do
-                if plr ~= client and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                    local hum = plr.Character:FindFirstChild("Humanoid")
-                    if hum and hum.Health > 0 then -- skip dead players
-                        local dist = (plr.Character.HumanoidRootPart.Position - HRP.Position).Magnitude
+                if plr ~= client and plr.Character then
+                    local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+                    local root = plr.Character:FindFirstChild("HumanoidRootPart")
+                    -- ✅ skip dead or missing Humanoid
+                    if hum and hum.Health > 0 and root then
+                        local dist = (root.Position - HRP.Position).Magnitude
                         if dist < nearestDist then
                             nearestDist = dist
-                            nearestHRP = plr.Character.HumanoidRootPart
+                            nearestHRP = root
                         end
                     end
                 end
@@ -136,20 +134,18 @@ RunService.RenderStepped:Connect(function()
                 local travelTime = nearestDist / projSpeed
                 local predictedPos
 
-                -- proper standing still check (ignore micro jitter)
-                if vel.Magnitude < 0.2 then
-                    predictedPos = nearestHRP.Position
-                else
+                if vel.Magnitude > 0.1 then
                     predictedPos = nearestHRP.Position + vel * travelTime * leadFactor
+                else
+                    predictedPos = nearestHRP.Position
                 end
 
-                -- forgiveness offset (for wide hitboxes like Mass Infection)
+                -- forgiveness offset (extra hitbox allowance for Mass Infection)
                 if forgiveness and forgiveness > 0 then
                     local offset = (predictedPos - HRP.Position).Unit * forgiveness
                     predictedPos = predictedPos + offset
                 end
 
-                -- rotate player
                 local direction = (predictedPos - HRP.Position).Unit
                 local yRot = math.atan2(-direction.X, -direction.Z)
                 HRP.CFrame = CFrame.new(HRP.Position) * CFrame.Angles(0, yRot, 0)
@@ -184,14 +180,31 @@ RunService.RenderStepped:Connect(function()
         Humanoid.AutoRotate = false
         HRP.AssemblyAngularVelocity = Vector3.zero
 
-        local targetHRP = getValidTarget()
+        local targetHRP = nil
+        do
+            local nearestDist = math.huge
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= client and plr.Character then
+                    local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+                    local root = plr.Character:FindFirstChild("HumanoidRootPart")
+                    -- ✅ skip dead
+                    if hum and hum.Health > 0 and root then
+                        local dist = (root.Position - HRP.Position).Magnitude
+                        if dist < nearestDist then
+                            nearestDist = dist
+                            targetHRP = root
+                        end
+                    end
+                end
+            end
+        end
 
         if targetHRP then
             local vel = targetHRP.AssemblyLinearVelocity
             local predictedPos
             local reactionDelay = 0.21
 
-            if vel.Magnitude > 0.5 then
+            if vel.Magnitude > 0.1 then
                 predictedPos = targetHRP.Position + vel * reactionDelay
             else
                 predictedPos = targetHRP.Position
