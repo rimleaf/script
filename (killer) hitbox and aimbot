@@ -130,7 +130,7 @@ srvRun.Heartbeat:Connect(function()
 			local hum = target:FindFirstChild("Humanoid")
 			if hrp and hum then
 				local predicted = getPredictedPosition(hrp, hum)
-				cam.CFrame = CFrame.lookAt(cam.CFrame.Position, predicted)
+				hrp.CFrame = CFrame.lookAt(hrp.CFrame.Position, predicted)
 			end
 		end
 	end
