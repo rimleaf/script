@@ -1,0 +1,208 @@
+-- Config
+local active = false
+local aimDuration = 1.7
+local aimTargets = { "Jason", "c00lkidd", "JohnDoe", "1x1x1x1", "Noli" }
+local trackedAnimations = {
+    ["103601716322988"] = true,
+    ["133491532453922"] = true,
+    ["86371356500204"] = true,
+    ["76649505662612"] = true,
+    ["81698196845041"] = true
+}
+
+local entanglementanimation = {
+    ["119181003138006"] = true
+}
+local massinfectionanimation = {
+    ["131430497821198"] = true
+}
+
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+-- Locals
+local LocalPlayer = Players.LocalPlayer
+local client = LocalPlayer
+
+-- State
+local Humanoid, HRP = nil, nil
+local lastTriggerTime = 0
+local aiming = false
+local originalWS, originalJP, originalAutoRotate = nil, nil, nil
+
+local function getValidTarget()
+    local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
+    if killersFolder then
+        for _, name in ipairs(aimTargets) do
+            local target = killersFolder:FindFirstChild(name)
+            if target and target:FindFirstChild("HumanoidRootPart") then
+                return target.HumanoidRootPart
+            end
+        end
+    end
+    return nil
+end
+
+local function getPlayingAnimationIds()
+    local ids = {}
+    if Humanoid then
+        for _, track in ipairs(Humanoid:GetPlayingAnimationTracks()) do
+            if track.Animation and track.Animation.AnimationId then
+                local id = track.Animation.AnimationId:match("%d+")
+                if id then
+                    ids[id] = true
+                end
+            end
+        end
+    end
+    return ids
+end
+
+local function setupCharacter(char)
+    Humanoid = char:WaitForChild("Humanoid")
+    HRP = char:WaitForChild("HumanoidRootPart")
+end
+
+if LocalPlayer.Character then
+    setupCharacter(LocalPlayer.Character)
+end
+LocalPlayer.CharacterAdded:Connect(setupCharacter)
+
+RunService.RenderStepped:Connect(function()
+    if not active or not Humanoid or not HRP then return end
+
+    local playing = getPlayingAnimationIds()
+    local triggered = false
+
+    -- check normal tracked animations
+    for id in pairs(trackedAnimations) do
+        if playing[id] then
+            triggered = true
+            break
+        end
+    end
+
+    -- check entanglement animation
+    local entanglementTriggered = false
+    for id in pairs(entanglementanimation) do
+        if playing[id] then
+            entanglementTriggered = true
+            break
+        end
+    end
+
+    -- check mass infection animation
+    local massinfectionTriggered = false
+    for id in pairs(massinfectionanimation) do
+        if playing[id] then
+            massinfectionTriggered = true
+            break
+        end
+    end
+
+    -- normal tracked aimbot trigger
+    if triggered then
+        lastTriggerTime = tick()
+        aiming = true
+    end
+
+    -- aiming logic
+    local function AimForDuration(duration, projSpeed, forgiveness, leadFactor)
+        local start = tick()
+        while tick() - start < duration do
+            local nearestHRP, nearestDist = nil, math.huge
+
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= client and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                    local hum = plr.Character:FindFirstChild("Humanoid")
+                    if hum and hum.Health > 0 then -- skip dead players
+                        local dist = (plr.Character.HumanoidRootPart.Position - HRP.Position).Magnitude
+                        if dist < nearestDist then
+                            nearestDist = dist
+                            nearestHRP = plr.Character.HumanoidRootPart
+                        end
+                    end
+                end
+            end
+
+            if nearestHRP then
+                local vel = nearestHRP.AssemblyLinearVelocity
+                local travelTime = nearestDist / projSpeed
+                local predictedPos
+
+                -- proper standing still check (ignore micro jitter)
+                if vel.Magnitude < 0.2 then
+                    predictedPos = nearestHRP.Position
+                else
+                    predictedPos = nearestHRP.Position + vel * travelTime * leadFactor
+                end
+
+                -- forgiveness offset (for wide hitboxes like Mass Infection)
+                if forgiveness and forgiveness > 0 then
+                    local offset = (predictedPos - HRP.Position).Unit * forgiveness
+                    predictedPos = predictedPos + offset
+                end
+
+                -- rotate player
+                local direction = (predictedPos - HRP.Position).Unit
+                local yRot = math.atan2(-direction.X, -direction.Z)
+                HRP.CFrame = CFrame.new(HRP.Position) * CFrame.Angles(0, yRot, 0)
+            end
+
+            RunService.Heartbeat:Wait()
+        end
+    end
+
+    -- ENTANGLEMENT AIMBOT (precise, no forgiveness, slight overshoot)
+    if entanglementTriggered then
+        task.spawn(function()
+            AimForDuration(0.8, 120, 0, 1.30) -- 30% extra lead
+        end)
+    end
+
+    -- MASS INFECTION AIMBOT (slower proj, needs forgiveness, more overshoot)
+    if massinfectionTriggered then
+        task.spawn(function()
+            AimForDuration(0.8, 40, 1.5, 1.30) -- 30% extra lead
+        end)
+    end
+
+    -- NORMAL AIMBOT (tracking killers)
+    if aiming and tick() - lastTriggerTime <= aimDuration then
+        if not originalWS then
+            originalWS = Humanoid.WalkSpeed
+            originalJP = Humanoid.JumpPower
+            originalAutoRotate = Humanoid.AutoRotate
+        end
+
+        Humanoid.AutoRotate = false
+        HRP.AssemblyAngularVelocity = Vector3.zero
+
+        local targetHRP = getValidTarget()
+
+        if targetHRP then
+            local vel = targetHRP.AssemblyLinearVelocity
+            local predictedPos
+            local reactionDelay = 0.21
+
+            if vel.Magnitude > 0.5 then
+                predictedPos = targetHRP.Position + vel * reactionDelay
+            else
+                predictedPos = targetHRP.Position
+            end
+
+            local direction = (predictedPos - HRP.Position).Unit
+            local yRot = math.atan2(-direction.X, -direction.Z)
+            HRP.CFrame = CFrame.new(HRP.Position) * CFrame.Angles(0, yRot, 0)
+        end
+    elseif aiming then
+        aiming = false
+        if originalWS and originalJP and originalAutoRotate ~= nil then
+            Humanoid.WalkSpeed = originalWS
+            Humanoid.JumpPower = originalJP
+            Humanoid.AutoRotate = originalAutoRotate
+            originalWS, originalJP, originalAutoRotate = nil, nil, nil
+        end
+    end
+end)
