@@ -1,6 +1,6 @@
 -- Config
 local active = false
-local aimDuration = 1.7
+local aimDuration = 1
 local aimTargets = { "Jason", "c00lkidd", "JohnDoe", "1x1x1x1", "Noli" }
 local trackedAnimations = {
     ["103601716322988"] = true,
