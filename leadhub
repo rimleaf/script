@@ -7,7 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local Stats = game:GetService("Stats")
 local LocalPlayer = Players.LocalPlayer
-local client = LocalPlayer
+local lp = LocalPlayer
 -- Rayfield
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local Window = Rayfield:CreateWindow({
