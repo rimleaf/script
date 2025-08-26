@@ -6,8 +6,10 @@ wait(0.2)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local localPlayer = Players.LocalPlayer
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+local toggled = false
 
 -- [ Wait for Sprinting Module ]
 local Sprinting = ReplicatedStorage.Systems.Character.Game.Sprinting
@@ -32,6 +34,89 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- [ Update Character reference if player respawns ]
-localPlayer.CharacterAdded:Connect(function(char)
+LocalPlayer.CharacterAdded:Connect(function(char)
 	Character = char
+end)
+
+-- Toggle state
+local toggled = false
+
+-- Function to toggle
+local function setupCharacter(character)
+    local Humanoid = character:WaitForChild("Humanoid")
+    local HumanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+    -- You can store them in globals used by your override logic
+    _G.Humanoid = Humanoid
+    _G.HumanoidRootPart = HumanoidRootPart
+end
+
+if LocalPlayer.Character then
+    setupCharacter(LocalPlayer.Character)
+end
+
+
+-- The speed of the original Void Rush from your config
+local ORIGINAL_DASH_SPEED = 80
+
+local isOverrideActive = false
+local connection
+
+local function startOverride()
+
+    
+    if isOverrideActive then return end
+    isOverrideActive = true
+
+    -- Connect a loop to force the character to move forward
+    connection = RunService.RenderStepped:Connect(function()
+        local humanoid = _G.Humanoid
+        local rootPart = _G.HumanoidRootPart
+        if not humanoid or not rootPart then return end
+    
+        humanoid.WalkSpeed = ORIGINAL_DASH_SPEED
+        humanoid.AutoRotate = false
+    
+        local direction = rootPart.CFrame.LookVector
+        local horizontal = Vector3.new(direction.X, 0, direction.Z)
+        if horizontal.Magnitude > 0 then
+            humanoid:Move(horizontal.Unit)
+        end
+    end)
+end
+
+local function stopOverride()
+    
+    if not isOverrideActive then return end
+    isOverrideActive = false
+    
+    local humanoid = _G.Humanoid
+    local rootPart = _G.HumanoidRootPart
+    
+    -- Restore original settings
+    humanoid.WalkSpeed = 16 -- Or whatever your default walk speed is
+    humanoid.AutoRotate = true
+    humanoid:Move(Vector3.new(0, 0, 0)) -- Stop the character from moving
+    
+    if connection then
+        connection:Disconnect()
+        connection = nil
+    end
+end
+
+-- Main loop to detect when to activate and deactivate the override
+RunService.RenderStepped:Connect(function()
+    
+    local char = _G.Humanoid and _G.Humanoid.Parent
+    local voidRushState = char and char:GetAttribute("VoidRushState")
+
+    if voidRushState == "Dashing" then
+        startOverride()
+    else
+        stopOverride()
+    end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function(character)
+    setupCharacter(character)
 end)
