@@ -96,7 +96,7 @@ local aimbotTrack = nil
 local aimbotEnd = 0
 
 srvRun.Heartbeat:Connect(function()
-	if not root or then return end
+	if not root then return end
 
 	-- Detect if we started an attack animation
 	if not aimbotTrack then
