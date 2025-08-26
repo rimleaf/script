@@ -72,11 +72,6 @@ local function getPredictedPosition(hrp, hum)
     return hrp.Position + offset
 end
 
--- Check if Killer
-local function isKiller()
-	return workspace.Players:FindFirstChild("Killers") and workspace.Players.Killers:FindFirstChild(client.Name) ~= nil
-end
-
 -- Get nearest Survivor
 local function getClosestSurvivor()
 	local folder = workspace.Players:FindFirstChild("Survivors")
@@ -101,7 +96,7 @@ local aimbotTrack = nil
 local aimbotEnd = 0
 
 srvRun.Heartbeat:Connect(function()
-	if not root or not isKiller() then return end
+	if not root or then return end
 
 	-- Detect if we started an attack animation
 	if not aimbotTrack then
