@@ -1,0 +1,39 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+wait(0.1)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/MaybeNotMandy/forsaken/refs/heads/main/sae"))()
+wait(0.2)
+loadstring(game:HttpGet("https://pastebin.com/raw/Sg7YR1pp"))()
+wait(0.3)
+-- [ Services ]
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local localPlayer = Players.LocalPlayer
+local Character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+
+-- [ Wait for Sprinting Module ]
+local Sprinting = ReplicatedStorage.Systems.Character.Game.Sprinting
+local Module = require(Sprinting)
+
+-- [ Real-time Stamina Override Based on HP ]
+RunService.RenderStepped:Connect(function()
+	local humanoid = Character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		if humanoid.Health >= 200 then
+			Module.MaxStamina = 150
+			Module.StaminaGain = 55
+			Module.StaminaLoss = 10
+			Module.SprintSpeed = 29
+		else
+			Module.MaxStamina = 125
+			Module.StaminaGain = 55
+			Module.StaminaLoss = 7
+			Module.SprintSpeed = 28
+		end
+	end
+end)
+
+-- [ Update Character reference if player respawns ]
+localPlayer.CharacterAdded:Connect(function(char)
+	Character = char
+end)
