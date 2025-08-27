@@ -75,20 +75,30 @@ local function addKillerCircle(killer)
     if not killer:FindFirstChild("HumanoidRootPart") then return end
     if detectionCircles[killer] then return end -- already has one
 
+    local hrp = killer.HumanoidRootPart
+    local humanoid = killer:FindFirstChildOfClass("Humanoid")
+
     local circle = Instance.new("CylinderHandleAdornment")
     circle.Name = "KillerDetectionCircle"
-    circle.Adornee = killer.HumanoidRootPart
+    circle.Adornee = hrp
     circle.Color3 = Color3.fromRGB(255, 0, 0) -- red
     circle.AlwaysOnTop = true
     circle.ZIndex = 0
     circle.Transparency = 0.7
-    circle.Radius = detectionRange / 1.5-- diameter matches detectionRange
-    circle.Height = 0.1 -- flat like a circle
-    circle.CFrame = CFrame.Angles(math.rad(90), 0, 0) -- lay flat
-    circle.Parent = killer.HumanoidRootPart
+    circle.Radius = detectionRange / 1.5
+    circle.Height = 0.1
+    circle.CFrame = CFrame.Angles(math.rad(90), 0, 0)
+
+    -- offset downward to feet level
+    local hipHeight = humanoid and humanoid.HipHeight or 2
+    local hrpHeight = hrp.Size.Y / 2
+    circle.CFrame *= CFrame.new(0, -(hrpHeight + hipHeight), 0)
+
+    circle.Parent = hrp
 
     detectionCircles[killer] = circle
 end
+
 
 -- Function to remove circle from a killer
 local function removeKillerCircle(killer)
