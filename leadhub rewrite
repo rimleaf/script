@@ -71,33 +71,53 @@ local detectionCircles = {} -- store all killer circles
 local killerCirclesVisible = false
 
 -- Function to add circle to a killer
+-- create once, reuse
+local groundCastParams = RaycastParams.new()
+groundCastParams.FilterType = Enum.RaycastFilterType.Exclude
+groundCastParams.IgnoreWater = true
+
+local function setCircleAtGround(killer, circle)
+    local hrp = killer:FindFirstChild("HumanoidRootPart")
+    if not hrp or not circle then return end
+
+    -- exclude this character from the raycast
+    groundCastParams.FilterDescendantsInstances = {killer}
+
+    -- raycast straight down to find floor
+    local origin = hrp.Position
+    local result = workspace:Raycast(origin, Vector3.new(0, -1000, 0), groundCastParams)
+    local groundY = result and result.Position.Y or (origin.Y - 3)
+
+    -- local offset from HRP down to the ground (+tiny lift to avoid z-fighting)
+    local offsetY = (groundY - origin.Y) + 0.03
+
+    -- lay cylinder flat + move to ground under HRP
+    circle.CFrame = CFrame.new(0, offsetY, 0) * CFrame.Angles(math.rad(90), 0, 0)
+end
+
 local function addKillerCircle(killer)
     if not killer:FindFirstChild("HumanoidRootPart") then return end
     if detectionCircles[killer] then return end -- already has one
 
     local hrp = killer.HumanoidRootPart
-    local humanoid = killer:FindFirstChildOfClass("Humanoid")
 
     local circle = Instance.new("CylinderHandleAdornment")
     circle.Name = "KillerDetectionCircle"
     circle.Adornee = hrp
-    circle.Color3 = Color3.fromRGB(255, 0, 0) -- red
+    circle.Color3 = Color3.fromRGB(255, 0, 0)
     circle.AlwaysOnTop = true
     circle.ZIndex = 0
     circle.Transparency = 0.7
     circle.Radius = detectionRange / 1.5
     circle.Height = 0.1
-    circle.CFrame = CFrame.Angles(math.rad(90), 0, 0)
-
-    -- offset downward to feet level
-    local hipHeight = humanoid and humanoid.HipHeight or 2
-    local hrpHeight = hrp.Size.Y / 2
-    circle.CFrame *= CFrame.new(0, -(hrpHeight + hipHeight), 0)
-
     circle.Parent = hrp
 
     detectionCircles[killer] = circle
+
+    -- position once immediately
+    setCircleAtGround(killer, circle)
 end
+
 
 
 -- Function to remove circle from a killer
@@ -119,14 +139,16 @@ local function refreshKillerCircles()
     end
 end
 
--- Keep radius updated
+-- Keep radius + position updated
 RunService.RenderStepped:Connect(function()
     for killer, circle in pairs(detectionCircles) do
         if circle and circle.Parent then
             circle.Radius = detectionRange / 1.5
+            setCircleAtGround(killer, circle) -- <-- keep pinned to ground
         end
     end
 end)
+
 
 -- Hook into killers being added/removed
 KillersFolder.ChildAdded:Connect(function(killer)
