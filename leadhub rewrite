@@ -66,16 +66,6 @@ end
 enableInfiniteStamina()
 
 -- UI Toggles (existing)
-CombatTab:CreateToggle({Name="Auto Block", CurrentValue=true, Callback=function(val) autoBlockOn = val end})
-AutoBlockTab:CreateToggle({
-    Name = "Range Visual",
-    CurrentValue = false,
-    Flag = "KillerCircleToggle",
-    Callback = function(state)
-        killerCirclesVisible = state
-        refreshKillerCircles()
-    end
-})
 local KillersFolder = workspace:WaitForChild("Players"):WaitForChild("Killers")
 local detectionCircles = {} -- store all killer circles
 local killerCirclesVisible = false
