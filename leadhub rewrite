@@ -218,7 +218,7 @@ local function attemptBlockForSound(sound)
         end
     end
 
-    if shouldBlock and facingOK then
+    if shouldBlock and facingOK and sound.TimePosition < 0.3 then
         fireRemoteBlock()
         soundBlockedUntil[sound] = tick() + 1.2
     end
