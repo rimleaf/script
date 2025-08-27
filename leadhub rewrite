@@ -67,7 +67,93 @@ enableInfiniteStamina()
 
 -- UI Toggles (existing)
 CombatTab:CreateToggle({Name="Auto Block", CurrentValue=true, Callback=function(val) autoBlockOn = val end})
+AutoBlockTab:CreateToggle({
+    Name = "Range Visual",
+    CurrentValue = false,
+    Flag = "KillerCircleToggle",
+    Callback = function(state)
+        killerCirclesVisible = state
+        refreshKillerCircles()
+    end
+})
+local KillersFolder = workspace:WaitForChild("Players"):WaitForChild("Killers")
+local detectionCircles = {} -- store all killer circles
+local killerCirclesVisible = false
+
+-- Function to add circle to a killer
+local function addKillerCircle(killer)
+    if not killer:FindFirstChild("HumanoidRootPart") then return end
+    if detectionCircles[killer] then return end -- already has one
+
+    local circle = Instance.new("CylinderHandleAdornment")
+    circle.Name = "KillerDetectionCircle"
+    circle.Adornee = killer.HumanoidRootPart
+    circle.Color3 = Color3.fromRGB(255, 0, 0) -- red
+    circle.AlwaysOnTop = true
+    circle.ZIndex = 0
+    circle.Transparency = 0.7
+    circle.Radius = detectionRange / 1.5-- diameter matches detectionRange
+    circle.Height = 0.1 -- flat like a circle
+    circle.CFrame = CFrame.Angles(math.rad(90), 0, 0) -- lay flat
+    circle.Parent = killer.HumanoidRootPart
+
+    detectionCircles[killer] = circle
+end
+
+-- Function to remove circle from a killer
+local function removeKillerCircle(killer)
+    if detectionCircles[killer] then
+        detectionCircles[killer]:Destroy()
+        detectionCircles[killer] = nil
+    end
+end
+
+-- Refresh all circles
+local function refreshKillerCircles()
+    for _, killer in ipairs(KillersFolder:GetChildren()) do
+        if killerCirclesVisible then
+            addKillerCircle(killer)
+        else
+            removeKillerCircle(killer)
+        end
+    end
+end
+
+-- Keep radius updated
+RunService.RenderStepped:Connect(function()
+    for killer, circle in pairs(detectionCircles) do
+        if circle and circle.Parent then
+            circle.Radius = detectionRange / 1.5
+        end
+    end
+end)
+
+-- Hook into killers being added/removed
+KillersFolder.ChildAdded:Connect(function(killer)
+    if killerCirclesVisible then
+        task.spawn(function()
+            -- Wait until HRP exists (max 5s timeout)
+            local hrp = killer:WaitForChild("HumanoidRootPart", 5)
+            if hrp then
+                addKillerCircle(killer)
+            end
+        end)
+    end
+end)
+
+KillersFolder.ChildRemoved:Connect(function(killer)
+    removeKillerCircle(killer)
+end)
+
 CombatTab:CreateToggle({Name="Auto Punch", CurrentValue=true, Callback=function(val) autoPunchOn = val end})
+CombatTab:CreateToggle({
+    Name = "Range Visual",
+    CurrentValue = false,
+    Callback = function(state)
+        killerCirclesVisible = state
+        refreshKillerCircles()
+    end
+})
 CombatTab:CreateToggle({Name="Fling Punch", CurrentValue=false, Callback=function(val) flingPunchOn = val end})
 CombatTab:CreateToggle({Name="Infinite Stamina", CurrentValue=true, Callback=function(val) infiniteStamina = val enableInfiniteStamina() end})
 CombatTab:CreateInput({Name="Detection Range (studs)", PlaceholderText="10", RemoveTextAfterFocusLost=false, Callback=function(txt) detectionRange = tonumber(txt) or detectionRange end})
@@ -343,14 +429,11 @@ RunService.RenderStepped:Connect(function()
             local startTime = tick()
             local original = root.Velocity
             task.spawn(function()
-                while tick() - startTime < 1 and root and targetRoot and targetRoot.Parent do
+                while tick() - startTime < 0.5 and root and targetRoot and targetRoot.Parent do
                     local humanoid = targetRoot.Parent:FindFirstChildOfClass("Humanoid")
                     local predictedPosition = getPredictedPosition(targetRoot, humanoid)
 
                     root.CFrame = CFrame.lookAt(root.Position, predictedPosition)
-                    root.Velocity = root.CFrame.LookVector * 20
-                    wait(0.1)
-                    root.Velocity = original
                     task.wait()
                 end
                 aiming = false
