@@ -157,14 +157,14 @@ RunService.RenderStepped:Connect(function()
     -- ENTANGLEMENT AIMBOT (precise, no forgiveness, slight overshoot)
     if entanglementTriggered then
         task.spawn(function()
-            AimForDuration(0.8, 120, 0, 1.30) -- 30% extra lead
+            AimForDuration(0.8, 120, 0, 1.20) -- 30% extra lead
         end)
     end
 
     -- MASS INFECTION AIMBOT (slower proj, needs forgiveness, more overshoot)
     if massinfectionTriggered then
         task.spawn(function()
-            AimForDuration(0.8, 40, 1.5, 1.30) -- 30% extra lead
+            AimForDuration(0.8, 40, 1, 1.20) -- 30% extra lead
         end)
     end
 
