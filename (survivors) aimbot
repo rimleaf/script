@@ -164,7 +164,7 @@ RunService.RenderStepped:Connect(function()
     -- MASS INFECTION AIMBOT (slower proj, needs forgiveness, more overshoot)
     if massinfectionTriggered then
         task.spawn(function()
-            AimForDuration(0.8, 40, 1, 1.20) -- 30% extra lead
+            AimForDuration(0.8, 50, 1, 1.20) -- 30% extra lead
         end)
     end
 
