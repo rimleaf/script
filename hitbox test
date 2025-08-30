@@ -46,7 +46,7 @@ local function ExtendHitbox(duration)
 		local lookVector = hrp.CFrame.LookVector
 		local velocity = hrp.AssemblyLinearVelocity
 
-		hrp.AssemblyLinearVelocity = velocity + (lookVector * FIXED_STUDS)
+		hrp.AssemblyLinearVelocity = lookVector * FIXED_STUDS
 
 		RunService.RenderStepped:Wait()
 
