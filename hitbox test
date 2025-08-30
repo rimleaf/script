@@ -1,79 +1,108 @@
---// Fixed Hitbox Extender (LookVector Only, KRNL Safe) //--
+-- Hitbox Extension Script (self-contained, no getgenv)
 
-local RunService = game:GetService("RunService")
+-- Module table
+local Hitbox = {}
+
+-- Emergency stop flag (local instead of getgenv)
+local emergencyStop = false
+
+-- Max clamp limit (to prevent hitbox going too far away)
+Hitbox.MaxDistance = 50
+
+-- Converts studs into "power"
+local function StudsIntoPower(studs)
+    return studs * 6
+end
+
+-- Extend hitbox
+function Hitbox:ExtendHitbox(studs, duration)
+    local distance = math.clamp(StudsIntoPower(studs), -self.MaxDistance, self.MaxDistance)
+
+    local player = game:GetService("Players").LocalPlayer
+    local runService = game:GetService("RunService")
+
+    -- Safety checks
+    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+        return
+    end
+
+    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+
+    local rootPart = player.Character.HumanoidRootPart
+    local startTime = tick()
+
+    -- Reset emergency stop if flagged
+    emergencyStop = false
+
+    repeat
+        runService.Heartbeat:Wait()
+
+        -- Abort if health < 200
+        if humanoid.Health < 200 then
+            self:StopExtendingHitbox()
+            break
+        end
+
+        -- Wait until character + HRP exist
+        while not (player.Character and player.Character:FindFirstChild("HumanoidRootPart")) do
+            runService.Heartbeat:Wait()
+        end
+
+        rootPart = player.Character.HumanoidRootPart
+        local originalVelocity = rootPart.Velocity
+
+        -- Apply hitbox extension
+        rootPart.Velocity = originalVelocity + (rootPart.CFrame.LookVector * distance)
+
+        -- Restore velocity next frame
+        runService.RenderStepped:Wait()
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            rootPart.Velocity = originalVelocity
+        end
+
+    until tick() - startTime > tonumber(duration) or emergencyStop
+
+    -- Reset stop flag after breaking
+    emergencyStop = false
+end
+
+-- Stop extending hitbox
+function Hitbox:StopExtendingHitbox()
+    emergencyStop = true
+end
+
+-- Allow changing clamp limit at runtime
+function Hitbox:SetClampLimit(limit)
+    self.MaxDistance = limit
+end
+
+-------------------------------------------------
+-- ▼ AUTO USAGE SECTION ▼
+-------------------------------------------------
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Stop flag
-local emergency_stop = false
+local function onCharacterAdded(char)
+    local humanoid = char:WaitForChild("Humanoid", 10)
+    if humanoid then
+        -- Wait until HP is loaded
+        repeat task.wait() until humanoid.Health > 0
 
--- Fixed extender distance (studs)
-local FIXED_STUDS = 30  -- change this to your desired range
-
--- Main Extender
-local function ExtendHitbox(duration)
-	local character = LocalPlayer.Character
-	if not character then return end
-
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if not humanoid or humanoid.Health < 200 then
-		-- Block extender if health < 200
-		return
-	end
-
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	local startTime = tick()
-
-	-- Reset stop flag if active
-	if emergency_stop then
-		emergency_stop = false
-	end
-
-	repeat
-		RunService.Heartbeat:Wait()
-
-		character = LocalPlayer.Character
-		humanoid = character and character:FindFirstChildOfClass("Humanoid")
-		hrp = character and character:FindFirstChild("HumanoidRootPart")
-
-		if not (character and humanoid and hrp and hrp.Parent) then
-			continue
-		end
-
-		-- Apply fixed forward boost only by LookVector
-		local lookVector = hrp.CFrame.LookVector
-		local velocity = hrp.AssemblyLinearVelocity
-
-		hrp.AssemblyLinearVelocity = lookVector * FIXED_STUDS
-
-		RunService.RenderStepped:Wait()
-
-		-- Reset velocity to normal each frame after applying
-		if character and hrp and hrp.Parent then
-			hrp.AssemblyLinearVelocity = velocity
-		end
-
-	until tick() - startTime > tonumber(duration) or emergency_stop
-
-	-- Reset stop
-	if emergency_stop then
-		emergency_stop = false
-	end
+        -- Only extend hitbox if HP >= 200
+        if humanoid.Health >= 200 then
+            Hitbox:StopExtendingHitbox()
+            Hitbox:ExtendHitbox(4, 9e9)
+        else
+            Hitbox:StopExtendingHitbox()
+        end
+    end
 end
 
--- Stop function
-local function StopExtendingHitbox()
-	emergency_stop = true
+-- Connect respawn handling
+LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+
+-- Run once if already spawned
+if LocalPlayer.Character then
+    onCharacterAdded(LocalPlayer.Character)
 end
-
--- Respawn reconnect
-LocalPlayer.CharacterAdded:Connect(function(newChar)
-	wait(0.5)
-	StopExtendingHitbox()
-	ExtendHitbox(9e9) -- always active until stopped
-end)
-
--- Start immediately
-ExtendHitbox(9e9)
