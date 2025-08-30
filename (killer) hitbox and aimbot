@@ -1,5 +1,3 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/hitbox%20test"))()
-wait(0.1)
 local srvPlayers = game:GetService("Players")
 local srvRun = game:GetService("RunService")
 
