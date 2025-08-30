@@ -64,7 +64,7 @@ function HitboxModule:ExtendHitbox(studs: number, duration: number)
 		-- Hardcoded clamp (prevents "flying off"):
 		-- Walking (9–11) → extension ~20–40
 		-- Sprinting (28–30) → extension capped ~120
-		boost = Clamp(boost, 0, 120)
+		boost = Clamp(boost, 0, 50)
 
 		-- Apply boosted velocity forward
 		hrp.AssemblyLinearVelocity = velocity + (lookVector * boost)
