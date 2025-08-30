@@ -1,24 +1,17 @@
---// Hitbox Extender Script (KRNL Safe, Local Only) //--
+--// Fixed Hitbox Extender (LookVector Only, KRNL Safe) //--
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Local stop flag (instead of getgenv)
+-- Stop flag
 local emergency_stop = false
 
--- Convert studs into power
-local function StudsIntoPower(studs)
-	return studs * 6
-end
-
--- Clamp utility
-local function Clamp(value, min, max)
-	return math.max(min, math.min(max, value))
-end
+-- Fixed extender distance (studs)
+local FIXED_STUDS = 14  -- change this to your desired range
 
 -- Main Extender
-local function ExtendHitbox(studs, duration)
+local function ExtendHitbox(duration)
 	local character = LocalPlayer.Character
 	if not character then return end
 
@@ -31,7 +24,6 @@ local function ExtendHitbox(studs, duration)
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 
-	local distance = StudsIntoPower(studs)
 	local startTime = tick()
 
 	-- Reset stop flag if active
@@ -50,26 +42,22 @@ local function ExtendHitbox(studs, duration)
 			continue
 		end
 
-		local velocity = hrp.AssemblyLinearVelocity
+		-- Apply fixed forward boost only by LookVector
 		local lookVector = hrp.CFrame.LookVector
+		local velocity = hrp.AssemblyLinearVelocity
 
-		local forwardSpeed = math.max(0, velocity:Dot(lookVector))
-		local boost = forwardSpeed + distance
-
-		-- Hardcoded clamp
-		boost = Clamp(boost, 0, 50)
-
-		hrp.AssemblyLinearVelocity = velocity + (lookVector * boost)
+		hrp.AssemblyLinearVelocity = velocity + (lookVector * FIXED_STUDS)
 
 		RunService.RenderStepped:Wait()
 
+		-- Reset velocity to normal each frame after applying
 		if character and hrp and hrp.Parent then
 			hrp.AssemblyLinearVelocity = velocity
 		end
 
 	until tick() - startTime > tonumber(duration) or emergency_stop
 
-	-- Reset after breaking loop
+	-- Reset stop
 	if emergency_stop then
 		emergency_stop = false
 	end
@@ -80,9 +68,12 @@ local function StopExtendingHitbox()
 	emergency_stop = true
 end
 
--- Auto-respawn reconnect
+-- Respawn reconnect
 LocalPlayer.CharacterAdded:Connect(function(newChar)
 	wait(0.5)
 	StopExtendingHitbox()
-	ExtendHitbox(2, 9e9)
+	ExtendHitbox(9e9) -- always active until stopped
 end)
+
+-- Start immediately
+ExtendHitbox(9e9)
