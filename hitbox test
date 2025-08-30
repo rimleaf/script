@@ -8,7 +8,7 @@ local LocalPlayer = Players.LocalPlayer
 local emergency_stop = false
 
 -- Fixed extender distance (studs)
-local FIXED_STUDS = 14  -- change this to your desired range
+local FIXED_STUDS = 30  -- change this to your desired range
 
 -- Main Extender
 local function ExtendHitbox(duration)
