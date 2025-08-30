@@ -7,7 +7,7 @@ end
 
 -- Converts studs into "power"
 local function StudsIntoPower(studs)
-    return studs * 6
+    return studs * 10
 end
 
 -- Extend hitbox effect
