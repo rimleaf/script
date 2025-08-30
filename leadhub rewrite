@@ -108,7 +108,7 @@ local function addKillerCircle(killer)
     circle.AlwaysOnTop = true
     circle.ZIndex = 0
     circle.Transparency = 0.7
-    circle.Radius = detectionRange / 1.5
+    circle.Radius = detectionRange
     circle.Height = 0.1
     circle.Parent = hrp
 
