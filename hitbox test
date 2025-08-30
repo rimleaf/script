@@ -7,7 +7,7 @@ end
 
 -- Converts studs into "power"
 local function StudsIntoPower(studs)
-    return studs * 2
+    return studs * 6
 end
 
 -- Extend hitbox effect
@@ -36,10 +36,10 @@ function lolz:ExtendHitbox(studs, time)
 
         -- Save velocity before modifying
         local velocity = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Velocity
+        local lookvec = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector
 
         -- Apply extended hitbox movement
-        game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Velocity =
-            velocity * distance + (game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * distance)
+        game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Velocity = (lookvec * distance)
 
         game:GetService("RunService").RenderStepped:Wait()
 
