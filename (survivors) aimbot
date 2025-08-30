@@ -38,10 +38,12 @@ local originalWS, originalJP, originalAutoRotate = nil, nil, nil
 local function getValidTarget()
     local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
     if killersFolder then
-        for _, name in ipairs(aimTargets) do
-            local target = killersFolder:FindFirstChild(name)
-            if target and target:FindFirstChild("HumanoidRootPart") then
-                return target.HumanoidRootPart
+        for _, killer in ipairs(killersFolder:GetChildren()) do
+            local humanoid = killer:FindFirstChildOfClass("Humanoid")
+            local root = killer:FindFirstChild("HumanoidRootPart")
+            
+            if humanoid and root and humanoid.Health > 200 then
+                return root
             end
         end
     end
