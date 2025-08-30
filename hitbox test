@@ -1,15 +1,14 @@
---// Hitbox Extender Module (Fixed with Health & Velocity Clamp) //--
+--// Hitbox Extender Script (KRNL Safe, Local Only) //--
 
-local HitboxModule = {}
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Emergency stop toggle
-getgenv().emergency_stop = false
+-- Local stop flag (instead of getgenv)
+local emergency_stop = false
 
 -- Convert studs into power
-local function StudsIntoPower(studs: number): number
+local function StudsIntoPower(studs)
 	return studs * 6
 end
 
@@ -18,8 +17,8 @@ local function Clamp(value, min, max)
 	return math.max(min, math.min(max, value))
 end
 
--- Extend hitbox
-function HitboxModule:ExtendHitbox(studs: number, duration: number)
+-- Main Extender
+local function ExtendHitbox(studs, duration)
 	local character = LocalPlayer.Character
 	if not character then return end
 
@@ -35,9 +34,9 @@ function HitboxModule:ExtendHitbox(studs: number, duration: number)
 	local distance = StudsIntoPower(studs)
 	local startTime = tick()
 
-	-- Reset emergency stop if active
-	if getgenv().emergency_stop == true then
-		getgenv().emergency_stop = false
+	-- Reset stop flag if active
+	if emergency_stop then
+		emergency_stop = false
 	end
 
 	repeat
@@ -51,52 +50,39 @@ function HitboxModule:ExtendHitbox(studs: number, duration: number)
 			continue
 		end
 
-		-- Save current velocity
 		local velocity = hrp.AssemblyLinearVelocity
 		local lookVector = hrp.CFrame.LookVector
 
-		-- Project velocity onto forward direction only
 		local forwardSpeed = math.max(0, velocity:Dot(lookVector))
-
-		-- Scale boost by forward speed + studs factor
 		local boost = forwardSpeed + distance
 
-		-- Hardcoded clamp (prevents "flying off"):
-		-- Walking (9–11) → extension ~20–40
-		-- Sprinting (28–30) → extension capped ~120
+		-- Hardcoded clamp
 		boost = Clamp(boost, 0, 50)
 
-		-- Apply boosted velocity forward
 		hrp.AssemblyLinearVelocity = velocity + (lookVector * boost)
 
-		-- Wait one render step
 		RunService.RenderStepped:Wait()
 
-		-- Restore original velocity
 		if character and hrp and hrp.Parent then
 			hrp.AssemblyLinearVelocity = velocity
 		end
 
-	until tick() - startTime > tonumber(duration) or getgenv().emergency_stop == true
+	until tick() - startTime > tonumber(duration) or emergency_stop
 
-	-- Reset emergency stop after breaking loop
-	if getgenv().emergency_stop == true then
-		getgenv().emergency_stop = false
+	-- Reset after breaking loop
+	if emergency_stop then
+		emergency_stop = false
 	end
 end
 
--- Stop extending hitboxes
-function HitboxModule:StopExtendingHitbox()
-	getgenv().emergency_stop = true
+-- Stop function
+local function StopExtendingHitbox()
+	emergency_stop = true
 end
 
--- Return module
-return HitboxModule
-
-
---// Example Usage:
+-- Auto-respawn reconnect
 LocalPlayer.CharacterAdded:Connect(function(newChar)
-  wait(0.5)
-  HitboxModule:StopExtendingHitbox()
-  HitboxModule:ExtendHitbox(2, 9e9)
+	wait(0.5)
+	StopExtendingHitbox()
+	ExtendHitbox(2, 9e9)
 end)
