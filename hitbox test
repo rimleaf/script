@@ -1,108 +1,69 @@
--- Hitbox Extension Script (self-contained, no getgenv)
+local lolz = {}
 
--- Module table
-local Hitbox = {}
-
--- Emergency stop flag (local instead of getgenv)
-local emergencyStop = false
-
--- Max clamp limit (to prevent hitbox going too far away)
-Hitbox.MaxDistance = 50
+-- Ensure emergency_stop exists
+if getgenv().emergency_stop == nil or not getgenv().emergency_stop then
+    getgenv().emergency_stop = false
+end
 
 -- Converts studs into "power"
 local function StudsIntoPower(studs)
-    return studs * 6
+    return studs * 2
 end
 
--- Extend hitbox
-function Hitbox:ExtendHitbox(studs, duration)
-    local distance = math.clamp(StudsIntoPower(studs), -self.MaxDistance, self.MaxDistance)
+-- Extend hitbox effect
+function lolz:ExtendHitbox(studs, time)
+    local distance = StudsIntoPower(studs)
+    local start = tick()
+    local connection = nil
 
-    local player = game:GetService("Players").LocalPlayer
-    local runService = game:GetService("RunService")
-
-    -- Safety checks
-    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-        return
+    -- Reset emergency stop if it was active
+    if getgenv().emergency_stop == true then
+        getgenv().emergency_stop = false
     end
-
-    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return end
-
-    local rootPart = player.Character.HumanoidRootPart
-    local startTime = tick()
-
-    -- Reset emergency stop if flagged
-    emergencyStop = false
 
     repeat
-        runService.Heartbeat:Wait()
+        game:GetService("RunService").Heartbeat:Wait()
 
-        -- Abort if health < 200
-        if humanoid.Health < 200 then
-            self:StopExtendingHitbox()
-            break
+        -- Ensure character and HumanoidRootPart exist
+        while not (
+            game:GetService("Players").LocalPlayer.Character
+            and game:GetService("Players").LocalPlayer.Character.Parent
+            and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            and game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Parent
+        ) do
+            game:GetService("RunService").Heartbeat:Wait()
         end
 
-        -- Wait until character + HRP exist
-        while not (player.Character and player.Character:FindFirstChild("HumanoidRootPart")) do
-            runService.Heartbeat:Wait()
+        -- Save velocity before modifying
+        local velocity = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Velocity
+
+        -- Apply extended hitbox movement
+        game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Velocity =
+            velocity * distance + (game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * distance)
+
+        game:GetService("RunService").RenderStepped:Wait()
+
+        -- Restore original velocity
+        if (
+            game:GetService("Players").LocalPlayer.Character
+            and game:GetService("Players").LocalPlayer.Character.Parent
+            and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            and game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Parent
+        ) then
+            game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Velocity = velocity
         end
 
-        rootPart = player.Character.HumanoidRootPart
-        local originalVelocity = rootPart.Velocity
+    until tick() - start > tonumber(time) or getgenv().emergency_stop == true
 
-        -- Apply hitbox extension
-        rootPart.Velocity = originalVelocity + (rootPart.CFrame.LookVector * distance)
-
-        -- Restore velocity next frame
-        runService.RenderStepped:Wait()
-        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            rootPart.Velocity = originalVelocity
-        end
-
-    until tick() - startTime > tonumber(duration) or emergencyStop
-
-    -- Reset stop flag after breaking
-    emergencyStop = false
-end
-
--- Stop extending hitbox
-function Hitbox:StopExtendingHitbox()
-    emergencyStop = true
-end
-
--- Allow changing clamp limit at runtime
-function Hitbox:SetClampLimit(limit)
-    self.MaxDistance = limit
-end
-
--------------------------------------------------
--- ▼ AUTO USAGE SECTION ▼
--------------------------------------------------
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
-local function onCharacterAdded(char)
-    local humanoid = char:WaitForChild("Humanoid", 10)
-    if humanoid then
-        -- Wait until HP is loaded
-        repeat task.wait() until humanoid.Health > 0
-
-        -- Only extend hitbox if HP >= 200
-        if humanoid.Health >= 200 then
-            Hitbox:StopExtendingHitbox()
-            Hitbox:ExtendHitbox(4, 9e9)
-        else
-            Hitbox:StopExtendingHitbox()
-        end
+    -- Reset emergency stop after finishing
+    if getgenv().emergency_stop == true then
+        getgenv().emergency_stop = false
     end
 end
 
--- Connect respawn handling
-LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
-
--- Run once if already spawned
-if LocalPlayer.Character then
-    onCharacterAdded(LocalPlayer.Character)
+-- Force stop hitbox extension
+function lolz:StopExtendingHitbox()
+    getgenv().emergency_stop = true
 end
+
+return lolz
