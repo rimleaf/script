@@ -35,11 +35,11 @@ function lolz:ExtendHitbox(studs, time)
         end
 
         -- Save velocity before modifying
-        local velocity = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Velocity
+        local velocity = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity
         local lookvec = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector
 
         -- Apply extended hitbox movement
-        game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Velocity = (lookvec * distance)
+        game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = (lookvec * distance)
 
         game:GetService("RunService").RenderStepped:Wait()
 
@@ -50,7 +50,7 @@ function lolz:ExtendHitbox(studs, time)
             and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             and game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Parent
         ) then
-            game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Velocity = velocity
+            game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = velocity
         end
 
     until tick() - start > tonumber(time) or getgenv().emergency_stop == true
