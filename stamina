@@ -23,12 +23,12 @@ RunService.RenderStepped:Connect(function()
 			Module.MaxStamina = 110
 			Module.StaminaGain = 45
 			Module.StaminaLoss = 7
-			Module.SprintSpeed = 30
+			Module.SprintSpeed = 29.5
 		else
 			Module.MaxStamina = 100
 			Module.StaminaGain = 45
 			Module.StaminaLoss = 7
-			Module.SprintSpeed = 28
+			Module.SprintSpeed = 27
 		end
 	end
 end)
