@@ -627,7 +627,7 @@ task.spawn(function()
             end
         end
 
-        task.wait(0.4) -- ✅ only checks every half second instead of spamming every frame
+        task.wait(1.9) -- ✅ only checks every half second instead of spamming every frame
     end
 end)
 
