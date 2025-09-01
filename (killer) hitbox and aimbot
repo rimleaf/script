@@ -96,7 +96,7 @@ local aimbotTrack = nil
 local aimbotEnd = 0
 
 function ExtendHitbox(studs)
-    repeat
+    --repeat
         game:GetService("RunService").Heartbeat:Wait()
 
         -- character and humanoidrootpart exists check
@@ -127,10 +127,9 @@ function ExtendHitbox(studs)
         ) then
         	game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = velocity
     	end
-	end
+	--end
 end
 srvRun.Heartbeat:Connect(function()
-	ExtendHitbox(studs)
 	if not root then return end
 
 	-- Detect if we started an attack animation
@@ -147,6 +146,7 @@ srvRun.Heartbeat:Connect(function()
 
 	-- If aiming, check if still valid
 	if aimbotTrack then
+		ExtendHitbox(50)
 		if not aimbotTrack.IsPlaying or tick() >= aimbotEnd then
 			aimbotTrack = nil
 			return
