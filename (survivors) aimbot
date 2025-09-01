@@ -183,54 +183,7 @@ RunService.RenderStepped:Connect(function()
         HRP.CFrame = CFrame.new(rootPos) * CFrame.Angles(0, y, 0)
     end
 
--- helper utilities
-local function clamp(val, low, high)
-    if low and val < low then return low end
-    if high and val > high then return high end
-    return val
-end
-
--- Predict target position using projectile speed + target velocity.
--- srcPos: Vector3 (your HRP position)
--- targetHRP: the target HumanoidRootPart (or part with Position & AssemblyLinearVelocity)
--- projSpeed: number > 0 (projectile studs/sec)
--- minTime/maxTime: clamps for timeToHit (seconds)
--- maxLead: maximum lead offset magnitude (studs)
-local function predictPosition(targetHRP, srcPos, projSpeed, minTime, maxTime, maxLead)
-    if not targetHRP then return nil end
-
-    local targetPos = targetHRP.Position
-    local targetVel = targetHRP.AssemblyLinearVelocity or Vector3.new(0,0,0)
-
-    -- if target is basically standing still, aim at their current position
-    if targetVel.Magnitude <= 0.4 then
-        return targetPos
-    end
-
-    -- safe fallback if projSpeed isn't valid
-    local timeToHit
-    if projSpeed and projSpeed > 0 then
-        local dist = (targetPos - srcPos).Magnitude
-        timeToHit = dist / projSpeed
-    else
-        timeToHit = minTime or 0.35
-    end
-
-    -- clamp the time, so far targets don't create huge prediction
-    timeToHit = clamp(timeToHit, minTime or 0.15, maxTime or 0.8)
-
-    -- lead offset
-    local leadOffset = targetVel * timeToHit
-
-    -- clamp lead magnitude (so very fast players can't push it too far)
-    if maxLead and maxLead > 0 and leadOffset.Magnitude > 0. then
-        leadOffset = leadOffset.Unit * maxLead
-    end
-
-    return targetPos + leadOffset
-end
-
--- ENTANGLEMENT AIMBOT (tracking survivors with distance + clamps)
+-- ENTANGLEMENT AIMBOT (tracking survivors with projectile prediction)
 if enaim and tick() - lastTriggerTime <= aimDuration then
     if not originalWS then
         originalWS = Humanoid.WalkSpeed
@@ -243,16 +196,15 @@ if enaim and tick() - lastTriggerTime <= aimDuration then
 
     local targetHRP = getValidSurvivor()
     if targetHRP then
-        -- tuning: change these per-move to taste
-        local projSpeed = 125           -- projectile speed in studs/sec for Entanglement
-        local minTime = 0.12            -- minimum prediction time (s)
-        local maxTime = 1            -- maximum prediction time (s)
-        local maxLead  = 18             -- max lead offset in studs
+        local targetPos = targetHRP.Position
+        local targetVel = targetHRP.AssemblyLinearVelocity
+        local projSpeed = 125 -- adjust projectile speed here
 
-        local predictedPos = predictPosition(targetHRP, HRP.Position, projSpeed, minTime, maxTime, maxLead)
-        if predictedPos then
-            faceTarget(predictedPos)
-        end
+        local dist = (targetPos - HRP.Position).Magnitude
+        local timeToHit = dist / projSpeed
+
+        local predictedPos = targetPos + targetVel * timeToHit
+        faceTarget(predictedPos)
     end
 elseif enaim then
     enaim = false
@@ -264,7 +216,7 @@ elseif enaim then
     end
 end
 
--- MASS INFECTION AIMBOT (tracking survivors with distance + clamps)
+-- MASS INFECTION AIMBOT (tracking survivors with projectile prediction)
 if massaim and tick() - lastTriggerTime <= aimDuration then
     if not originalWS then
         originalWS = Humanoid.WalkSpeed
@@ -277,16 +229,15 @@ if massaim and tick() - lastTriggerTime <= aimDuration then
 
     local targetHRP = getValidSurvivor()
     if targetHRP then
-        -- tuning: different projectile characteristics for Mass Infection
-        local projSpeed = 67            -- projectile speed in studs/sec for Mass Infection
-        local minTime = 0.10
-        local maxTime = 1
-        local maxLead  = 22
+        local targetPos = targetHRP.Position
+        local targetVel = targetHRP.AssemblyLinearVelocity
+        local projSpeed = 65.5 -- different projectile speed for this attack
 
-        local predictedPos = predictPosition(targetHRP, HRP.Position, projSpeed, minTime, maxTime, maxLead)
-        if predictedPos then
-            faceTarget(predictedPos)
-        end
+        local dist = (targetPos - HRP.Position).Magnitude
+        local timeToHit = dist / projSpeed
+
+        local predictedPos = targetPos + targetVel * timeToHit
+        faceTarget(predictedPos)
     end
 elseif massaim then
     massaim = false
@@ -297,7 +248,6 @@ elseif massaim then
         originalWS, originalJP, originalAutoRotate = nil, nil, nil
     end
 end
-
 
     -- NORMAL AIMBOT (tracking killers)
     if aiming and tick() - lastTriggerTime <= aimDuration then
