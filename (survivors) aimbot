@@ -58,6 +58,27 @@ local function getValidTarget()
     return nearest
 end
 
+local function getValidSurvivor()
+    local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
+    if not killersFolder or not HRP then return nil end
+
+    local nearest, nearestDist = nil, math.huge
+    for _, killer in ipairs(killersFolder:GetChildren()) do
+        local humanoid = killer:FindFirstChildOfClass("Humanoid")
+        local root = killer:FindFirstChild("HumanoidRootPart")
+
+        if humanoid and root and humanoid.Health > 0 then
+            local dist = (root.Position - HRP.Position).Magnitude
+            if dist < nearestDist then
+                nearestDist = dist
+                nearest = root
+            end
+        end
+    end
+
+    return nearest
+end
+
 local function getPlayingAnimationIds()
     local ids = {}
     if Humanoid then
@@ -150,7 +171,7 @@ RunService.RenderStepped:Connect(function()
         Humanoid.AutoRotate = false
         HRP.AssemblyAngularVelocity = Vector3.zero
 
-        local targetHRP = getValidTarget()
+        local targetHRP = getValidSurvivor()
 
         if targetHRP then
             local vel = targetHRP.AssemblyLinearVelocity
@@ -186,7 +207,7 @@ RunService.RenderStepped:Connect(function()
         Humanoid.AutoRotate = false
         HRP.AssemblyAngularVelocity = Vector3.zero
 
-        local targetHRP = getValidTarget()
+        local targetHRP = getValidSurvivor()
 
         if targetHRP then
             local vel = targetHRP.AssemblyLinearVelocity
