@@ -95,9 +95,6 @@ end
 local aimbotTrack = nil
 local aimbotEnd = 0
 
--- define studs so ExtendHitbox runs
-local studs = 5
-
 function ExtendHitbox(studs)
     repeat
         game:GetService("RunService").Heartbeat:Wait()
@@ -134,7 +131,7 @@ function ExtendHitbox(studs)
 end
 
 srvRun.Heartbeat:Connect(function()
-	ExtendHitbox(studs)
+	ExtendHitbox(40)
 	if not root then return end
 
 	-- Detect if we started an attack animation
