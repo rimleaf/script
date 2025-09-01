@@ -17,33 +17,33 @@ client.CharacterAdded:Connect(function(newChar)
 end)
 
 local attackIds = {
-	'rbxassetid://83829782357897', --// Slash, 1x1x1x1
-	'rbxassetid://126830014841198', --// Slash, Jason
-	'rbxassetid://126355327951215', --// Behead, Jason
-	'rbxassetid://105458270463374', --// Slash, JohnDoe
-	'rbxassetid://18885909645', --// Attack, c00lkidd
-	'rbxassetid://94162446513587', --// Slash, JohnDoe, Skin: !Joner
-	'rbxassetid://93069721274110', --// Slash, JohnDoe, Skin: AnnihilationJohnDoe
-	'rbxassetid://97433060861952', --// Slash, JohnDoe, Skin: #SK
-	'rbxassetid://121293883585738', --// Slash, 1x1x1x1, Skin: Fleskhjerta1x1x1x1
-	'rbxassetid://92173139187970', --// Slash, 1x1x1x1, Skin: Hacklord1x1x1x1
-	'rbxassetid://125403313786645', --// Slash, Jason, Skin: Subject0Jason
-	'rbxassetid://81639435858902', --// Behead, Jason, Skin: WhitePumpkinJason
-	'rbxassetid://120112897026015', --// Slash, Jason, Skin: WhitePumpkinJason
-	'rbxassetid://82113744478546', --// Behead, Jason, Skin: KillerKyleJason
-	'rbxassetid://118298475669935', --// Slash, Jason, Skin: KillerKyleJason
-	'rbxassetid://82113744478546', --// Behead, Jason, Skin: #SmartestJason
-	'rbxassetid://118298475669935', --// Slash, Jason, Skin: #SmartestJason
-	'rbxassetid://126681776859538', --// Behead, Jason, Skin: PursuerJason
-	'rbxassetid://109667959938617', --// Slash, Jason, Skin: PursuerJason
-	'rbxassetid://74707328554358', --// Slash, Jason, Skin: #DeadRabbitsJason
-	'rbxassetid://133336594357903', --// Behead, Jason, Skin: #DeadRabbitsJason
-	'rbxassetid://82113744478546', --// Behead, Jason, Skin: RetroJason
-	'rbxassetid://118298475669935', --// Slash, Jason, Skin: RetroJason
-	'rbxassetid://70371667919898', --// Attack, c00lkidd, Skin: MafiosoC00l
-	'rbxassetid://131543461321709', --// Attack, c00lkidd, Skin: SaviorC00l
-	'rbxassetid://136323728355613', --// Swing, Noli
-    'rbxassetid://109230267448394', --// Swing, Noli, Skin: All
+	'rbxassetid://83829782357897',
+	'rbxassetid://126830014841198',
+	'rbxassetid://126355327951215',
+	'rbxassetid://105458270463374',
+	'rbxassetid://18885909645',
+	'rbxassetid://94162446513587',
+	'rbxassetid://93069721274110',
+	'rbxassetid://97433060861952',
+	'rbxassetid://121293883585738',
+	'rbxassetid://92173139187970',
+	'rbxassetid://125403313786645',
+	'rbxassetid://81639435858902',
+	'rbxassetid://120112897026015',
+	'rbxassetid://82113744478546',
+	'rbxassetid://118298475669935',
+	'rbxassetid://82113744478546',
+	'rbxassetid://118298475669935',
+	'rbxassetid://126681776859538',
+	'rbxassetid://109667959938617',
+	'rbxassetid://74707328554358',
+	'rbxassetid://133336594357903',
+	'rbxassetid://82113744478546',
+	'rbxassetid://118298475669935',
+	'rbxassetid://70371667919898',
+	'rbxassetid://131543461321709',
+	'rbxassetid://136323728355613',
+    'rbxassetid://109230267448394',
 };
 
 -- Prediction function
@@ -95,8 +95,11 @@ end
 local aimbotTrack = nil
 local aimbotEnd = 0
 
+-- define studs so ExtendHitbox runs
+local studs = 5
+
 function ExtendHitbox(studs)
-    --repeat
+    repeat
         game:GetService("RunService").Heartbeat:Wait()
 
         -- character and humanoidrootpart exists check
@@ -125,18 +128,20 @@ function ExtendHitbox(studs)
             and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             and game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Parent
         ) then
-        	game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = velocity
-    	end
-	--end
+            game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = velocity
+        end
+    until false -- closes the repeat loop properly
 end
+
 srvRun.Heartbeat:Connect(function()
+	ExtendHitbox(studs)
 	if not root then return end
 
 	-- Detect if we started an attack animation
 	if not aimbotTrack then
 		for _, track in humanoid:GetPlayingAnimationTracks() do
 			local animId = track.Animation and track.Animation.AnimationId
-			if animId and table.find(attackIds, animId) and (track.TimePosition / track.Length < 0.75) then
+			if animId and table.find(attackIds, animId) and (track.Length > 0 and (track.TimePosition / track.Length < 0.75)) then
 				aimbotTrack = track
 				aimbotEnd = tick() + 0.3
 				break
@@ -146,7 +151,6 @@ srvRun.Heartbeat:Connect(function()
 
 	-- If aiming, check if still valid
 	if aimbotTrack then
-		ExtendHitbox(50)
 		if not aimbotTrack.IsPlaying or tick() >= aimbotEnd then
 			aimbotTrack = nil
 			return
@@ -159,7 +163,6 @@ srvRun.Heartbeat:Connect(function()
 			local hum = target:FindFirstChild("Humanoid")
 			if hrp and hum then
 				local predicted = getPredictedPosition(hrp, hum)
-				-- FIX: rotate *our own root*, not theirs
 				root.CFrame = CFrame.lookAt(root.Position, predicted)
 			end
 		end
