@@ -198,7 +198,7 @@ if enaim and tick() - lastTriggerTime <= aimDuration then
     if targetHRP then
         local targetPos = targetHRP.Position
         local targetVel = targetHRP.AssemblyLinearVelocity
-        local projSpeed = 100 -- adjust projectile speed here
+        local projSpeed = 110 -- adjust projectile speed here
 
         local dist = (targetPos - HRP.Position).Magnitude
         local timeToHit = dist / projSpeed
@@ -231,7 +231,7 @@ if massaim and tick() - lastTriggerTime <= aimDuration then
     if targetHRP then
         local targetPos = targetHRP.Position
         local targetVel = targetHRP.AssemblyLinearVelocity
-        local projSpeed = 50 -- different projectile speed for this attack
+        local projSpeed = 60 -- different projectile speed for this attack
 
         local dist = (targetPos - HRP.Position).Magnitude
         local timeToHit = dist / projSpeed
