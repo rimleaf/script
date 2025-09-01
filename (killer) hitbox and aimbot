@@ -125,10 +125,10 @@ function ExtendHitbox(studs)
             and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             and game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Parent
         ) then
-        game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = velocity
-    end
+        	game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = velocity
+    	end
+	end
 end
-
 srvRun.Heartbeat:Connect(function()
 	ExtendHitbox(studs)
 	if not root then return end
