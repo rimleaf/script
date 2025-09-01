@@ -203,7 +203,7 @@ end
             end
 
             local direction = (predictedPos - HRP.Position).Unit
-            HRP.CFrame = CFrame.lookAt(HRP.Position, HRP.Position + direction, Vector3.yAxis)
+            HRP.CFrame = CFrame.lookAt(HRP.Position, HRP.Position + direction)
 
         end
     elseif aiming then
