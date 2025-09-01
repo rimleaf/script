@@ -130,6 +130,7 @@ function ExtendHitbox(studs)
 end
 
 srvRun.Heartbeat:Connect(function()
+	ExtendHitbox(studs)
 	if not root then return end
 
 	-- Detect if we started an attack animation
@@ -146,7 +147,6 @@ srvRun.Heartbeat:Connect(function()
 
 	-- If aiming, check if still valid
 	if aimbotTrack then
-		ExtendHitbox(studs)
 		if not aimbotTrack.IsPlaying or tick() >= aimbotEnd then
 			aimbotTrack = nil
 			return
