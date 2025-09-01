@@ -127,6 +127,73 @@ if LocalPlayer.Character then
 end
 LocalPlayer.CharacterAdded:Connect(setupCharacter)
 
+local function isMoving(hrp)
+    if not hrp then return false end
+    return hrp.AssemblyLinearVelocity.Magnitude > 1
+end
+
+-- Predict position based on projectile speed and optionally add forgiveness
+local function getPredictedPos(targetHRP, projSpeed, forgiveness, leadFactor)
+    local dist = (targetHRP.Position - HRP.Position).Magnitude
+    local travelTime = projSpeed > 0 and (dist / projSpeed) or 0
+    local vel = targetHRP.AssemblyLinearVelocity
+
+    local predictedPos
+    if vel.Magnitude > 0.2 then
+        leadFactor = leadFactor or 1.0
+        predictedPos = targetHRP.Position + vel * travelTime * leadFactor
+    else
+        predictedPos = targetHRP.Position
+    end
+
+    if forgiveness and forgiveness > 0 then
+        local dir = (predictedPos - HRP.Position)
+        if dir.Magnitude > 0 then
+            predictedPos = predictedPos + dir.Unit * forgiveness
+        end
+    end
+    return predictedPos, dist
+end
+
+local function aimAt(pos)
+    if not HRP then return end
+    local dir = pos - HRP.Position
+    if dir.Magnitude == 0 then return end
+    local direction = dir.Unit
+    local yRot = math.atan2(-direction.X, -direction.Z)
+    HRP.CFrame = CFrame.new(HRP.Position) * CFrame.Angles(0, yRot, 0)
+end
+
+-- ENTANGLEMENT / MASS INFECTION AIM (search nearest alive player)
+local function AimForDuration(duration, projSpeed, forgiveness, leadFactor)
+    local start = tick()
+    while tick() - start < duration do
+        local survivorFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
+        local nearestHRP, nearestDist = nil, math.huge
+        for _, plr in ipairs(survivorFolder) do
+            if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+                local root = plr.Character:FindFirstChild("HumanoidRootPart")
+                if hum and hum.Health > 0 and root then
+                    local d = (root.Position - HRP.Position).Magnitude
+                    if d < nearestDist then
+                        nearestDist = d
+                        nearestHRP = root
+                    end
+                end
+            end
+        end
+
+        if nearestHRP then
+            local predictedPos = getPredictedPos(nearestHRP, projSpeed, forgiveness, leadFactor)
+            aimAt(predictedPos)
+        end
+
+        RunService.Heartbeat:Wait()
+    end
+end
+
+
 RunService.RenderStepped:Connect(function()
     if not active or not Humanoid or not HRP then return end
 
@@ -162,16 +229,6 @@ RunService.RenderStepped:Connect(function()
         lastTriggerTime = tick()
         aiming = true
     end
-    -- entanglement tracked aimbot
-    if entanglementTriggered then
-        lastTriggerTime = tick()
-        enaim = true
-    end
-    -- massinfection tracked aimbot
-    if massinfectionTriggered then
-        lastTriggerTime = tick()
-        massaim = true
-    end
 
     -- helper function: yaw-only face target
     local function faceTarget(targetPos)
@@ -183,71 +240,23 @@ RunService.RenderStepped:Connect(function()
         HRP.CFrame = CFrame.new(rootPos) * CFrame.Angles(0, y, 0)
     end
 
--- ENTANGLEMENT AIMBOT (tracking survivors with projectile prediction)
-if enaim and tick() - lastTriggerTime <= aimDuration then
-    if not originalWS then
-        originalWS = Humanoid.WalkSpeed
-        originalJP = Humanoid.JumpPower
-        originalAutoRotate = Humanoid.AutoRotate
+    -- ENTANGLEMENT AIMBOT (precise, no forgiveness, slight overshoot)
+    if entanglementTriggered and not entanglementTaskActive then
+        entanglementTaskActive = true
+        task.spawn(function()
+            AimForDuration(0.8, 120, 0, 1.30) -- 30% extra lead
+            entanglementTaskActive = false
+        end)
     end
 
-    Humanoid.AutoRotate = false
-    HRP.AssemblyAngularVelocity = Vector3.zero
-
-    local targetHRP = getValidSurvivor()
-    if targetHRP then
-        local targetPos = targetHRP.Position
-        local targetVel = targetHRP.AssemblyLinearVelocity
-        local projSpeed = 110 -- adjust projectile speed here
-
-        local dist = (targetPos - HRP.Position).Magnitude
-        local timeToHit = dist / projSpeed
-
-        local predictedPos = targetPos + targetVel * timeToHit
-        faceTarget(predictedPos)
+    -- MASS INFECTION AIMBOT (slower proj, needs forgiveness, more overshoot)
+    if massinfectionTriggered and not massInfectionTaskActive then
+        massInfectionTaskActive = true
+        task.spawn(function()
+            AimForDuration(0.8, 40, 1.5, 1.30) -- 30% extra lead
+            massInfectionTaskActive = false
+        end)
     end
-elseif enaim then
-    enaim = false
-    if originalWS and originalJP and originalAutoRotate ~= nil then
-        Humanoid.WalkSpeed = originalWS
-        Humanoid.JumpPower = originalJP
-        Humanoid.AutoRotate = originalAutoRotate
-        originalWS, originalJP, originalAutoRotate = nil, nil, nil
-    end
-end
-
--- MASS INFECTION AIMBOT (tracking survivors with projectile prediction)
-if massaim and tick() - lastTriggerTime <= aimDuration then
-    if not originalWS then
-        originalWS = Humanoid.WalkSpeed
-        originalJP = Humanoid.JumpPower
-        originalAutoRotate = Humanoid.AutoRotate
-    end
-
-    Humanoid.AutoRotate = false
-    HRP.AssemblyAngularVelocity = Vector3.zero
-
-    local targetHRP = getValidSurvivor()
-    if targetHRP then
-        local targetPos = targetHRP.Position
-        local targetVel = targetHRP.AssemblyLinearVelocity
-        local projSpeed = 60 -- different projectile speed for this attack
-
-        local dist = (targetPos - HRP.Position).Magnitude
-        local timeToHit = dist / projSpeed
-
-        local predictedPos = targetPos + targetVel * timeToHit
-        faceTarget(predictedPos)
-    end
-elseif massaim then
-    massaim = false
-    if originalWS and originalJP and originalAutoRotate ~= nil then
-        Humanoid.WalkSpeed = originalWS
-        Humanoid.JumpPower = originalJP
-        Humanoid.AutoRotate = originalAutoRotate
-        originalWS, originalJP, originalAutoRotate = nil, nil, nil
-    end
-end
 
     -- NORMAL AIMBOT (tracking killers)
     if aiming and tick() - lastTriggerTime <= aimDuration then
