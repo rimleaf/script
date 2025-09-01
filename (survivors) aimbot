@@ -133,6 +133,12 @@ if entanglementTriggered then
     task.spawn(function()
         local duration = 0.7
         local start = tick()
+
+        -- save original and disable autorotate
+        local prevAutoRotate = Humanoid.AutoRotate
+        Humanoid.AutoRotate = false
+        HRP.AssemblyAngularVelocity = Vector3.zero
+
         while tick() - start < duration do
             local targetHRP = getValidTarget()
             if targetHRP then
@@ -140,13 +146,11 @@ if entanglementTriggered then
                 local targetHum = targetHRP.Parent:FindFirstChildOfClass("Humanoid")
                 local dist = (targetHRP.Position - HRP.Position).Magnitude
 
-                -- projectile speed for entanglement (100–130, we’ll use 115 avg)
                 local projSpeed = 120
                 local travelTime = dist / projSpeed
 
                 local predictedPos
                 if vel.Magnitude > 0.1 and targetHum then
-                    -- scale lead directly by target WalkSpeed
                     predictedPos = targetHRP.Position + vel * travelTime * (targetHum.WalkSpeed / 16)
                 else
                     predictedPos = targetHRP.Position
@@ -156,8 +160,12 @@ if entanglementTriggered then
             end
             RunService.Heartbeat:Wait()
         end
+
+        -- restore autorotate
+        Humanoid.AutoRotate = prevAutoRotate
     end)
 end
+
 
 
 -- MASS INFECTION AIMBOT (fixed reaction delay, like normal aimbot)
@@ -165,12 +173,18 @@ if massinfectionTriggered then
     task.spawn(function()
         local duration = 1
         local start = tick()
+
+        -- save original and disable autorotate
+        local prevAutoRotate = Humanoid.AutoRotate
+        Humanoid.AutoRotate = false
+        HRP.AssemblyAngularVelocity = Vector3.zero
+
         while tick() - start < duration do
             local targetHRP = getValidTarget()
             if targetHRP then
                 local vel = targetHRP.AssemblyLinearVelocity
                 local predictedPos
-                local reactionDelay = 0.3 -- fixed prediction like normal aimbot
+                local reactionDelay = 0.3
 
                 if vel.Magnitude > 0.1 then
                     predictedPos = targetHRP.Position + vel * reactionDelay
@@ -182,8 +196,12 @@ if massinfectionTriggered then
             end
             RunService.Heartbeat:Wait()
         end
+
+        -- restore autorotate
+        Humanoid.AutoRotate = prevAutoRotate
     end)
 end
+
 
 
     -- NORMAL AIMBOT (tracking killers)
