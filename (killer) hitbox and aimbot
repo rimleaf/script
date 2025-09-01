@@ -96,38 +96,36 @@ local aimbotTrack = nil
 local aimbotEnd = 0
 
 function ExtendHitbox(studs)
-    repeat
+    game:GetService("RunService").Heartbeat:Wait()
+
+    -- character and humanoidrootpart exists check
+    while not (
+        game:GetService("Players").LocalPlayer.Character
+        and game:GetService("Players").LocalPlayer.Character.Parent
+        and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        and game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Parent
+    ) do
         game:GetService("RunService").Heartbeat:Wait()
+    end
 
-        -- character and humanoidrootpart exists check
-        while not (
-            game:GetService("Players").LocalPlayer.Character
-            and game:GetService("Players").LocalPlayer.Character.Parent
-            and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            and game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Parent
-        ) do
-            game:GetService("RunService").Heartbeat:Wait()
-        end
+    -- save
+    local velocity = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity
+    local lookvec = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector
 
-        -- save
-        local velocity = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity
-        local lookvec = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector
+    -- start extending
+     game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = (lookvec * studs)
 
-        -- start extending
-        game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = (lookvec * studs)
+    game:GetService("RunService").RenderStepped:Wait()
 
-        game:GetService("RunService").RenderStepped:Wait()
-
-        -- stop and restore origin of velocity
-        if (
-            game:GetService("Players").LocalPlayer.Character
-            and game:GetService("Players").LocalPlayer.Character.Parent
-            and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            and game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Parent
-        ) then
-            game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = velocity
-        end
-    until false -- closes the repeat loop properly
+    -- stop and restore origin of velocity
+    if (
+        game:GetService("Players").LocalPlayer.Character
+        and game:GetService("Players").LocalPlayer.Character.Parent
+        and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        and game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Parent
+    ) then
+        game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = velocity
+    end
 end
 
 srvRun.Heartbeat:Connect(function()
