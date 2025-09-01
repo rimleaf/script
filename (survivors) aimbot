@@ -120,10 +120,13 @@ RunService.RenderStepped:Connect(function()
 -- helper function: yaw-only face target
 local function faceTarget(targetPos)
     local rootPos = HRP.Position
-    local direction = (targetPos - rootPos).Unit
-    local yRot = math.atan2(-direction.X, -direction.Z)
-    HRP.CFrame = CFrame.new(rootPos) * CFrame.Angles(0, yRot, 0)
+    local lookAt = CFrame.lookAt(rootPos, targetPos, Vector3.yAxis)
+
+    -- Extract only yaw from lookAt
+    local _, y, _ = lookAt:ToOrientation()
+    HRP.CFrame = CFrame.new(rootPos) * CFrame.Angles(0, y, 0)
 end
+
 
 -- ENTANGLEMENT AIMBOT (predicts using distance, projectile speed, and actual WalkSpeed)
 if entanglementTriggered then
