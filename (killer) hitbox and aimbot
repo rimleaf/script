@@ -145,7 +145,7 @@ srvRun.Heartbeat:Connect(function()
 
 	-- If aiming, check if still valid
 	if aimbotTrack then
-		ExtendHitbox(40)
+		ExtendHitbox(55)
 		if not aimbotTrack.IsPlaying or tick() >= aimbotEnd then
 			aimbotTrack = nil
 			return
