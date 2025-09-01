@@ -130,3 +130,26 @@ srvRun.Heartbeat:Connect(function()
 		end
 	end
 end)
+
+srvRun.Heartbeat:Connect(function()
+	if not root then return end
+
+	local attack = false
+	for _, track in humanoid:GetPlayingAnimationTracks() do
+		local animId = track.Animation and track.Animation.AnimationId
+		if animId and table.find(attackIds, animId) and (track.TimePosition / track.Length < 0.75) then
+			attack = true
+			break
+		end
+	end
+
+	if not attack then return end
+
+	local look = root.CFrame.LookVector
+	local original = root.AssemblyLinearVelocity
+	local strength = 30
+
+	root.AssemblyLinearVelocity = look * strength
+	srvRun.RenderStepped:Wait()
+	root.AssemblyLinearVelocity = original
+end)
