@@ -44,7 +44,7 @@ local function getValidTarget()
         local humanoid = killer:FindFirstChildOfClass("Humanoid")
         local root = killer:FindFirstChild("HumanoidRootPart")
 
-        if humanoid and root and humanoid.Health > 200 then
+        if humanoid and root and humanoid.Health > 0 then
             local dist = (root.Position - HRP.Position).Magnitude
             if dist < nearestDist then
                 nearestDist = dist
@@ -201,8 +201,8 @@ RunService.RenderStepped:Connect(function()
             end
 
             local direction = (predictedPos - HRP.Position).Unit
-            local yRot = math.atan2(-direction.X, -direction.Z)
-            HRP.CFrame = CFrame.new(HRP.Position) * CFrame.Angles(0, yRot, 0)
+            HRP.CFrame = CFrame.lookAt(HRP.Position, HRP.Position + direction, Vector3.yAxis)
+
         end
     elseif aiming then
         aiming = false
