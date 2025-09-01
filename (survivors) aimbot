@@ -196,14 +196,15 @@ end
             local predictedPos
             local reactionDelay = 0.2
 
-            if vel.Magnitude > 0.1 then
+            if vel.Magnitude > 0.5 then
                 predictedPos = targetHRP.Position + vel * reactionDelay
             else
                 predictedPos = targetHRP.Position
             end
 
             local direction = (predictedPos - HRP.Position).Unit
-            HRP.CFrame = CFrame.lookAt(HRP.Position, HRP.Position + direction)
+            local yRot = math.atan2(-direction.X, -direction.Z)
+            HRP.CFrame = CFrame.new(HRP.Position) * CFrame.Angles(0, yRot, 0)
 
         end
     elseif aiming then
