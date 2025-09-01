@@ -117,64 +117,66 @@ RunService.RenderStepped:Connect(function()
         aiming = true
     end
 
-    local function AimForDuration(duration, projSpeed, forgiveness, leadFactor)
+-- ENTANGLEMENT AIMBOT (distance + WalkSpeed-based prediction)
+-- ENTANGLEMENT AIMBOT (predicts using distance, projectile speed, and actual WalkSpeed)
+if entanglementTriggered then
+    task.spawn(function()
+        local duration = 0.7
         local start = tick()
         while tick() - start < duration do
-            local nearestHRP, nearestDist = nil, math.huge
-            for _, plr in ipairs(Players:GetPlayers()) do
-                if plr ~= client and plr.Character then
-                    local hum = plr.Character:FindFirstChildOfClass("Humanoid")
-                    local root = plr.Character:FindFirstChild("HumanoidRootPart")
-                    -- ✅ skip dead or missing Humanoid
-                    if hum and hum.Health > 0 and root then
-                        local dist = (root.Position - HRP.Position).Magnitude
-                        if dist < nearestDist then
-                            nearestDist = dist
-                            nearestHRP = root
-                        end
-                    end
-                end
-            end
+            local targetHRP = getValidTarget()
+            if targetHRP then
+                local vel = targetHRP.AssemblyLinearVelocity
+                local targetHum = targetHRP.Parent:FindFirstChildOfClass("Humanoid")
+                local dist = (targetHRP.Position - HRP.Position).Magnitude
 
-            if nearestHRP then
-                local vel = nearestHRP.AssemblyLinearVelocity
-                local travelTime = nearestDist / projSpeed
+                -- projectile speed for entanglement (100–130, we’ll use 115 avg)
+                local projSpeed = 120
+                local travelTime = dist / projSpeed
+
                 local predictedPos
-
-                if vel.Magnitude > 0.1 then
-                    predictedPos = nearestHRP.Position + vel * travelTime * leadFactor
+                if vel.Magnitude > 0.1 and targetHum then
+                    -- scale lead directly by target WalkSpeed
+                    predictedPos = targetHRP.Position + vel * travelTime * (targetHum.WalkSpeed / 16)
                 else
-                    predictedPos = nearestHRP.Position
-                end
-
-                -- forgiveness offset (extra hitbox allowance for Mass Infection)
-                if forgiveness and forgiveness > 0 then
-                    local offset = (predictedPos - HRP.Position).Unit * forgiveness
-                    predictedPos = predictedPos + offset
+                    predictedPos = targetHRP.Position
                 end
 
                 local direction = (predictedPos - HRP.Position).Unit
-                local yRot = math.atan2(-direction.X, -direction.Z)
-                HRP.CFrame = CFrame.new(HRP.Position) * CFrame.Angles(0, yRot, 0)
+                HRP.CFrame = CFrame.lookAt(HRP.Position, HRP.Position + direction, Vector3.yAxis)
             end
-
             RunService.Heartbeat:Wait()
         end
-    end
+    end)
+end
 
-    -- ENTANGLEMENT AIMBOT (precise, no forgiveness, slight overshoot)
-    if entanglementTriggered then
-        task.spawn(function()
-            AimForDuration(0.7, 125, 0, 1.15) -- 30% extra lead
-        end)
-    end
 
-    -- MASS INFECTION AIMBOT (slower proj, needs forgiveness, more overshoot)
-    if massinfectionTriggered then
-        task.spawn(function()
-            AimForDuration(1, 30, 1, 1.15) -- 30% extra lead
-        end)
-    end
+-- MASS INFECTION AIMBOT (fixed reaction delay, like normal aimbot)
+if massinfectionTriggered then
+    task.spawn(function()
+        local duration = 1
+        local start = tick()
+        while tick() - start < duration do
+            local targetHRP = getValidTarget()
+            if targetHRP then
+                local vel = targetHRP.AssemblyLinearVelocity
+                local predictedPos
+                local reactionDelay = 0.3 -- fixed prediction like normal aimbot
+
+                if vel.Magnitude > 0.1 then
+                    predictedPos = targetHRP.Position + vel * reactionDelay
+                else
+                    predictedPos = targetHRP.Position
+                end
+
+                local direction = (predictedPos - HRP.Position).Unit
+                HRP.CFrame = CFrame.lookAt(HRP.Position, HRP.Position + direction, Vector3.yAxis)
+            end
+            RunService.Heartbeat:Wait()
+        end
+    end)
+end
+
 
     -- NORMAL AIMBOT (tracking killers)
     if aiming and tick() - lastTriggerTime <= aimDuration then
