@@ -33,6 +33,8 @@ local massinfectionanimation = {
 local Humanoid, HRP = nil, nil
 local lastTriggerTime = 0
 local aiming = false
+local enaim = false
+local massaim = false
 local originalWS, originalJP, originalAutoRotate = nil, nil, nil
 
 local function getValidTarget()
@@ -116,93 +118,98 @@ RunService.RenderStepped:Connect(function()
         lastTriggerTime = tick()
         aiming = true
     end
+    -- entanglement tracked aimbot
+    if entanglementTriggered then
+        lastTriggerTime = tick()
+        enaim = true
+    end
+    -- massinfection tracked aimbot
+    if massinfectionTriggered then
+        lastTriggerTime = tick()
+        massaim = true
+    end
 
--- helper function: yaw-only face target
-local function faceTarget(targetPos)
-    local rootPos = HRP.Position
-    local lookAt = CFrame.lookAt(rootPos, targetPos, Vector3.yAxis)
+    -- helper function: yaw-only face target
+    local function faceTarget(targetPos)
+        local rootPos = HRP.Position
+        local lookAt = CFrame.lookAt(rootPos, targetPos, Vector3.yAxis)
 
-    -- Extract only yaw from lookAt
-    local _, y, _ = lookAt:ToOrientation()
-    HRP.CFrame = CFrame.new(rootPos) * CFrame.Angles(0, y, 0)
-end
+        -- Extract only yaw from lookAt
+        local _, y, _ = lookAt:ToOrientation()
+        HRP.CFrame = CFrame.new(rootPos) * CFrame.Angles(0, y, 0)
+    end
 
+    -- ENTANGLEMENT AIMBOT (tracking killers)
+    if enaim and tick() - lastTriggerTime <= aimDuration then
+        if not originalWS then
+            originalWS = Humanoid.WalkSpeed
+            originalJP = Humanoid.JumpPower
+            originalAutoRotate = Humanoid.AutoRotate
+        end
 
--- ENTANGLEMENT AIMBOT (predicts using distance, projectile speed, and actual WalkSpeed)
-if entanglementTriggered then
-    task.spawn(function()
-        local duration = 0.7
-        local start = tick()
-
-        -- save original and disable autorotate
-        local prevAutoRotate = Humanoid.AutoRotate
         Humanoid.AutoRotate = false
         HRP.AssemblyAngularVelocity = Vector3.zero
 
-        while tick() - start < duration do
-            local targetHRP = getValidTarget()
-            if targetHRP then
-                local vel = targetHRP.AssemblyLinearVelocity
-                local targetHum = targetHRP.Parent:FindFirstChildOfClass("Humanoid")
-                local dist = (targetHRP.Position - HRP.Position).Magnitude
+        local targetHRP = getValidTarget()
 
-                local projSpeed = 120
-                local travelTime = dist / projSpeed
+        if targetHRP then
+            local vel = targetHRP.AssemblyLinearVelocity
+            local predictedPos
+            local reactionDelay = 0.3
 
-                local predictedPos
-                if vel.Magnitude > 0.1 and targetHum then
-                    predictedPos = targetHRP.Position + vel * travelTime * (targetHum.WalkSpeed / 16)
-                else
-                    predictedPos = targetHRP.Position
-                end
-
-                faceTarget(predictedPos)
+            if vel.Magnitude > 0.4 then
+                predictedPos = targetHRP.Position + vel * reactionDelay
+            else
+                predictedPos = targetHRP.Position
             end
-            RunService.Heartbeat:Wait()
+
+            faceTarget(predictedPos)
+        end
+    elseif enaim then
+        enaim = false
+        if originalWS and originalJP and originalAutoRotate ~= nil then
+            Humanoid.WalkSpeed = originalWS
+            Humanoid.JumpPower = originalJP
+            Humanoid.AutoRotate = originalAutoRotate
+            originalWS, originalJP, originalAutoRotate = nil, nil, nil
+        end
+    end
+
+    -- MASS INFECTION AIMBOT (tracking killers)
+    if massaim and tick() - lastTriggerTime <= aimDuration then
+        if not originalWS then
+            originalWS = Humanoid.WalkSpeed
+            originalJP = Humanoid.JumpPower
+            originalAutoRotate = Humanoid.AutoRotate
         end
 
-        -- restore autorotate
-        Humanoid.AutoRotate = prevAutoRotate
-    end)
-end
-
-
-
--- MASS INFECTION AIMBOT (fixed reaction delay, like normal aimbot)
-if massinfectionTriggered then
-    task.spawn(function()
-        local duration = 1
-        local start = tick()
-
-        -- save original and disable autorotate
-        local prevAutoRotate = Humanoid.AutoRotate
         Humanoid.AutoRotate = false
         HRP.AssemblyAngularVelocity = Vector3.zero
 
-        while tick() - start < duration do
-            local targetHRP = getValidTarget()
-            if targetHRP then
-                local vel = targetHRP.AssemblyLinearVelocity
-                local predictedPos
-                local reactionDelay = 0.3
+        local targetHRP = getValidTarget()
 
-                if vel.Magnitude > 0.1 then
-                    predictedPos = targetHRP.Position + vel * reactionDelay
-                else
-                    predictedPos = targetHRP.Position
-                end
+        if targetHRP then
+            local vel = targetHRP.AssemblyLinearVelocity
+            local predictedPos
+            local reactionDelay = 0.5
 
-                faceTarget(predictedPos)
+            if vel.Magnitude > 0.4 then
+                predictedPos = targetHRP.Position + vel * reactionDelay
+            else
+                predictedPos = targetHRP.Position
             end
-            RunService.Heartbeat:Wait()
+
+            faceTarget(predictedPos)
         end
-
-        -- restore autorotate
-        Humanoid.AutoRotate = prevAutoRotate
-    end)
-end
-
-
+    elseif massaim then
+        massaim = false
+        if originalWS and originalJP and originalAutoRotate ~= nil then
+            Humanoid.WalkSpeed = originalWS
+            Humanoid.JumpPower = originalJP
+            Humanoid.AutoRotate = originalAutoRotate
+            originalWS, originalJP, originalAutoRotate = nil, nil, nil
+        end
+    end
 
     -- NORMAL AIMBOT (tracking killers)
     if aiming and tick() - lastTriggerTime <= aimDuration then
@@ -222,7 +229,7 @@ end
             local predictedPos
             local reactionDelay = 0.2
 
-            if vel.Magnitude > 0.5 then
+            if vel.Magnitude > 0.4 then
                 predictedPos = targetHRP.Position + vel * reactionDelay
             else
                 predictedPos = targetHRP.Position
