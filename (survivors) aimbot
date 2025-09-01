@@ -244,7 +244,7 @@ RunService.RenderStepped:Connect(function()
     if entanglementTriggered and not entanglementTaskActive then
         entanglementTaskActive = true
         task.spawn(function()
-            AimForDuration(0.8, 120, 0, 1.30) -- 30% extra lead
+            AimForDuration(0.8, 100, 0, 1.30) -- 30% extra lead
             entanglementTaskActive = false
         end)
     end
