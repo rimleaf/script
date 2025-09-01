@@ -95,6 +95,40 @@ end
 local aimbotTrack = nil
 local aimbotEnd = 0
 
+function ExtendHitbox(studs)
+    repeat
+        game:GetService("RunService").Heartbeat:Wait()
+
+        -- character and humanoidrootpart exists check
+        while not (
+            game:GetService("Players").LocalPlayer.Character
+            and game:GetService("Players").LocalPlayer.Character.Parent
+            and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            and game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Parent
+        ) do
+            game:GetService("RunService").Heartbeat:Wait()
+        end
+
+        -- save
+        local velocity = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity
+        local lookvec = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector
+
+        -- start extending
+        game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = (lookvec * studs)
+
+        game:GetService("RunService").RenderStepped:Wait()
+
+        -- stop and restore origin of velocity
+        if (
+            game:GetService("Players").LocalPlayer.Character
+            and game:GetService("Players").LocalPlayer.Character.Parent
+            and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            and game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Parent
+        ) then
+        game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = velocity
+    end
+end
+
 srvRun.Heartbeat:Connect(function()
 	if not root then return end
 
@@ -112,6 +146,7 @@ srvRun.Heartbeat:Connect(function()
 
 	-- If aiming, check if still valid
 	if aimbotTrack then
+		ExtendHitbox(studs)
 		if not aimbotTrack.IsPlaying or tick() >= aimbotEnd then
 			aimbotTrack = nil
 			return
@@ -129,27 +164,4 @@ srvRun.Heartbeat:Connect(function()
 			end
 		end
 	end
-end)
-
-srvRun.Heartbeat:Connect(function()
-	if not root then return end
-
-	local attack = false
-	for _, track in humanoid:GetPlayingAnimationTracks() do
-		local animId = track.Animation and track.Animation.AnimationId
-		if animId and table.find(attackIds, animId) and (track.TimePosition / track.Length < 0.75) then
-			attack = true
-			break
-		end
-	end
-
-	if not attack then return end
-
-	local look = root.CFrame.LookVector
-	local original = root.AssemblyLinearVelocity
-	local strength = 30
-
-	root.AssemblyLinearVelocity = look * strength
-	srvRun.RenderStepped:Wait()
-	root.AssemblyLinearVelocity = original
 end)
