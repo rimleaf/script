@@ -37,26 +37,49 @@ local enaim = false
 local massaim = false
 local originalWS, originalJP, originalAutoRotate = nil, nil, nil
 
+local Players = game:GetService("Players")
+
 local function getValidTarget()
     local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
-    if not killersFolder or not HRP then return nil end
+    if not HRP then return nil end
 
     local nearest, nearestDist = nil, math.huge
-    for _, killer in ipairs(killersFolder:GetChildren()) do
-        local humanoid = killer:FindFirstChildOfClass("Humanoid")
-        local root = killer:FindFirstChild("HumanoidRootPart")
 
-        if humanoid and root and humanoid.Health > 0 then
-            local dist = (root.Position - HRP.Position).Magnitude
-            if dist < nearestDist then
-                nearestDist = dist
-                nearest = root
+    -- Check killers
+    if killersFolder then
+        for _, killer in ipairs(killersFolder:GetChildren()) do
+            local humanoid = killer:FindFirstChildOfClass("Humanoid")
+            local root = killer:FindFirstChild("HumanoidRootPart")
+
+            if humanoid and root and humanoid.Health > 0 then
+                local dist = (root.Position - HRP.Position).Magnitude
+                if dist < nearestDist then
+                    nearestDist = dist
+                    nearest = root
+                end
+            end
+        end
+    end
+
+    -- Check players with 200+ HP
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local humanoid = plr.Character:FindFirstChildOfClass("Humanoid")
+            local root = plr.Character:FindFirstChild("HumanoidRootPart")
+
+            if humanoid and root and humanoid.Health >= 200 then
+                local dist = (root.Position - HRP.Position).Magnitude
+                if dist < nearestDist then
+                    nearestDist = dist
+                    nearest = root
+                end
             end
         end
     end
 
     return nearest
 end
+
 
 local function getValidSurvivor()
     local survivorFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
