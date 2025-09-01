@@ -194,7 +194,7 @@ end
         if targetHRP then
             local vel = targetHRP.AssemblyLinearVelocity
             local predictedPos
-            local reactionDelay = 0.1
+            local reactionDelay = 0.18
 
             if vel.Magnitude > 0.1 then
                 predictedPos = targetHRP.Position + vel * reactionDelay
