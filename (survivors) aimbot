@@ -197,6 +197,9 @@ local function AimForDuration(duration, projSpeed, forgiveness, leadFactor)
     end
 end
 
+local entanglementTaskActive = false
+local massInfectionTaskActive = false
+local twotimestabTaskActive = false
 
 RunService.RenderStepped:Connect(function()
     if not active or not Humanoid or not HRP then return end
