@@ -276,6 +276,7 @@ RunService.RenderStepped:Connect(function()
     -- TWOTIMESTAB AIMBOT (face where killer is aiming, predict 2 studs ahead)
     if twotimestabTriggered and not twotimestabTaskActive then
         twotimestabTaskActive = true
+        Humanoid.AutoRotate = false
         task.spawn(function()
             local start = tick()
             while tick() - start < 0.6 do
@@ -290,6 +291,7 @@ RunService.RenderStepped:Connect(function()
                 RunService.RenderStepped:Wait()
             end
             twotimestabTaskActive = false
+            Humanoid.AutoRotate = true
         end)
     end
 
