@@ -19,7 +19,10 @@ local trackedAnimations = {
     ["111313169447787"] = true,
     ["134958187822107"] = true,
     ["77124578197357"] = true,
-    ["90499469533503"] = true,
+    ["90499469533503"] = true
+}
+
+local twotimestab = {
     ["86545133269813"] = true
 }
 
@@ -225,6 +228,14 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
+    local twotimestabTriggered = false
+    for id in pairs(twotimestab) do
+        if playing[id] then
+            twotimestabTriggered = true
+            break
+        end
+    end
+
     -- normal tracked aimbot
     if triggered then
         lastTriggerTime = tick()
@@ -256,6 +267,26 @@ RunService.RenderStepped:Connect(function()
         task.spawn(function()
             AimForDuration(0.8, 40, 1.5, 1.30) -- 30% extra lead
             massInfectionTaskActive = false
+        end)
+    end
+
+    -- TWOTIMESTAB AIMBOT (face where killer is aiming, predict 2 studs ahead)
+    if twotimestabTriggered and not twotimestabTaskActive then
+        twotimestabTaskActive = true
+        task.spawn(function()
+            local start = tick()
+            while tick() - start < 0.6 do
+                local targetHRP = getValidTarget()
+                if targetHRP then
+                    -- Take killer’s look direction
+                    local killerLook = targetHRP.CFrame.LookVector
+                    -- Predict 2 studs ahead in that direction
+                    local aimPos = targetHRP.Position + killerLook * 2
+                    faceTarget(aimPos)
+                end
+                RunService.Heartbeat:Wait()
+            end
+            twotimestabTaskActive = false
         end)
     end
 
