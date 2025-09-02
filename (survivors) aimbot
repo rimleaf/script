@@ -43,6 +43,30 @@ local originalWS, originalJP, originalAutoRotate = nil, nil, nil
 
 local Players = game:GetService("Players")
 
+--// Services
+local Lighting = game:GetService("Lighting")
+
+--// Config
+local BrightnessValue = 2
+local TimeOfDayValue = "12:00:00" -- Noon
+local FogEndValue = 1e6
+local GlobalShadowsValue = false
+
+--// Function to enforce settings
+local function enforceSettings()
+    Lighting.Brightness = BrightnessValue
+    Lighting.TimeOfDay = TimeOfDayValue
+    Lighting.FogEnd = FogEndValue
+    Lighting.GlobalShadows = GlobalShadowsValue
+end
+
+enforceSettings()
+
+Lighting:GetPropertyChangedSignal("Brightness"):Connect(enforceSettings)
+Lighting:GetPropertyChangedSignal("TimeOfDay"):Connect(enforceSettings)
+Lighting:GetPropertyChangedSignal("FogEnd"):Connect(enforceSettings)
+Lighting:GetPropertyChangedSignal("GlobalShadows"):Connect(enforceSettings)
+
 local function getValidTarget()
     local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
     if not HRP then return nil end
