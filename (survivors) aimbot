@@ -284,10 +284,10 @@ RunService.RenderStepped:Connect(function()
                     -- Take killer’s look direction
                     local killerLook = targetHRP.CFrame.LookVector
                     -- Predict 2 studs ahead in that direction
-                    local aimPos = targetHRP.Position + killerLook * 2
+                    local aimPos = targetHRP.Position + killerLook * 5
                     faceTarget(aimPos)
                 end
-                RunService.Heartbeat:Wait()
+                RunService.RenderStepped:Wait()
             end
             twotimestabTaskActive = false
         end)
