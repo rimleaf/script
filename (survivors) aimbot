@@ -198,16 +198,14 @@ local function AimForDuration(duration, projSpeed, forgiveness, leadFactor)
     while tick() - start < duration do
         local survivorFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
         local nearestHRP, nearestDist = nil, math.huge
-        for _, plr in ipairs(survivorFolder:GetChildren()) do
-            if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                local hum = plr.Character:FindFirstChildOfClass("Humanoid")
-                local root = plr.Character:FindFirstChild("HumanoidRootPart")
-                if hum and hum.Health > 0 and root then
-                    local d = (root.Position - HRP.Position).Magnitude
-                    if d < nearestDist then
-                        nearestDist = d
-                        nearestHRP = root
-                    end
+        for _, survivor in ipairs(survivorFolder:GetChildren()) do
+            local hum = survivor:FindFirstChildOfClass("Humanoid")
+            local root = survivor:FindFirstChild("HumanoidRootPart")
+            if hum and hum.Health > 0 and root and survivor ~= LocalPlayer.Character then
+                local d = (root.Position - HRP.Position).Magnitude
+                if d < nearestDist then
+                    nearestDist = d
+                    nearestHRP = root
                 end
             end
         end
