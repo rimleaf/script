@@ -7,7 +7,7 @@ local client = LocalPlayer
 
 -- Config
 local active = true
-local aimDuration = 1
+local aimDuration = 0.7
 local aimTargets = { "Slasher", "Jason", "c00lkidd", "JohnDoe", "1x1x1x1", "Noli" }
 local trackedAnimations = {
     ["103601716322988"] = true,
@@ -19,7 +19,8 @@ local trackedAnimations = {
     ["111313169447787"] = true,
     ["134958187822107"] = true,
     ["77124578197357"] = true,
-    ["90499469533503"] = true
+    ["90499469533503"] = true,
+    ["86545133269813] = true
 }
 
 local entanglementanimation = {
