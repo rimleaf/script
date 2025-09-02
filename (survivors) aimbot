@@ -7,8 +7,8 @@ local client = LocalPlayer
 
 -- Config
 local active = true
-local aimDuration = 0.7
-local aimTargets = { "Slasher", "Jason", "c00lkidd", "JohnDoe", "1x1x1x1", "Noli" }
+local aimDuration1 = 0.7
+local aimDuration2 = 0.3
 local trackedAnimations = {
     ["103601716322988"] = true,
     ["133491532453922"] = true,
@@ -267,6 +267,11 @@ RunService.RenderStepped:Connect(function()
         aiming = true
     end
 
+    if twotimestabTriggered then
+        lastTriggerTime = tick()
+        aiming = true
+    end
+
     -- helper function: yaw-only face target
     local function faceTarget(targetPos)
         local rootPos = HRP.Position
@@ -296,29 +301,43 @@ RunService.RenderStepped:Connect(function()
     end
 
     -- TWOTIMESTAB AIMBOT (face where killer is aiming, predict 2 studs ahead)
-    if twotimestabTriggered and not twotimestabTaskActive then
-        twotimestabTaskActive = true
+    if aiming and tick() - lastTriggerTime <= aimDuration2 then
+        if not originalWS then
+            originalWS = Humanoid.WalkSpeed
+            originalJP = Humanoid.JumpPower
+            originalAutoRotate = Humanoid.AutoRotate
+        end
+
         Humanoid.AutoRotate = false
-        task.spawn(function()
-            local start = tick()
-            while tick() - start < 0.4 do
-                local targetHRP = getValidTarget()
-                if targetHRP then
-                    -- Take killer’s look direction
-                    local killerLook = targetHRP.CFrame.LookVector
-                    -- Predict 2 studs ahead in that direction
-                    local aimPos = targetHRP.Position + killerLook * 50
-                    faceTarget(aimPos)
-                end
-                RunService.RenderStepped:Wait()
+        HRP.AssemblyAngularVelocity = Vector3.zero
+
+        local targetHRP = getValidTarget()
+
+        if targetHRP then
+            local vel = targetHRP.AssemblyLinearVelocity
+            local predictedPos
+            local reactionDelay = 0.3
+
+            if vel.Magnitude > 0.4 then
+                predictedPos = targetHRP.Position + vel * reactionDelay
+            else
+                predictedPos = targetHRP.Position
             end
-            twotimestabTaskActive = false
-            Humanoid.AutoRotate = true
-        end)
+
+            faceTarget(predictedPos)
+        end
+    elseif aiming then
+        aiming = false
+        if originalWS and originalJP and originalAutoRotate ~= nil then
+            Humanoid.WalkSpeed = originalWS
+            Humanoid.JumpPower = originalJP
+            Humanoid.AutoRotate = originalAutoRotate
+            originalWS, originalJP, originalAutoRotate = nil, nil, nil
+        end
     end
 
     -- NORMAL AIMBOT (tracking killers)
-    if aiming and tick() - lastTriggerTime <= aimDuration then
+    if aiming and tick() - lastTriggerTime <= aimDuration1 then
         if not originalWS then
             originalWS = Humanoid.WalkSpeed
             originalJP = Humanoid.JumpPower
