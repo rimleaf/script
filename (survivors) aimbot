@@ -8,7 +8,7 @@ local client = LocalPlayer
 -- Config
 local active = true
 local aimDuration1 = 0.7
-local aimDuration2 = 0.3
+local aimDuration2 = 0.2
 local trackedAnimations = {
     ["103601716322988"] = true,
     ["133491532453922"] = true,
