@@ -20,7 +20,7 @@ local trackedAnimations = {
     ["134958187822107"] = true,
     ["77124578197357"] = true,
     ["90499469533503"] = true,
-    ["86545133269813] = true
+    ["86545133269813"] = true
 }
 
 local entanglementanimation = {
