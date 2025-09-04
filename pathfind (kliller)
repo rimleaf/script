@@ -41,11 +41,14 @@ local function getNearestPlayer(HRP)
 end
 
 --// Function: Follow player once
+--// Function: Follow player continuously (always updates)
 local function followPlayer(Character, Humanoid, HRP, target)
 	while target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") do
 		local targetHRP = target.Character.HumanoidRootPart
 		local distance = (targetHRP.Position - HRP.Position).Magnitude
+
 		if distance > followDistance then
+			-- Make a new path every cycle
 			local path = PathfindingService:CreatePath({
 				AgentRadius = 2,
 				AgentHeight = 5,
@@ -57,23 +60,22 @@ local function followPlayer(Character, Humanoid, HRP, target)
 
 			if path.Status == Enum.PathStatus.Success then
 				local waypoints = path:GetWaypoints()
-				for _, waypoint in ipairs(waypoints) do
-					-- stop early if player moved far
-					local newDist = (targetHRP.Position - HRP.Position).Magnitude
-					if newDist > distance + 6 then
-						break
-					end
-
-					Humanoid:MoveTo(waypoint.Position)
-					Humanoid.MoveToFinished:Wait()
+				if #waypoints > 0 then
+					-- Only go to the next step, then recalc again
+					Humanoid:MoveTo(waypoints[1].Position)
 				end
+			else
+				-- fallback: direct MoveTo if path fails
+				Humanoid:MoveTo(targetHRP.Position)
 			end
 		else
-			return -- already close enough
+			return -- close enough, stop
 		end
-		task.wait(updateRate)
+
+		task.wait(updateRate) -- recalc quickly
 	end
 end
+
 
 --// Button Click
 followButton.MouseButton1Click:Connect(function()
