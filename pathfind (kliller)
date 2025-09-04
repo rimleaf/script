@@ -4,27 +4,26 @@ local PathfindingService = game:GetService("PathfindingService")
 local LocalPlayer = Players.LocalPlayer
 
 --// Config
-local followDistance = 5 -- how close to get before stopping
-local updateRate = 0.25 -- seconds between path recalculations
-local following = false -- toggle state
+local followDistance = 4
+local updateRate = 0.25 -- smoother path updates
 
---// GUI Setup (only once, persists across respawns)
+--// GUI Setup
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "FollowGui"
-screenGui.ResetOnSpawn = false -- <== keeps it after respawn
+screenGui.ResetOnSpawn = false
 screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
-local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(0, 120, 0, 40)
-toggleButton.Position = UDim2.new(0.05, 0, 0.2, 0)
-toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleButton.Font = Enum.Font.SourceSansBold
-toggleButton.TextSize = 20
-toggleButton.Text = "Follow: OFF"
-toggleButton.Parent = screenGui
-toggleButton.Active = true
-toggleButton.Draggable = true
+local followButton = Instance.new("TextButton")
+followButton.Size = UDim2.new(0, 120, 0, 40)
+followButton.Position = UDim2.new(0.05, 0, 0.2, 0)
+followButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+followButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+followButton.Font = Enum.Font.SourceSansBold
+followButton.TextSize = 20
+followButton.Text = "Follow Nearest"
+followButton.Parent = screenGui
+followButton.Active = true
+followButton.Draggable = true
 
 --// Function: Get nearest player
 local function getNearestPlayer(HRP)
@@ -41,9 +40,9 @@ local function getNearestPlayer(HRP)
 	return nearest
 end
 
---// Function: Follow player with pathfinding (smoother)
+--// Function: Follow player once
 local function followPlayer(Character, Humanoid, HRP, target)
-	while following and target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") do
+	while target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") do
 		local targetHRP = target.Character.HumanoidRootPart
 		local distance = (targetHRP.Position - HRP.Position).Magnitude
 		if distance > followDistance then
@@ -59,50 +58,38 @@ local function followPlayer(Character, Humanoid, HRP, target)
 			if path.Status == Enum.PathStatus.Success then
 				local waypoints = path:GetWaypoints()
 				for _, waypoint in ipairs(waypoints) do
-					if not following then break end
-					
-					-- check if target moved a lot -> recalc early
+					-- stop early if player moved far
 					local newDist = (targetHRP.Position - HRP.Position).Magnitude
 					if newDist > distance + 6 then
-						break -- break path, recalc immediately
+						return -- break path and stop
 					end
 
 					Humanoid:MoveTo(waypoint.Position)
 					Humanoid.MoveToFinished:Wait(1)
 				end
 			end
+		else
+			return -- already close enough
 		end
 		task.wait(updateRate)
 	end
 end
 
+--// Button Click
+followButton.MouseButton1Click:Connect(function()
+	if not LocalPlayer.Character then return end
+	local Character = LocalPlayer.Character
+	local Humanoid = Character:WaitForChild("Humanoid")
+	local HRP = Character:WaitForChild("HumanoidRootPart")
 
---// Button Toggle
-toggleButton.MouseButton1Click:Connect(function()
-	following = not following
-	toggleButton.Text = following and "Follow: ON" or "Follow: OFF"
-
-	if following and LocalPlayer.Character then
-		local Character = LocalPlayer.Character
-		local Humanoid = Character:WaitForChild("Humanoid")
-		local HRP = Character:WaitForChild("HumanoidRootPart")
-
-		task.spawn(function()
-			while following and Character and Character.Parent do
-				local nearest = getNearestPlayer(HRP)
-				if nearest then
-					followPlayer(Character, Humanoid, HRP, nearest)
-				else
-					task.wait(1)
-				end
-			end
-		end)
+	local nearest = getNearestPlayer(HRP)
+	if nearest then
+		followPlayer(Character, Humanoid, HRP, nearest)
 	end
 end)
 
---// Handle respawn (reconnect humanoid/root references)
+--// Handle respawn
 LocalPlayer.CharacterAdded:Connect(function(Character)
 	Character:WaitForChild("Humanoid")
 	Character:WaitForChild("HumanoidRootPart")
-	-- no need to recreate GUI since ResetOnSpawn = false
 end)
