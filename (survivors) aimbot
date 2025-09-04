@@ -7,7 +7,7 @@ local client = LocalPlayer
 
 -- Config
 local active = true
-local aimDuration1 = 1 --WOW WHASHDO WOWOW 67 SIX SEVEEEEEEEEEEEEEEEEEEEN
+local aimDuration1 = 1.7 --WOW WHASHDO WOWOW 67 SIX SEVEEEEEEEEEEEEEEEEEEEN
 local aimDuration2 = 0.2
 local trackedAnimations = {
     ["103601716322988"] = true,
@@ -438,4 +438,12 @@ RunService.RenderStepped:Connect(function()
             originalWS, originalJP, originalAutoRotate = nil, nil, nil
         end
     end
+end)
+RunService.RenderStepped:Connect(function()
+    local isVisible = isFlintlockVisible()
+    if isVisible and not prevFlintVisibleShoot and not shooting then
+        lastTriggerTime = tick()
+        shooting = true
+    end
+    prevFlintVisibleShoot = isVisible
 end)
