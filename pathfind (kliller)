@@ -56,13 +56,13 @@ local function computeAndFollow()
     -- loop while following
     while followEnabled and targetPlayer and targetPlayer.Character do
         if not hum or not root then
-            task.wait(0.25)
+            task.wait()
             continue
         end
 
         local targetRoot = safeGetRoot(targetPlayer.Character)
         if not targetRoot then
-            task.wait(0.25)
+            task.wait()
             continue
         end
 
@@ -104,7 +104,7 @@ local function computeAndFollow()
                             -- small proximity fallback if pathing couldn't reach waypoint directly
                             local start = tick()
                             while hum and root and (root.Position - waypoint.Position).magnitude > 6 and tick() - start < 2 and followEnabled do
-                                task.wait(0.1)
+                                task.wait()
                             end
                         end
                     end
@@ -117,7 +117,7 @@ local function computeAndFollow()
             end
         end
 
-        task.wait(0.25) -- throttle
+        task.wait() -- throttle
     end
 end
 
