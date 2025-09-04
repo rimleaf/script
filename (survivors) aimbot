@@ -365,10 +365,9 @@ RunService.RenderStepped:Connect(function()
     end
 
 -- CONFIG
-local spinDuration = 0.57 -- seconds for full 360 spin
-local spinActive = false
+local spinDuration = 0.5 -- seconds for full 360 spin
 
--- NORMAL AIMBOT (tracking killers + spin)
+-- NORMAL AIMBOT (tracking killers + spin first)
 if aiming and tick() - lastTriggerTime <= aimDuration1 then
     if not originalWS then
         originalWS = Humanoid.WalkSpeed
@@ -393,13 +392,19 @@ if aiming and tick() - lastTriggerTime <= aimDuration1 then
             predictedPos = targetHRP.Position
         end
 
-        -- Phase 1: spin first
+        -- Step 1: Spin phase
         if elapsed <= spinDuration then
             local spinProgress = elapsed / spinDuration
-            local spinAngle = math.rad(360 * spinProgress)
-            HRP.CFrame = CFrame.new(HRP.Position) * CFrame.Angles(0, spinAngle, 0)
+            local spinAngle = math.rad(360) * spinProgress
 
-        -- Phase 2: normal aiming after spin
+            local rootPos = HRP.Position
+            -- Apply spin relative to current yaw
+            local _, currentYaw = (HRP.CFrame):ToOrientation()
+            local newYaw = currentYaw + spinAngle
+
+            HRP.CFrame = CFrame.new(rootPos) * CFrame.Angles(0, newYaw, 0)
+
+        -- Step 2: After spin, use normal aim
         else
             faceTarget(predictedPos)
         end
@@ -414,5 +419,6 @@ elseif aiming then
         originalWS, originalJP, originalAutoRotate = nil, nil, nil
     end
 end
+
 
 end)
