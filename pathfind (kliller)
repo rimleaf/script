@@ -61,7 +61,7 @@ local function followPlayer(Character, Humanoid, HRP, target)
 					-- stop early if player moved far
 					local newDist = (targetHRP.Position - HRP.Position).Magnitude
 					if newDist > distance + 6 then
-						return -- break path and stop
+						break
 					end
 
 					Humanoid:MoveTo(waypoint.Position)
