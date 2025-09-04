@@ -354,7 +354,7 @@ RunService.RenderStepped:Connect(function()
             local predictedPos
             local reactionDelay = 0.2
 
-            if vel.Magnitude > 0.4 then
+            if vel.Magnitude > 0.3 then
                 predictedPos = targetHRP.Position + vel * reactionDelay
             else
                 predictedPos = targetHRP.Position
