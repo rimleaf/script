@@ -1,86 +1,148 @@
---// Services
+-- Pathfollow (robust) -- place as a LocalScript
 local Players = game:GetService("Players")
 local PathfindingService = game:GetService("PathfindingService")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
---// Vars
-local hum = LocalPlayer.Character:WaitForChild("Humanoid")
-local root = LocalPlayer.Character:WaitForChild("HumanoidRootPart")
+-- refs that will be refreshed
+local hum, root
+
+local function bindCharacter(character)
+    if not character then return end
+    hum = character:WaitForChild("Humanoid")
+    root = character:WaitForChild("HumanoidRootPart")
+end
+
+-- initial bind (wait for character if needed)
+if LocalPlayer.Character then
+    bindCharacter(LocalPlayer.Character)
+else
+    LocalPlayer.CharacterAdded:Wait()
+    bindCharacter(LocalPlayer.Character)
+end
+LocalPlayer.CharacterAdded:Connect(bindCharacter)
+
+-- UI (persist across respawns)
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+local screenGui = playerGui:FindFirstChild("PathFollowGui")
+if not screenGui then
+    screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "PathFollowGui"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = playerGui
+end
+
+local button = screenGui:FindFirstChild("FollowButton")
+if not button then
+    button = Instance.new("TextButton")
+    button.Name = "FollowButton"
+    button.Size = UDim2.new(0, 120, 0, 40)
+    button.Position = UDim2.new(0, 20, 0, 200)
+    button.Text = "Follow"
+    button.Parent = screenGui
+end
+
+-- follow state
 local followEnabled = false
 local targetPlayer = nil
-local path = PathfindingService:CreatePath({
-	AgentRadius = 2,
-	AgentHeight = 5,
-	AgentCanJump = true,
-	AgentCanClimb = true
-})
 
---// UI
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "PathFollowGui"
-screenGui.ResetOnSpawn = false -- ✅ GUI stays after respawn
-screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(0, 120, 0, 40)
-button.Position = UDim2.new(0, 20, 0, 200)
-button.Text = "Follow"
-button.Parent = screenGui
-
---// Functions
-local function getRoot(character)
-	if character then
-		return character:FindFirstChild("HumanoidRootPart")
-	end
-	return nil
+local function safeGetRoot(character)
+    if character then
+        return character:FindFirstChild("HumanoidRootPart")
+    end
+    return nil
 end
 
-local function followTarget()
-	while followEnabled and targetPlayer and targetPlayer.Character do
-		local targetRoot = getRoot(targetPlayer.Character)
-		if targetRoot then
-			path:ComputeAsync(root.Position, targetRoot.Position)
-			if path.Status == Enum.PathStatus.Complete then
-				for _, waypoint in ipairs(path:GetWaypoints()) do
-					if not followEnabled then break end
-					hum:MoveTo(waypoint.Position)
-					hum.MoveToFinished:Wait()
-				end
-			else
-				-- fallback: walk directly if path fails
-				hum:MoveTo(targetRoot.Position)
-			end
-		end
-		task.wait(0.15) -- recheck path every half second
-	end
+local function computeAndFollow()
+    -- loop while following
+    while followEnabled and targetPlayer and targetPlayer.Character do
+        if not hum or not root then
+            task.wait(0.25)
+            continue
+        end
+
+        local targetRoot = safeGetRoot(targetPlayer.Character)
+        if not targetRoot then
+            task.wait(0.25)
+            continue
+        end
+
+        -- create a fresh path each iteration (safer)
+        local ok, path = pcall(function()
+            local p = PathfindingService:CreatePath({
+                AgentRadius = 2,
+                AgentHeight = 5,
+                AgentCanJump = true,
+                AgentCanClimb = true
+            })
+            p:ComputeAsync(root.Position, targetRoot.Position)
+            return p
+        end)
+
+        if not ok or not path then
+            -- compute failed -> fallback to simple MoveTo
+            if hum and targetRoot then
+                pcall(function() hum:MoveTo(targetRoot.Position) end)
+            end
+            task.wait(0.5)
+        else
+            local status = path.Status
+            -- check for success (some examples use Success; older code may use Complete)
+            if status == Enum.PathStatus.Success or status == Enum.PathStatus.Complete then
+                local waypoints = path:GetWaypoints()
+                for _, waypoint in ipairs(waypoints) do
+                    if not followEnabled then break end
+                    if waypoint.Action == Enum.PathWaypointAction.Jump and hum then
+                        -- try make the humanoid jump if required
+                        pcall(function() hum:ChangeState(Enum.HumanoidStateType.Jumping) end)
+                    end
+
+                    if hum then
+                        pcall(function() hum:MoveTo(waypoint.Position) end)
+                        -- wait until MoveToFinished or a short timeout so the script doesn't hang forever
+                        local reached = hum.MoveToFinished:Wait()
+                        if not reached then
+                            -- small proximity fallback if pathing couldn't reach waypoint directly
+                            local start = tick()
+                            while hum and root and (root.Position - waypoint.Position).magnitude > 6 and tick() - start < 2 and followEnabled do
+                                task.wait(0.1)
+                            end
+                        end
+                    end
+                end
+            else
+                -- no valid path found -> fallback to MoveTo
+                if hum and targetRoot then
+                    pcall(function() hum:MoveTo(targetRoot.Position) end)
+                end
+            end
+        end
+
+        task.wait(0.25) -- throttle
+    end
 end
 
---// Button logic
+-- Button behavior: picks first other player if none selected
 button.MouseButton1Click:Connect(function()
-	if not followEnabled then
-		-- Pick the first player in the server other than yourself
-		for _, plr in ipairs(Players:GetPlayers()) do
-			if plr ~= LocalPlayer then
-				targetPlayer = plr
-				break
-			end
-		end
-		if targetPlayer then
-			followEnabled = true
-			button.Text = "Stop Following"
-			task.spawn(followTarget)
-		else
-			button.Text = "No Players"
-		end
-	else
-		followEnabled = false
-		button.Text = "Follow"
-	end
-end)
+    if not followEnabled then
+        -- pick first valid other player
+        targetPlayer = nil
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character and safeGetRoot(plr.Character) then
+                targetPlayer = plr
+                break
+            end
+        end
 
--- Respawn safety
-LocalPlayer.CharacterAdded:Connect(function(char)
-	hum = char:WaitForChild("Humanoid")
-	root = char:WaitForChild("HumanoidRootPart")
+        if targetPlayer then
+            followEnabled = true
+            button.Text = "Stop Following"
+            task.spawn(computeAndFollow)
+        else
+            button.Text = "No Players"
+            task.delay(1.5, function() if not followEnabled then button.Text = "Follow" end end)
+        end
+    else
+        followEnabled = false
+        button.Text = "Follow"
+    end
 end)
