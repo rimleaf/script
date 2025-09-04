@@ -298,7 +298,7 @@ RunService.RenderStepped:Connect(function()
     if entanglementTriggered and not entanglementTaskActive then
         entanglementTaskActive = true
         task.spawn(function()
-            AimForDuration(0.8, 100, 0, 1.30) -- 30% extra lead
+            AimForDuration(0.8, 120, 0, 1.30) -- 30% extra lead
             entanglementTaskActive = false
         end)
     end
@@ -307,7 +307,7 @@ RunService.RenderStepped:Connect(function()
     if massinfectionTriggered and not massInfectionTaskActive then
         massInfectionTaskActive = true
         task.spawn(function()
-            AimForDuration(0.8, 40, 1.5, 1.30) -- 30% extra lead
+            AimForDuration(0.8, 60, 1.5, 1.30) -- 30% extra lead
             massInfectionTaskActive = false
         end)
     end
