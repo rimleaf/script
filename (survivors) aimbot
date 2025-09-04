@@ -364,39 +364,79 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- NORMAL AIMBOT (tracking killers)
-    if aiming and tick() - lastTriggerTime <= aimDuration1 then
-        if not originalWS then
-            originalWS = Humanoid.WalkSpeed
-            originalJP = Humanoid.JumpPower
-            originalAutoRotate = Humanoid.AutoRotate
-        end
+--// Config
+local SpinDuration = 0.4  -- how long the spin lasts
+local SpinSteps = 25      -- how many increments for the spin
 
-        Humanoid.AutoRotate = false
-        HRP.AssemblyAngularVelocity = Vector3.zero
+-- Spin rotation towards target
+local function spinAim(targetPos, duration, steps)
+    if not HRP then return end
 
-        local targetHRP = getValidTarget()
+    local rootPos = HRP.Position
+    local currentYaw = select(2, HRP.CFrame:ToOrientation())
+    local _, targetYaw = (CFrame.lookAt(rootPos, targetPos, Vector3.yAxis)):ToOrientation()
 
-        if targetHRP then
-            local vel = targetHRP.AssemblyLinearVelocity
-            local predictedPos
-            local reactionDelay = 0.2
-
-            if vel.Magnitude > 0.3 then
-                predictedPos = targetHRP.Position + vel * reactionDelay
-            else
-                predictedPos = targetHRP.Position
-            end
-
-            faceTarget(predictedPos)
-        end
-    elseif aiming then
-        aiming = false
-        if originalWS and originalJP and originalAutoRotate ~= nil then
-            Humanoid.WalkSpeed = originalWS
-            Humanoid.JumpPower = originalJP
-            Humanoid.AutoRotate = originalAutoRotate
-            originalWS, originalJP, originalAutoRotate = nil, nil, nil
-        end
+    -- Normalize angles into -pi..pi
+    local function normalizeAngle(a)
+        return (a + math.pi) % (2 * math.pi) - math.pi
     end
+    currentYaw = normalizeAngle(currentYaw)
+    targetYaw = normalizeAngle(targetYaw)
+
+    -- Choose spin direction (always spin same way, e.g., clockwise)
+    local spinDistance = targetYaw - currentYaw
+    if spinDistance < 0 then
+        spinDistance = spinDistance + (2 * math.pi)
+    end
+
+    -- Incremental spin
+    for i = 1, steps do
+        local alpha = i / steps
+        local newYaw = currentYaw + spinDistance * alpha
+        HRP.CFrame = CFrame.new(rootPos) * CFrame.Angles(0, newYaw, 0)
+        task.wait(duration / steps)
+    end
+end
+
+-- NORMAL AIMBOT (with spin first)
+if aiming and tick() - lastTriggerTime <= aimDuration1 then
+    if not originalWS then
+        originalWS = Humanoid.WalkSpeed
+        originalJP = Humanoid.JumpPower
+        originalAutoRotate = Humanoid.AutoRotate
+    end
+
+    Humanoid.AutoRotate = false
+    HRP.AssemblyAngularVelocity = Vector3.zero
+
+    local targetHRP = getValidTarget()
+    if targetHRP then
+        local vel = targetHRP.AssemblyLinearVelocity
+        local predictedPos
+        local reactionDelay = 0.2
+
+        if vel.Magnitude > 0.3 then
+            predictedPos = targetHRP.Position + vel * reactionDelay
+        else
+            predictedPos = targetHRP.Position
+        end
+
+        -- Step 1: Spin aim into target
+        spinAim(predictedPos, SpinDuration, SpinSteps)
+
+        -- Step 2: Normal tracking aim
+        local lookAt = CFrame.lookAt(HRP.Position, predictedPos, Vector3.yAxis)
+        local _, y = lookAt:ToOrientation()
+        HRP.CFrame = CFrame.new(HRP.Position) * CFrame.Angles(0, y, 0)
+    end
+elseif aiming then
+    aiming = false
+    if originalWS and originalJP and originalAutoRotate ~= nil then
+        Humanoid.WalkSpeed = originalWS
+        Humanoid.JumpPower = originalJP
+        Humanoid.AutoRotate = originalAutoRotate
+        originalWS, originalJP, originalAutoRotate = nil, nil, nil
+    end
+end
+
 end)
