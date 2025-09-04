@@ -161,7 +161,7 @@ srvRun.Heartbeat:Connect(function()
 	end
 
 	-- Only run while timer is active
-	ExtendHitbox(55)
+	ExtendHitbox(60)
 	if tick() <= aimbotEnd then
 
 		local target = getClosestSurvivor()
