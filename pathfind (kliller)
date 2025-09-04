@@ -1,6 +1,7 @@
 -- Pathfollow (robust) -- place as a LocalScript
 local Players = game:GetService("Players")
 local PathfindingService = game:GetService("PathfindingService")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 -- refs that will be refreshed
@@ -31,8 +32,7 @@ if not screenGui then
     screenGui.Parent = playerGui
 end
 
-local UserInputService = game:GetService("UserInputService")
-
+-- draggable helper
 local function makeDraggable(guiObject)
     local dragging = false
     local dragStart, startPos
@@ -66,8 +66,7 @@ local function makeDraggable(guiObject)
     end)
 end
 
-return makeDraggable
-
+-- button
 local button = screenGui:FindFirstChild("FollowButton")
 if not button then
     button = Instance.new("TextButton")
@@ -78,7 +77,7 @@ if not button then
     button.Parent = screenGui
 end
 
-makeDraggable(button)
+makeDraggable(button) -- ✅ now draggable
 
 -- follow state
 local followEnabled = false
@@ -118,29 +117,23 @@ local function computeAndFollow()
         end)
 
         if not ok or not path then
-            -- compute failed -> fallback to simple MoveTo
             if hum and targetRoot then
                 pcall(function() hum:MoveTo(targetRoot.Position) end)
             end
             task.wait(0.5)
         else
             local status = path.Status
-            -- check for success (some examples use Success; older code may use Complete)
             if status == Enum.PathStatus.Success or status == Enum.PathStatus.Complete then
                 local waypoints = path:GetWaypoints()
                 for _, waypoint in ipairs(waypoints) do
                     if not followEnabled then break end
                     if waypoint.Action == Enum.PathWaypointAction.Jump and hum then
-                        -- try make the humanoid jump if required
                         pcall(function() hum:ChangeState(Enum.HumanoidStateType.Jumping) end)
                     end
-
                     if hum then
                         pcall(function() hum:MoveTo(waypoint.Position) end)
-                        -- wait until MoveToFinished or a short timeout so the script doesn't hang forever
                         local reached = hum.MoveToFinished:Wait()
                         if not reached then
-                            -- small proximity fallback if pathing couldn't reach waypoint directly
                             local start = tick()
                             while hum and root and (root.Position - waypoint.Position).magnitude > 6 and tick() - start < 2 and followEnabled do
                                 task.wait()
@@ -149,18 +142,16 @@ local function computeAndFollow()
                     end
                 end
             else
-                -- no valid path found -> fallback to MoveTo
                 if hum and targetRoot then
                     pcall(function() hum:MoveTo(targetRoot.Position) end)
                 end
             end
         end
-
-        task.wait() -- throttle
+        task.wait()
     end
 end
 
--- Button behavior: picks first other player if none selected
+-- button behavior
 button.MouseButton1Click:Connect(function()
     if not followEnabled then
         -- pick first valid other player
