@@ -19,48 +19,34 @@ end)
 
 -- Raw IDs (any format) -> we'll normalize to digits only
 local attackIdsRaw = {
-	"rbxassetid://83829782357897",
-	"rbxassetid://126830014841198",
-	"rbxassetid://126355327951215",
-	"rbxassetid://105458270463374",
-	"rbxassetid://18885909645",
-	"rbxassetid://94162446513587",
-	"rbxassetid://93069721274110",
-	"rbxassetid://97433060861952",
-	"rbxassetid://121293883585738",
-	"rbxassetid://92173139187970",
-	"rbxassetid://125403313786645",
-	"rbxassetid://81639435858902",
-	"rbxassetid://120112897026015",
-	"rbxassetid://82113744478546",
-	"rbxassetid://118298475669935",
-	"rbxassetid://82113744478546",
-	"rbxassetid://118298475669935",
-	"rbxassetid://126681776859538",
-	"rbxassetid://109667959938617",
-	"rbxassetid://74707328554358",
-	"rbxassetid://133336594357903",
-	"rbxassetid://82113744478546",
-	"rbxassetid://118298475669935",
-	"rbxassetid://70371667919898",
-	"rbxassetid://131543461321709",
-	"rbxassetid://136323728355613",
-	"rbxassetid://109230267448394",
+	["rbxassetid://83829782357897"] = true,
+	["rbxassetid://126830014841198"] = true,
+	["rbxassetid://126355327951215"] = true,
+	["rbxassetid://105458270463374"] = true,
+	["rbxassetid://18885909645"] = true,
+	["rbxassetid://94162446513587"] = true,
+	["rbxassetid://93069721274110"] = true,
+	["rbxassetid://97433060861952"] = true,
+	["rbxassetid://121293883585738"] = true,
+	["rbxassetid://92173139187970"] = true,
+	["rbxassetid://125403313786645"] = true,
+	["rbxassetid://81639435858902"] = true,
+	["rbxassetid://120112897026015"] = true,
+	["rbxassetid://82113744478546"] = true,
+	["rbxassetid://118298475669935"] = true,
+	["rbxassetid://82113744478546"] = true,
+	["rbxassetid://118298475669935"] = true,
+	["rbxassetid://126681776859538"] = true,
+	["rbxassetid://109667959938617"] = true,
+	["rbxassetid://74707328554358"] = true,
+	["rbxassetid://133336594357903"] = true,
+	["rbxassetid://82113744478546"] = true,
+	["rbxassetid://118298475669935"] = true,
+	["rbxassetid://70371667919898"] = true,
+	["rbxassetid://131543461321709"] = true,
+	["rbxassetid://136323728355613"] = true,
+	["rbxassetid://109230267448394"] = true
 }
-
--- Normalize to digit-only and build a Set for O(1) lookups
-local function idToDigits(id)
-	if not id then return nil end
-	return string.match(id, "%d+")
-end
-
-local attackIdSet = {}
-for _, raw in ipairs(attackIdsRaw) do
-	local digits = idToDigits(raw)
-	if digits then
-		attackIdSet[digits] = true
-	end
-end
 
 -- Prediction function
 local function getPredictedPosition(hrp, hum)
@@ -133,7 +119,7 @@ local function ExtendHitbox(studs)
 	-- start extending
 	hrp.AssemblyLinearVelocity = (lookvec * studs)
 
-	game:GetService("RunService").RenderStepped:Wait()
+	game:GetService("RunService").Heartbeat:Wait()
 
 	-- stop and restore origin of velocity
 	if (
@@ -146,40 +132,30 @@ local function ExtendHitbox(studs)
 	end
 end
 
--- Helper: is this an attack track by normalized ID?
-local function isAttackTrack(track)
-	if not track then return false end
-	local anim = track.Animation
-	if not anim then return false end
-	local animIdDigits = idToDigits(anim.AnimationId)
-	if not animIdDigits then return false end
-	return attackIdSet[animIdDigits] == true
-end
+local aimbotEnd = 0
 
 srvRun.Heartbeat:Connect(function()
 	if not root or not humanoid then return end
 
-	-- Detect if we started an attack animation
-	if not aimbotTrack then
-		for _, track in humanoid:GetPlayingAnimationTracks() do
-			if isAttackTrack(track) and (track.Length > 0 and (track.TimePosition / track.Length < 0.75)) then
-				aimbotTrack = track
-				aimbotEnd = tick() + 0.3
-				break
-			end
+	-- Check if an attack animation is currently playing
+	local isAttacking = false
+	for _, track in humanoid:GetPlayingAnimationTracks() do
+		local animId = track.Animation and track.Animation.AnimationId
+		if animId and attackIds[animId] then
+			isAttacking = true
+			break
 		end
 	end
 
-	-- If aiming, check if still valid
-	if aimbotTrack then
-		ExtendHitbox(40)
+	-- If attack detected, extend timer
+	if isAttacking then
+		aimbotEnd = tick() + 0.2
+	end
 
-		if (not aimbotTrack.IsPlaying or (typeof(aimbotTrack.IsPlaying) == "function" and not aimbotTrack:IsPlaying())) or tick() >= aimbotEnd then
-			aimbotTrack = nil
-			return
-		end
+	-- Only run while timer is active
+	ExtendHitbox(55)
+	if tick() <= aimbotEnd then
 
-		-- aim at nearest survivor
 		local target = getClosestSurvivor()
 		if target then
 			local thrp = target:FindFirstChild("HumanoidRootPart")
@@ -188,7 +164,6 @@ srvRun.Heartbeat:Connect(function()
 				local predicted = getPredictedPosition(thrp, thum) or thrp.Position
 				local fromPos = root.Position
 				local dir = predicted - fromPos
-				-- >>> Guard against zero-length direction (this fixes your line-149 issue)
 				if dir.Magnitude > 1e-3 then
 					root.CFrame = CFrame.lookAt(fromPos, fromPos + dir)
 				end
