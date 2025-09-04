@@ -52,7 +52,7 @@ local function followTarget()
 				hum:MoveTo(targetRoot.Position)
 			end
 		end
-		task.wait() -- recheck path every half second
+		task.wait(0.15) -- recheck path every half second
 	end
 end
 
