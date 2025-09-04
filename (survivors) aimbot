@@ -22,13 +22,10 @@ local trackedAnimations = {
     ["90499469533503"] = true
 }
 
-local twotimestab = {
-    ["86545133269813"] = true
-}
-
 local entanglementanimation = {
     ["119181003138006"] = true
 }
+
 local massinfectionanimation = {
     ["131430497821198"] = true
 }
@@ -249,7 +246,48 @@ end
 
 local entanglementTaskActive = false
 local massInfectionTaskActive = false
-local twotimestabTaskActive = false
+local twotimestabSoundIds = {
+    ["rbxassetid://86710781315432"] = true -- replace with correct SoundId(s)
+}
+
+local twotimestabTriggered = false
+
+-- Function to hook sound playback
+local function trackCharacterSounds(char)
+    -- Search character for all sounds and hook them
+    for _, obj in ipairs(char:GetDescendants()) do
+        if obj:IsA("Sound") then
+            obj.Played:Connect(function()
+                local id = obj.SoundId
+                if id and twotimestabSoundIds[id] then
+                    twotimestabTriggered = true
+                    lastTriggerTime = tick()
+                    aiming = true
+                end
+            end)
+        end
+    end
+
+    -- Keep listening for newly added sounds
+    char.DescendantAdded:Connect(function(obj)
+        if obj:IsA("Sound") then
+            obj.Played:Connect(function()
+                local id = obj.SoundId
+                if id and twotimestabSoundIds[id] then
+                    twotimestabTriggered = true
+                    lastTriggerTime = tick()
+                    aiming = true
+                end
+            end)
+        end
+    end)
+end
+
+-- Run on spawn
+if LocalPlayer.Character then
+    trackCharacterSounds(LocalPlayer.Character)
+end
+LocalPlayer.CharacterAdded:Connect(trackCharacterSounds)
 
 RunService.RenderStepped:Connect(function()
     if not active or not Humanoid or not HRP then return end
@@ -277,14 +315,6 @@ RunService.RenderStepped:Connect(function()
     for id in pairs(massinfectionanimation) do
         if playing[id] then
             massinfectionTriggered = true
-            break
-        end
-    end
-
-    local twotimestabTriggered = false
-    for id in pairs(twotimestab) do
-        if playing[id] then
-            twotimestabTriggered = true
             break
         end
     end
