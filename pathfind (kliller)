@@ -5,7 +5,7 @@ local LocalPlayer = Players.LocalPlayer
 
 --// Config
 local followDistance = 5 -- how close to get before stopping
-local updateRate = 1 -- seconds between path recalculations
+local updateRate = 0.25 -- seconds between path recalculations
 local following = false -- toggle state
 
 --// GUI Setup (only once, persists across respawns)
@@ -41,27 +41,41 @@ local function getNearestPlayer(HRP)
 	return nearest
 end
 
---// Function: Follow player with pathfinding
+--// Function: Follow player with pathfinding (smoother)
 local function followPlayer(Character, Humanoid, HRP, target)
 	while following and target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") do
 		local targetHRP = target.Character.HumanoidRootPart
 		local distance = (targetHRP.Position - HRP.Position).Magnitude
 		if distance > followDistance then
-			local path = PathfindingService:CreatePath()
+			local path = PathfindingService:CreatePath({
+				AgentRadius = 2,
+				AgentHeight = 5,
+				AgentCanJump = true,
+				AgentJumpHeight = 7,
+				AgentMaxSlope = 45,
+			})
 			path:ComputeAsync(HRP.Position, targetHRP.Position)
 
 			if path.Status == Enum.PathStatus.Success then
 				local waypoints = path:GetWaypoints()
 				for _, waypoint in ipairs(waypoints) do
 					if not following then break end
+					
+					-- check if target moved a lot -> recalc early
+					local newDist = (targetHRP.Position - HRP.Position).Magnitude
+					if newDist > distance + 6 then
+						break -- break path, recalc immediately
+					end
+
 					Humanoid:MoveTo(waypoint.Position)
-					Humanoid.MoveToFinished:Wait()
+					Humanoid.MoveToFinished:Wait(1)
 				end
 			end
 		end
 		task.wait(updateRate)
 	end
 end
+
 
 --// Button Toggle
 toggleButton.MouseButton1Click:Connect(function()
