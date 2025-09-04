@@ -1,97 +1,86 @@
 --// Services
 local Players = game:GetService("Players")
 local PathfindingService = game:GetService("PathfindingService")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
---// Config
-local followDistance = 0
-local updateRate = 0.1 -- smoother path updates
+--// Vars
+local hum = LocalPlayer.Character:WaitForChild("Humanoid")
+local root = LocalPlayer.Character:WaitForChild("HumanoidRootPart")
+local followEnabled = false
+local targetPlayer = nil
+local path = PathfindingService:CreatePath({
+	AgentRadius = 2,
+	AgentHeight = 5,
+	AgentCanJump = true,
+	AgentCanClimb = true
+})
 
---// GUI Setup
+--// UI
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "FollowGui"
-screenGui.ResetOnSpawn = false
+screenGui.Name = "PathFollowGui"
+screenGui.ResetOnSpawn = false -- ✅ GUI stays after respawn
 screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
-local followButton = Instance.new("TextButton")
-followButton.Size = UDim2.new(0, 120, 0, 40)
-followButton.Position = UDim2.new(0.05, 0, 0.2, 0)
-followButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-followButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-followButton.Font = Enum.Font.SourceSansBold
-followButton.TextSize = 20
-followButton.Text = "Follow Nearest"
-followButton.Parent = screenGui
-followButton.Active = true
-followButton.Draggable = true
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 120, 0, 40)
+button.Position = UDim2.new(0, 20, 0, 200)
+button.Text = "Follow"
+button.Parent = screenGui
 
---// Function: Get nearest player
-local function getNearestPlayer(HRP)
-	local nearest, nearestDist
-	for _, plr in pairs(Players:GetPlayers()) do
-		if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-			local dist = (plr.Character.HumanoidRootPart.Position - HRP.Position).Magnitude
-			if not nearest or dist < nearestDist then
-				nearest = plr
-				nearestDist = dist
-			end
-		end
+--// Functions
+local function getRoot(character)
+	if character then
+		return character:FindFirstChild("HumanoidRootPart")
 	end
-	return nearest
+	return nil
 end
 
---// Function: Follow player once
---// Function: Follow player continuously (always updates)
-local function followPlayer(Character, Humanoid, HRP, target)
-	while target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") do
-		local targetHRP = target.Character.HumanoidRootPart
-		local distance = (targetHRP.Position - HRP.Position).Magnitude
-
-		if distance > followDistance then
-			-- Make a new path every cycle
-			local path = PathfindingService:CreatePath({
-				AgentRadius = 2,
-				AgentHeight = 5,
-				AgentCanJump = true,
-				AgentJumpHeight = 7,
-				AgentMaxSlope = 45,
-			})
-			path:ComputeAsync(HRP.Position, targetHRP.Position)
-
-			if path.Status == Enum.PathStatus.Success then
-				local waypoints = path:GetWaypoints()
-				if #waypoints > 0 then
-					-- Only go to the next step, then recalc again
-					Humanoid:MoveTo(waypoints[1].Position)
+local function followTarget()
+	while followEnabled and targetPlayer and targetPlayer.Character do
+		local targetRoot = getRoot(targetPlayer.Character)
+		if targetRoot then
+			path:ComputeAsync(root.Position, targetRoot.Position)
+			if path.Status == Enum.PathStatus.Complete then
+				for _, waypoint in ipairs(path:GetWaypoints()) do
+					if not followEnabled then break end
+					hum:MoveTo(waypoint.Position)
+					hum.MoveToFinished:Wait()
 				end
 			else
-				-- fallback: direct MoveTo if path fails
-				Humanoid:MoveTo(targetHRP.Position)
+				-- fallback: walk directly if path fails
+				hum:MoveTo(targetRoot.Position)
 			end
-		else
-			return -- close enough, stop
 		end
-
-		task.wait(updateRate) -- recalc quickly
+		task.wait() -- recheck path every half second
 	end
 end
 
-
---// Button Click
-followButton.MouseButton1Click:Connect(function()
-	if not LocalPlayer.Character then return end
-	local Character = LocalPlayer.Character
-	local Humanoid = Character:WaitForChild("Humanoid")
-	local HRP = Character:WaitForChild("HumanoidRootPart")
-
-	local nearest = getNearestPlayer(HRP)
-	if nearest then
-		followPlayer(Character, Humanoid, HRP, nearest)
+--// Button logic
+button.MouseButton1Click:Connect(function()
+	if not followEnabled then
+		-- Pick the first player in the server other than yourself
+		for _, plr in ipairs(Players:GetPlayers()) do
+			if plr ~= LocalPlayer then
+				targetPlayer = plr
+				break
+			end
+		end
+		if targetPlayer then
+			followEnabled = true
+			button.Text = "Stop Following"
+			task.spawn(followTarget)
+		else
+			button.Text = "No Players"
+		end
+	else
+		followEnabled = false
+		button.Text = "Follow"
 	end
 end)
 
---// Handle respawn
-LocalPlayer.CharacterAdded:Connect(function(Character)
-	Character:WaitForChild("Humanoid")
-	Character:WaitForChild("HumanoidRootPart")
+-- Respawn safety
+LocalPlayer.CharacterAdded:Connect(function(char)
+	hum = char:WaitForChild("Humanoid")
+	root = char:WaitForChild("HumanoidRootPart")
 end)
