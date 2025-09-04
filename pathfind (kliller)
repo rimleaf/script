@@ -1,0 +1,86 @@
+--// Services
+local Players = game:GetService("Players")
+local PathfindingService = game:GetService("PathfindingService")
+local UserInputService = game:GetService("UserInputService")
+
+--// Variables
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local HRP = Character:WaitForChild("HumanoidRootPart")
+
+local followDistance = 5 -- how close to get before stopping
+local updateRate = 0.1 -- seconds between path recalculations
+local following = false -- toggle state
+
+--// GUI Setup
+local screenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+screenGui.Name = "FollowGui"
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 120, 0, 40)
+toggleButton.Position = UDim2.new(0.05, 0, 0.2, 0)
+toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Font = Enum.Font.SourceSansBold
+toggleButton.TextSize = 20
+toggleButton.Text = "Follow: OFF"
+toggleButton.Parent = screenGui
+toggleButton.Active = true
+toggleButton.Draggable = true -- makes it draggable
+
+--// Function: Get nearest player
+local function getNearestPlayer()
+	local nearest, nearestDist
+	for _, plr in pairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+			local dist = (plr.Character.HumanoidRootPart.Position - HRP.Position).Magnitude
+			if not nearest or dist < nearestDist then
+				nearest = plr
+				nearestDist = dist
+			end
+		end
+	end
+	return nearest
+end
+
+--// Function: Follow player with pathfinding
+local function followPlayer(target)
+	while following and target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") do
+		local targetHRP = target.Character.HumanoidRootPart
+		local distance = (targetHRP.Position - HRP.Position).Magnitude
+		if distance > followDistance then
+			local path = PathfindingService:CreatePath()
+			path:ComputeAsync(HRP.Position, targetHRP.Position)
+
+			if path.Status == Enum.PathStatus.Success then
+				local waypoints = path:GetWaypoints()
+				for _, waypoint in ipairs(waypoints) do
+					if not following then break end -- stop if toggled off
+					Humanoid:MoveTo(waypoint.Position)
+					Humanoid.MoveToFinished:Wait()
+				end
+			end
+		end
+		task.wait(updateRate)
+	end
+end
+
+--// Button Toggle
+toggleButton.MouseButton1Click:Connect(function()
+	following = not following
+	toggleButton.Text = following and "Follow: ON" or "Follow: OFF"
+
+	if following then
+		task.spawn(function()
+			while following do
+				local nearest = getNearestPlayer()
+				if nearest then
+					followPlayer(nearest)
+				else
+					task.wait(1)
+				end
+			end
+		end)
+	end
+end)
