@@ -7,7 +7,7 @@ local client = LocalPlayer
 
 -- Config
 local active = true
-local aimDuration1 = 1.7 --WOW WHASHDO WOWOW 67 SIX SEVEEEEEEEEEEEEEEEEEEEN
+local aimDuration1 = 0.67 --WOW WHASHDO WOWOW 67 SIX SEVEEEEEEEEEEEEEEEEEEEN
 local aimDuration2 = 0.2
 local trackedAnimations = {
     ["103601716322988"] = true,
@@ -37,11 +37,6 @@ local massinfectionanimation = {
 local Humanoid, HRP = nil, nil
 local lastTriggerTime = 0
 local aiming = false
-local aiming2 = false
-local prevFlintVisibleAim = false
-local prevFlintVisibleShoot = false
--- use prevFlintVisibleAim in the aiming loop
--- use prevFlintVisibleShoot in the shooting loop
 local enaim = false
 local massaim = false
 local originalWS, originalJP, originalAutoRotate = nil, nil, nil
@@ -99,22 +94,6 @@ end)
 -- Keep zoom consistent
 LocalPlayer:GetPropertyChangedSignal("CameraMaxZoomDistance"):Connect(enforceZoom)
 
--- NEW: Flintlock visibility check
-local function isFlintlockVisible()
-    if not LocalPlayer.Character then return false end
-    local flint = LocalPlayer.Character:FindFirstChild("Flintlock", true)
-    if not flint then return false end
-
-    if not (flint:IsA("BasePart") or flint:IsA("MeshPart") or flint:IsA("UnionOperation")) then
-        flint = flint:FindFirstChildWhichIsA("BasePart", true)
-        if not flint then return false end
-    end
-
-    if flint.Transparency >= 1 then
-        return false
-    end
-    return true
-end
 
 local function getValidTarget()
     local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
@@ -272,23 +251,6 @@ local entanglementTaskActive = false
 local massInfectionTaskActive = false
 local twotimestabTaskActive = false
 
--- NEW: Flintlock visibility check
-local function isFlintlockVisible()
-    if not LocalPlayer.Character then return false end
-    local flint = LocalPlayer.Character:FindFirstChild("Flintlock", true)
-    if not flint then return false end
-
-    if not (flint:IsA("BasePart") or flint:IsA("MeshPart") or flint:IsA("UnionOperation")) then
-        flint = flint:FindFirstChildWhichIsA("BasePart", true)
-        if not flint then return false end
-    end
-
-    if flint.Transparency >= 1 then
-        return false
-    end
-    return true
-end
-
 RunService.RenderStepped:Connect(function()
     if not active or not Humanoid or not HRP then return end
 
@@ -328,16 +290,14 @@ RunService.RenderStepped:Connect(function()
     end
 
     -- normal tracked aimbot
-    local isVisible = isFlintlockVisible()
-    if isVisible and not prevFlintVisibleAim and not aiming then
+    if triggered then
         lastTriggerTime = tick()
         aiming = true
     end
-    prevFlintVisibleAim = isVisible
 
     if twotimestabTriggered then
         lastTriggerTime = tick()
-        aiming2 = true
+        aiming = true
     end
 
     -- helper function: yaw-only face target
@@ -369,7 +329,7 @@ RunService.RenderStepped:Connect(function()
     end
 
     -- TWOTIMESTAB AIMBOT (face where killer is aiming, predict 2 studs ahead)
-    if aiming2 and tick() - lastTriggerTime <= aimDuration2 then
+    if aiming and tick() - lastTriggerTime <= aimDuration2 then
         if not originalWS then
             originalWS = Humanoid.WalkSpeed
             originalJP = Humanoid.JumpPower
@@ -403,6 +363,7 @@ RunService.RenderStepped:Connect(function()
             originalWS, originalJP, originalAutoRotate = nil, nil, nil
         end
     end
+
     -- NORMAL AIMBOT (tracking killers)
     if aiming and tick() - lastTriggerTime <= aimDuration1 then
         if not originalWS then
@@ -438,12 +399,4 @@ RunService.RenderStepped:Connect(function()
             originalWS, originalJP, originalAutoRotate = nil, nil, nil
         end
     end
-end)
-RunService.RenderStepped:Connect(function()
-    local isVisible = isFlintlockVisible()
-    if isVisible and not prevFlintVisibleShoot and not shooting then
-        lastTriggerTime = tick()
-        shooting = true
-    end
-    prevFlintVisibleShoot = isVisible
 end)
