@@ -4,8 +4,8 @@ local PathfindingService = game:GetService("PathfindingService")
 local LocalPlayer = Players.LocalPlayer
 
 --// Config
-local followDistance = 4
-local updateRate = 0.25 -- smoother path updates
+local followDistance = 0
+local updateRate = 0.1 -- smoother path updates
 
 --// GUI Setup
 local screenGui = Instance.new("ScreenGui")
