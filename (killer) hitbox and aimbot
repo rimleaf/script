@@ -158,7 +158,7 @@ srvRun.Heartbeat:Connect(function()
 	-- If attack detected, extend timer
 	if isAttacking then
 		aimbotEnd = tick() + 0.17
-		ExtendHitbox(60)
+		ExtendHitbox(65)
 	end
 
 	-- Only run while timer is active
