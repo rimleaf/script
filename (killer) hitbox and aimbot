@@ -134,6 +134,13 @@ end
 
 local aimbotEnd = 0
 
+local function normalizeId(id)
+	if not id then return nil end
+	-- Extract only digits
+	local digits = string.match(id, "%d+")
+	return digits
+end
+
 srvRun.Heartbeat:Connect(function()
 	if not root or not humanoid then return end
 
@@ -141,7 +148,8 @@ srvRun.Heartbeat:Connect(function()
 	local isAttacking = false
 	for _, track in humanoid:GetPlayingAnimationTracks() do
 		local animId = track.Animation and track.Animation.AnimationId
-		if animId and attackIdsRaw[animId] then
+		local normId = normalizeId(animId)
+		if normId and attackIdsRaw["rbxassetid://" .. normId] then
 			isAttacking = true
 			break
 		end
