@@ -1,7 +1,6 @@
 -- Pathfollow (robust) -- place as a LocalScript
 local Players = game:GetService("Players")
 local PathfindingService = game:GetService("PathfindingService")
-local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 -- refs that will be refreshed
@@ -13,7 +12,7 @@ local function bindCharacter(character)
     root = character:WaitForChild("HumanoidRootPart")
 end
 
--- initial bind (wait for character if needed)
+-- initial bind
 if LocalPlayer.Character then
     bindCharacter(LocalPlayer.Character)
 else
@@ -32,7 +31,8 @@ if not screenGui then
     screenGui.Parent = playerGui
 end
 
--- draggable helper
+local UserInputService = game:GetService("UserInputService")
+
 local function makeDraggable(guiObject)
     local dragging = false
     local dragStart, startPos
@@ -66,7 +66,7 @@ local function makeDraggable(guiObject)
     end)
 end
 
--- button
+-- Create button
 local button = screenGui:FindFirstChild("FollowButton")
 if not button then
     button = Instance.new("TextButton")
@@ -77,7 +77,7 @@ if not button then
     button.Parent = screenGui
 end
 
-makeDraggable(button) -- ✅ now draggable
+makeDraggable(button) -- ✅ button is now draggable
 
 -- follow state
 local followEnabled = false
@@ -91,7 +91,6 @@ local function safeGetRoot(character)
 end
 
 local function computeAndFollow()
-    -- loop while following
     while followEnabled and targetPlayer and targetPlayer.Character do
         if not hum or not root then
             task.wait()
@@ -104,7 +103,6 @@ local function computeAndFollow()
             continue
         end
 
-        -- create a fresh path each iteration (safer)
         local ok, path = pcall(function()
             local p = PathfindingService:CreatePath({
                 AgentRadius = 2,
@@ -122,14 +120,14 @@ local function computeAndFollow()
             end
             task.wait(0.5)
         else
-            local status = path.Status
-            if status == Enum.PathStatus.Success or status == Enum.PathStatus.Complete then
+            if path.Status == Enum.PathStatus.Success or path.Status == Enum.PathStatus.Complete then
                 local waypoints = path:GetWaypoints()
                 for _, waypoint in ipairs(waypoints) do
                     if not followEnabled then break end
                     if waypoint.Action == Enum.PathWaypointAction.Jump and hum then
                         pcall(function() hum:ChangeState(Enum.HumanoidStateType.Jumping) end)
                     end
+
                     if hum then
                         pcall(function() hum:MoveTo(waypoint.Position) end)
                         local reached = hum.MoveToFinished:Wait()
@@ -151,10 +149,8 @@ local function computeAndFollow()
     end
 end
 
--- button behavior
 button.MouseButton1Click:Connect(function()
     if not followEnabled then
-        -- pick first valid other player
         targetPlayer = nil
         for _, plr in ipairs(Players:GetPlayers()) do
             if plr ~= LocalPlayer and plr.Character and safeGetRoot(plr.Character) then
