@@ -7,7 +7,7 @@ local client = LocalPlayer
 
 -- Config
 local active = true
-local aimDuration1 = 0.7
+local aimDuration1 = 0.67 --WOW WHASHDO WOWOW 67 SIX SEVEEEEEEEEEEEEEEEEEEEN
 local aimDuration2 = 0.2
 local trackedAnimations = {
     ["103601716322988"] = true,
