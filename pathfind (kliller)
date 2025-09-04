@@ -65,7 +65,7 @@ local function followPlayer(Character, Humanoid, HRP, target)
 					end
 
 					Humanoid:MoveTo(waypoint.Position)
-					Humanoid.MoveToFinished:Wait(1)
+					Humanoid.MoveToFinished:Wait()
 				end
 			end
 		else
