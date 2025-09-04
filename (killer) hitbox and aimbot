@@ -141,7 +141,7 @@ srvRun.Heartbeat:Connect(function()
 	local isAttacking = false
 	for _, track in humanoid:GetPlayingAnimationTracks() do
 		local animId = track.Animation and track.Animation.AnimationId
-		if animId and attackIds[animId] then
+		if animId and attackIdsRaw[animId] then
 			isAttacking = true
 			break
 		end
