@@ -19,7 +19,8 @@ local trackedAnimations = {
     ["111313169447787"] = true,
     ["134958187822107"] = true,
     ["77124578197357"] = true,
-    ["90499469533503"] = true
+    ["90499469533503"] = true,
+    ["86545133269813"] = true
 }
 
 local entanglementanimation = {
@@ -246,48 +247,6 @@ end
 
 local entanglementTaskActive = false
 local massInfectionTaskActive = false
-local twotimestabSoundIds = {
-    ["rbxassetid://86710781315432"] = true -- replace with correct SoundId(s)
-}
-
-local twotimestabTriggered = false
-
--- Function to hook sound playback
-local function trackCharacterSounds(char)
-    -- Search character for all sounds and hook them
-    for _, obj in ipairs(char:GetDescendants()) do
-        if obj:IsA("Sound") then
-            obj.Played:Connect(function()
-                local id = obj.SoundId
-                if id and twotimestabSoundIds[id] then
-                    twotimestabTriggered = true
-                    lastTriggerTime = tick()
-                    aiming = true
-                end
-            end)
-        end
-    end
-
-    -- Keep listening for newly added sounds
-    char.DescendantAdded:Connect(function(obj)
-        if obj:IsA("Sound") then
-            obj.Played:Connect(function()
-                local id = obj.SoundId
-                if id and twotimestabSoundIds[id] then
-                    twotimestabTriggered = true
-                    lastTriggerTime = tick()
-                    aiming = true
-                end
-            end)
-        end
-    end)
-end
-
--- Run on spawn
-if LocalPlayer.Character then
-    trackCharacterSounds(LocalPlayer.Character)
-end
-LocalPlayer.CharacterAdded:Connect(trackCharacterSounds)
 
 RunService.RenderStepped:Connect(function()
     if not active or not Humanoid or not HRP then return end
@@ -325,11 +284,6 @@ RunService.RenderStepped:Connect(function()
         aiming = true
     end
 
-    if twotimestabTriggered then
-        lastTriggerTime = tick()
-        aiming = true
-    end
-
     -- helper function: yaw-only face target
     local function faceTarget(targetPos)
         local rootPos = HRP.Position
@@ -356,42 +310,6 @@ RunService.RenderStepped:Connect(function()
             AimForDuration(0.8, 40, 1.5, 1.30) -- 30% extra lead
             massInfectionTaskActive = false
         end)
-    end
-
-    -- TWOTIMESTAB AIMBOT (face where killer is aiming, predict 2 studs ahead)
-    if aiming and tick() - lastTriggerTime <= aimDuration2 then
-        if not originalWS then
-            originalWS = Humanoid.WalkSpeed
-            originalJP = Humanoid.JumpPower
-            originalAutoRotate = Humanoid.AutoRotate
-        end
-
-        Humanoid.AutoRotate = false
-        HRP.AssemblyAngularVelocity = Vector3.zero
-
-        local targetHRP = getValidTarget()
-
-        if targetHRP then
-            local vel = targetHRP.AssemblyLinearVelocity
-            local predictedPos
-            local reactionDelay = 0
-
-            if vel.Magnitude > 0.1 then
-                predictedPos = targetHRP.Position + vel * reactionDelay
-            else
-                predictedPos = targetHRP.Position
-            end
-
-            faceTarget(predictedPos)
-        end
-    elseif aiming then
-        aiming = false
-        if originalWS and originalJP and originalAutoRotate ~= nil then
-            Humanoid.WalkSpeed = originalWS
-            Humanoid.JumpPower = originalJP
-            Humanoid.AutoRotate = originalAutoRotate
-            originalWS, originalJP, originalAutoRotate = nil, nil, nil
-        end
     end
 
     -- NORMAL AIMBOT (tracking killers)
