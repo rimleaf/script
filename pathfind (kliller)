@@ -31,6 +31,43 @@ if not screenGui then
     screenGui.Parent = playerGui
 end
 
+local UserInputService = game:GetService("UserInputService")
+
+local function makeDraggable(guiObject)
+    local dragging = false
+    local dragStart, startPos
+
+    guiObject.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = guiObject.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    guiObject.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            if dragging then
+                local delta = input.Position - dragStart
+                guiObject.Position = UDim2.new(
+                    startPos.X.Scale, startPos.X.Offset + delta.X,
+                    startPos.Y.Scale, startPos.Y.Offset + delta.Y
+                )
+            end
+        end
+    end)
+end
+
+return makeDraggable
+
 local button = screenGui:FindFirstChild("FollowButton")
 if not button then
     button = Instance.new("TextButton")
@@ -40,6 +77,8 @@ if not button then
     button.Text = "Follow"
     button.Parent = screenGui
 end
+
+makeDraggable(button)
 
 -- follow state
 local followEnabled = false
