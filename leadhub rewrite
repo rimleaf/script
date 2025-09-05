@@ -189,7 +189,7 @@ end
 local function isFacing(localRoot, targetRoot)
     local dir = (localRoot.Position - targetRoot.Position).Unit
     local dot = targetRoot.CFrame.LookVector:Dot(dir)
-    return looseFacing and dot > -0.3 or dot > 0
+    return looseFacing and dot > -0.4 or dot > 0
 end
 
 -- Fling coroutine
