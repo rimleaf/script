@@ -104,7 +104,7 @@ end
 
 -- Velocity prediction
 local function getPredictedAimPosVelocity(targetHRP)
-    local prediction = 4 -- default value, can tweak
+    local prediction = 1 -- default value, can tweak
     if targetHRP.Velocity.Magnitude <= movementThreshold then
         return targetHRP.Position
     else
