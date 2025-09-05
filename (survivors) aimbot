@@ -60,7 +60,7 @@ local LocalPlayer = Players.LocalPlayer
 --// Config
 local aimDuration = 1.7
 local movementThreshold = 0.5 -- studs/sec
-local aimTargets = { "Slasher", "c00lkidd", "JohnDoe", "1x1x1x1", "Noli" }
+local predictionMode = "Velocity" -- "Ping" or "Velocity"
 
 --// State
 local Humanoid, HRP = nil, nil
@@ -68,7 +68,6 @@ local aiming = false
 local lastTriggerTime = 0
 local prevFlintVisible = false
 local originalWS, originalJP, originalAutoRotate = nil, nil, nil
-local predictionMode = "Velocity" -- Ping or Velocity
 
 --// Helpers
 local function setupCharacter(char)
@@ -81,25 +80,29 @@ if LocalPlayer.Character then
 end
 LocalPlayer.CharacterAdded:Connect(setupCharacter)
 
+-- Grab the nearest valid target
 local function getValidTarget()
     local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
-    if killersFolder then
-        for _, killer in ipairs(killersFolder:GetChildren()) do
-            local humanoid = killer:FindFirstChildOfClass("Humanoid")
-            local root = killer:FindFirstChild("HumanoidRootPart")
+    if not killersFolder or not HRP then return nil end
 
-            if humanoid and root and humanoid.Health > 0 then
-                local dist = (root.Position - HRP.Position).Magnitude
-                if dist < nearestDist then
-                    nearestDist = dist
-                    nearest = root
-                end
+    local nearest, nearestDist = nil, math.huge
+    for _, killer in ipairs(killersFolder:GetChildren()) do
+        local humanoid = killer:FindFirstChildOfClass("Humanoid")
+        local root = killer:FindFirstChild("HumanoidRootPart")
+
+        if humanoid and root and humanoid.Health > 0 then
+            local dist = (root.Position - HRP.Position).Magnitude
+            if dist < nearestDist then
+                nearestDist = dist
+                nearest = root
             end
         end
     end
-    return nil, nil
+
+    return nearest
 end
 
+-- Get ping in seconds
 local function getPingSeconds()
     local pingStat = Stats.Network.ServerStatsItem["Data Ping"]
     if pingStat then
@@ -109,26 +112,28 @@ local function getPingSeconds()
 end
 
 -- Velocity prediction
-local function getPredictedAimPosVelocity(targetHRP) -- TODO: FIX THIS BULLSHIT THANK YOUU!!!!!
-    if targetHRP.AssemblyLinearVelocity.Magnitude <= 0.4 then
+local function getPredictedAimPosVelocity(targetHRP)
+    local velocity = targetHRP.AssemblyLinearVelocity
+    if velocity.Magnitude <= movementThreshold then
         return targetHRP.Position
-    else
-        return targetHRP.Position + (targetHRP.AssemblyLinearVelocity * 0.21)
     end
+
+    -- Scale factor: roughly adjust for human reaction + projectile travel
+    local factor = 0.15 + (getPingSeconds() * 0.5)
+    return targetHRP.Position + (velocity * factor)
 end
 
--- Ping prediction wait what are we using this for
+-- Ping prediction
 local function getPredictedAimPosPing(targetHRP)
     local ping = getPingSeconds()
-    local velocity = targetHRP.Velocity
-
+    local velocity = targetHRP.AssemblyLinearVelocity
     if velocity.Magnitude <= movementThreshold then
         return targetHRP.Position
     end
     return targetHRP.Position + (velocity * ping)
 end
 
--- Detect Flintlock visibility (trigger condition)
+-- Flintlock visibility detection
 local function isFlintlockVisible()
     if not LocalPlayer.Character then return false end
     local flint = LocalPlayer.Character:FindFirstChild("Flintlock", true)
@@ -193,3 +198,4 @@ RunService.RenderStepped:Connect(function()
         end
     end
 end)
+
