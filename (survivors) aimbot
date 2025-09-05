@@ -104,11 +104,10 @@ end
 
 -- Velocity prediction
 local function getPredictedAimPosVelocity(targetHRP) -- TODO: FIX THIS BULLSHIT THANK YOUU!!!!!
-    local prediction = 1.67 -- default value, can tweak BUT IM TWEAKING TOO BECAUSE SIX EXESNVE 677777 SEX SIVINNNNNNN
-    if targetHRP.Velocity.Magnitude <= movementThreshold then
+    if targetHRP.Velocity.Magnitude <= 0.2 then
         return targetHRP.Position
     else
-        return targetHRP.Position + (targetHRP.Velocity * (prediction / 60))
+        return targetHRP.Position + (targetHRP.AssemblyLinearVelocity * 0.2)
     end
 end
 
