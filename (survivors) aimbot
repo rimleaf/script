@@ -84,10 +84,16 @@ LocalPlayer.CharacterAdded:Connect(setupCharacter)
 local function getValidTarget()
     local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
     if killersFolder then
-        for _, name in ipairs(aimTargets) do
-            local target = killersFolder:FindFirstChild(name)
-            if target and target:FindFirstChild("HumanoidRootPart") then
-                return target.HumanoidRootPart, target:FindFirstChild("Humanoid")
+        for _, killer in ipairs(killersFolder:GetChildren()) do
+            local humanoid = killer:FindFirstChildOfClass("Humanoid")
+            local root = killer:FindFirstChild("HumanoidRootPart")
+
+            if humanoid and root and humanoid.Health > 0 then
+                local dist = (root.Position - HRP.Position).Magnitude
+                if dist < nearestDist then
+                    nearestDist = dist
+                    nearest = root
+                end
             end
         end
     end
@@ -104,7 +110,7 @@ end
 
 -- Velocity prediction
 local function getPredictedAimPosVelocity(targetHRP) -- TODO: FIX THIS BULLSHIT THANK YOUU!!!!!
-    if targetHRP.Velocity.Magnitude <= 0.2 then
+    if targetHRP.AssemblyLinearVelocity.Magnitude <= 0.4 then
         return targetHRP.Position
     else
         return targetHRP.Position + (targetHRP.AssemblyLinearVelocity * 0.21)
