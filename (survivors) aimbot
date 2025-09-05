@@ -68,7 +68,7 @@ local aiming = false
 local lastTriggerTime = 0
 local prevFlintVisible = false
 local originalWS, originalJP, originalAutoRotate = nil, nil, nil
-local predictionMode = "Velocity" -- or "Ping"
+local predictionMode = "Ping" -- Ping or Velocity
 
 --// Helpers
 local function setupCharacter(char)
