@@ -315,11 +315,14 @@ local function attemptBlockForSound(sound)
         end
         local nearestRoot = getNearestKillerRoot(detectionRange)
         if nearestRoot and (nearestRoot.Position - soundPos).Magnitude <= detectionRange then
-            if sound.TimePosition < 0.5 then
-                fireRemoteBlock()
-                soundBlockedUntil[sound] = tick() + 1.2
-            end
+            shouldBlock = true
+            facingOK = isFacing(myRoot, soundPart)
         end
+    end
+
+    if shouldBlock and facingOK and sound.TimePosition < 0.3 then
+        fireRemoteBlock()
+        soundBlockedUntil[sound] = tick() + 1.2
     end
 end
 
