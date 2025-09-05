@@ -1,44 +1,4 @@
--- Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-local client = LocalPlayer
 
--- Config
-local active = true
-local aimDuration1 = 0.6 --WOW WHASHDO WOWOW 67 SIX SEVEEEEEEEEEEEEEEEEEEEN
-local aimDuration2 = 0.15
-local trackedAnimations = {
-    ["103601716322988"] = true,
-    ["133491532453922"] = true,
-    ["86371356500204"] = true,
-    ["76649505662612"] = true,
-    ["81698196845041"] = true,
-    ["71685573690338"] = true,
-    ["111313169447787"] = true,
-    ["134958187822107"] = true,
-    ["77124578197357"] = true,
-    ["90499469533503"] = true
-}
-
-local entanglementanimation = {
-    ["119181003138006"] = true
-}
-
-local massinfectionanimation = {
-    ["131430497821198"] = true
-}
-
--- State
-local Humanoid, HRP = nil, nil
-local lastTriggerTime = 0
-local aiming = false
-local enaim = false
-local massaim = false
-local originalWS, originalJP, originalAutoRotate = nil, nil, nil
-
---// Services
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 
@@ -91,85 +51,26 @@ end)
 -- Keep zoom consistent
 LocalPlayer:GetPropertyChangedSignal("CameraMaxZoomDistance"):Connect(enforceZoom)
 
+--// Services
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
 
-local function getValidTarget()
-    local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
-    if not HRP then return nil end
+local LocalPlayer = Players.LocalPlayer
 
-    local nearest, nearestDist = nil, math.huge
+--// Config
+local aimDuration = 1.7
+local movementThreshold = 0.5 -- studs/sec
+local aimTargets = { "Slasher", "c00lkidd", "JohnDoe", "1x1x1x1", "Noli" }
 
-    -- Check killers
-    if killersFolder then
-        for _, killer in ipairs(killersFolder:GetChildren()) do
-            local humanoid = killer:FindFirstChildOfClass("Humanoid")
-            local root = killer:FindFirstChild("HumanoidRootPart")
+--// State
+local Humanoid, HRP = nil, nil
+local aiming = false
+local lastTriggerTime = 0
+local prevFlintVisible = false
+local originalWS, originalJP, originalAutoRotate = nil, nil, nil
+local predictionMode = "Velocity" -- or "Ping"
 
-            if humanoid and root and humanoid.Health > 0 then
-                local dist = (root.Position - HRP.Position).Magnitude
-                if dist < nearestDist then
-                    nearestDist = dist
-                    nearest = root
-                end
-            end
-        end
-    end
-
-    -- Check players with 200+ HP
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-            local humanoid = plr.Character:FindFirstChildOfClass("Humanoid")
-            local root = plr.Character:FindFirstChild("HumanoidRootPart")
-
-            if humanoid and root and humanoid.Health >= 200 then
-                local dist = (root.Position - HRP.Position).Magnitude
-                if dist < nearestDist then
-                    nearestDist = dist
-                    nearest = root
-                end
-            end
-        end
-    end
-
-    return nearest
-end
-
-
-local function getValidSurvivor()
-    local survivorFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
-    if not survivorFolder or not HRP then return nil end
-
-    local nearest, nearestDist = nil, math.huge
-    for _, survivor in ipairs(survivorFolder:GetChildren()) do
-        local humanoid = survivor:FindFirstChildOfClass("Humanoid")
-        local root = survivor:FindFirstChild("HumanoidRootPart")
-
-        if humanoid and root and humanoid.Health > 0 then
-            local dist = (root.Position - HRP.Position).Magnitude
-            if dist < nearestDist then
-                nearestDist = dist
-                nearest = root
-            end
-        end
-    end
-
-    return nearest
-end
-
-local function getPlayingAnimationIds()
-    local ids = {}
-    if Humanoid then
-        for _, track in ipairs(Humanoid:GetPlayingAnimationTracks()) do
-            if track.Animation and track.Animation.AnimationId then
-                local id = track.Animation.AnimationId:match("%d+")
-                if id then
-                    ids[id] = true
-                end
-            end
-        end
-    end
-    return ids
-end
-
+--// Helpers
 local function setupCharacter(char)
     Humanoid = char:WaitForChild("Humanoid")
     HRP = char:WaitForChild("HumanoidRootPart")
@@ -180,170 +81,112 @@ if LocalPlayer.Character then
 end
 LocalPlayer.CharacterAdded:Connect(setupCharacter)
 
-local function isMoving(hrp)
-    if not hrp then return false end
-    return hrp.AssemblyLinearVelocity.Magnitude > 1
-end
-
--- Predict position based on projectile speed and optionally add forgiveness
-local function getPredictedPos(targetHRP, projSpeed, forgiveness, leadFactor)
-    local dist = (targetHRP.Position - HRP.Position).Magnitude
-    local travelTime = projSpeed > 0 and (dist / projSpeed) or 0
-    local vel = targetHRP.AssemblyLinearVelocity
-
-    local predictedPos
-    if vel.Magnitude > 0.2 then
-        leadFactor = leadFactor or 1.0
-        predictedPos = targetHRP.Position + vel * travelTime * leadFactor
-    else
-        predictedPos = targetHRP.Position
-    end
-
-    if forgiveness and forgiveness > 0 then
-        local dir = (predictedPos - HRP.Position)
-        if dir.Magnitude > 0 then
-            predictedPos = predictedPos + dir.Unit * forgiveness
-        end
-    end
-    return predictedPos, dist
-end
-
-local function aimAt(pos)
-    if not HRP then return end
-    local dir = pos - HRP.Position
-    if dir.Magnitude == 0 then return end
-    local direction = dir.Unit
-    local yRot = math.atan2(-direction.X, -direction.Z)
-    HRP.CFrame = CFrame.new(HRP.Position) * CFrame.Angles(0, yRot, 0)
-end
-
--- ENTANGLEMENT / MASS INFECTION AIM (search nearest alive player)
-local function AimForDuration(duration, projSpeed, forgiveness, leadFactor)
-    local start = tick()
-    while tick() - start < duration do
-        local survivorFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
-        local nearestHRP, nearestDist = nil, math.huge
-        for _, survivor in ipairs(survivorFolder:GetChildren()) do
-            local hum = survivor:FindFirstChildOfClass("Humanoid")
-            local root = survivor:FindFirstChild("HumanoidRootPart")
-            if hum and hum.Health > 0 and root and survivor ~= LocalPlayer.Character then
-                local d = (root.Position - HRP.Position).Magnitude
-                if d < nearestDist then
-                    nearestDist = d
-                    nearestHRP = root
-                end
+local function getValidTarget()
+    local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
+    if killersFolder then
+        for _, name in ipairs(aimTargets) do
+            local target = killersFolder:FindFirstChild(name)
+            if target and target:FindFirstChild("HumanoidRootPart") then
+                return target.HumanoidRootPart, target:FindFirstChild("Humanoid")
             end
         end
+    end
+    return nil, nil
+end
 
-        if nearestHRP then
-            local predictedPos = getPredictedPos(nearestHRP, projSpeed, forgiveness, leadFactor)
-            aimAt(predictedPos)
-        end
+local function getPingSeconds()
+    local pingStat = Stats.Network.ServerStatsItem["Data Ping"]
+    if pingStat then
+        return pingStat:GetValue() / 1000
+    end
+    return 0.1
+end
 
-        RunService.Heartbeat:Wait()
+-- Velocity prediction
+local function getPredictedAimPosVelocity(targetHRP)
+    local prediction = 4 -- default value, can tweak
+    if targetHRP.Velocity.Magnitude <= movementThreshold then
+        return targetHRP.Position
+    else
+        return targetHRP.Position + (targetHRP.Velocity * (prediction / 60))
     end
 end
 
-local entanglementTaskActive = false
-local massInfectionTaskActive = false
+-- Ping prediction
+local function getPredictedAimPosPing(targetHRP)
+    local ping = getPingSeconds()
+    local velocity = targetHRP.Velocity
 
+    if velocity.Magnitude <= movementThreshold then
+        return targetHRP.Position
+    end
+    return targetHRP.Position + (velocity * ping)
+end
+
+-- Detect Flintlock visibility (trigger condition)
+local function isFlintlockVisible()
+    if not LocalPlayer.Character then return false end
+    local flint = LocalPlayer.Character:FindFirstChild("Flintlock", true)
+    if not flint then return false end
+
+    if not (flint:IsA("BasePart") or flint:IsA("MeshPart") or flint:IsA("UnionOperation")) then
+        flint = flint:FindFirstChildWhichIsA("BasePart", true)
+        if not flint then return false end
+    end
+
+    return flint.Transparency < 1
+end
+
+--// Main Aimbot Loop
 RunService.RenderStepped:Connect(function()
-    if not active or not Humanoid or not HRP then return end
+    if not Humanoid or not HRP then return end
 
-    local playing = getPlayingAnimationIds()
-    local triggered = false
-    for id in pairs(trackedAnimations) do
-        if playing[id] then
-            triggered = true
-            break
-        end
-    end
-
-    -- check entanglement animation
-    local entanglementTriggered = false
-    for id in pairs(entanglementanimation) do
-        if playing[id] then
-            entanglementTriggered = true
-            break
-        end
-    end
-
-    -- check mass infection animation
-    local massinfectionTriggered = false
-    for id in pairs(massinfectionanimation) do
-        if playing[id] then
-            massinfectionTriggered = true
-            break
-        end
-    end
-
-    -- normal tracked aimbot
-    if triggered then
+    -- Rising edge detection (Flintlock appears)
+    local isVisible = isFlintlockVisible()
+    if isVisible and not prevFlintVisible and not aiming then
         lastTriggerTime = tick()
         aiming = true
     end
+    prevFlintVisible = isVisible
 
-    -- helper function: yaw-only face target
-    local function faceTarget(targetPos)
-        local rootPos = HRP.Position
-        local lookAt = CFrame.lookAt(rootPos, targetPos, Vector3.yAxis)
+    if aiming then
+        local elapsed = tick() - lastTriggerTime
 
-        -- Extract only yaw from lookAt
-        local _, y, _ = lookAt:ToOrientation()
-        HRP.CFrame = CFrame.new(rootPos) * CFrame.Angles(0, y, 0)
-    end
-
-    -- ENTANGLEMENT AIMBOT (precise, no forgiveness, slight overshoot)
-    if entanglementTriggered and not entanglementTaskActive then
-        entanglementTaskActive = true
-        task.spawn(function()
-            AimForDuration(0.8, 120, 0, 1.50) -- 30% extra lead
-            entanglementTaskActive = false
-        end)
-    end
-
-    -- MASS INFECTION AIMBOT (slower proj, needs forgiveness, more overshoot)
-    if massinfectionTriggered and not massInfectionTaskActive then
-        massInfectionTaskActive = true
-        task.spawn(function()
-            AimForDuration(0.8, 60, 2, 1.50) -- 30% extra lead
-            massInfectionTaskActive = false
-        end)
-    end
-
-    -- NORMAL AIMBOT (tracking killers)
-    if aiming and tick() - lastTriggerTime <= aimDuration1 then
-        if not originalWS then
-            originalWS = Humanoid.WalkSpeed
-            originalJP = Humanoid.JumpPower
-            originalAutoRotate = Humanoid.AutoRotate
-        end
-
-        Humanoid.AutoRotate = false
-        HRP.AssemblyAngularVelocity = Vector3.zero
-
-        local targetHRP = getValidTarget()
-
-        if targetHRP then
-            local vel = targetHRP.AssemblyLinearVelocity
-            local predictedPos
-            local reactionDelay = 0.2
-
-            if vel.Magnitude > 0.1 then
-                predictedPos = targetHRP.Position + vel * reactionDelay
-            else
-                predictedPos = targetHRP.Position
+        if elapsed <= aimDuration then
+            -- Save original states once
+            if not originalWS then
+                originalWS = Humanoid.WalkSpeed
+                originalJP = Humanoid.JumpPower
+                originalAutoRotate = Humanoid.AutoRotate
             end
 
-            faceTarget(predictedPos)
-        end
-    elseif aiming then
-        aiming = false
-        if originalWS and originalJP and originalAutoRotate ~= nil then
-            Humanoid.WalkSpeed = originalWS
-            Humanoid.JumpPower = originalJP
-            Humanoid.AutoRotate = originalAutoRotate
-            originalWS, originalJP, originalAutoRotate = nil, nil, nil
+            Humanoid.AutoRotate = false
+            HRP.AssemblyAngularVelocity = Vector3.zero
+
+            local targetHRP = getValidTarget()
+            if targetHRP then
+                local aimPos
+                if predictionMode == "Ping" then
+                    aimPos = getPredictedAimPosPing(targetHRP)
+                else
+                    aimPos = getPredictedAimPosVelocity(targetHRP)
+                end
+
+                if aimPos then
+                    local direction = (aimPos - HRP.Position).Unit
+                    local yRot = math.atan2(-direction.X, -direction.Z)
+                    HRP.CFrame = CFrame.new(HRP.Position) * CFrame.Angles(0, yRot, 0)
+                end
+            end
+        else
+            -- Reset after aim
+            aiming = false
+            if originalWS and originalJP and originalAutoRotate ~= nil then
+                Humanoid.WalkSpeed = originalWS
+                Humanoid.JumpPower = originalJP
+                Humanoid.AutoRotate = originalAutoRotate
+                originalWS, originalJP, originalAutoRotate = nil, nil, nil
+            end
         end
     end
 end)
