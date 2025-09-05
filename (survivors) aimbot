@@ -103,8 +103,8 @@ local function getPingSeconds()
 end
 
 -- Velocity prediction
-local function getPredictedAimPosVelocity(targetHRP)
-    local prediction = 1 -- default value, can tweak
+local function getPredictedAimPosVelocity(targetHRP) -- TODO: FIX THIS BULLSHIT THANK YOUU!!!!!
+    local prediction = 1.67 -- default value, can tweak BUT IM TWEAKING TOO BECAUSE SIX EXESNVE 677777 SEX SIVINNNNNNN
     if targetHRP.Velocity.Magnitude <= movementThreshold then
         return targetHRP.Position
     else
@@ -112,7 +112,7 @@ local function getPredictedAimPosVelocity(targetHRP)
     end
 end
 
--- Ping prediction
+-- Ping prediction wait what are we using this for
 local function getPredictedAimPosPing(targetHRP)
     local ping = getPingSeconds()
     local velocity = targetHRP.Velocity
