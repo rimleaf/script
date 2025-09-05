@@ -107,7 +107,7 @@ local function getPredictedAimPosVelocity(targetHRP) -- TODO: FIX THIS BULLSHIT 
     if targetHRP.Velocity.Magnitude <= 0.2 then
         return targetHRP.Position
     else
-        return targetHRP.Position + (targetHRP.AssemblyLinearVelocity * 0.3)
+        return targetHRP.Position + (targetHRP.AssemblyLinearVelocity * 0.21)
     end
 end
 
