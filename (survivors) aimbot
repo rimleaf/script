@@ -177,11 +177,9 @@ RunService.RenderStepped:Connect(function()
                     aimPos = getPredictedAimPosVelocity(targetHRP)
                 end
 
-                if aimPos then
-                    local direction = (aimPos - HRP.Position).Unit
-                    local yRot = math.atan2(-direction.X, -direction.Z)
-                    HRP.CFrame = CFrame.new(HRP.Position) * CFrame.Angles(0, yRot, 0)
-                end
+                local direction = (aimPos - HRP.Position).Unit
+                local yRot = math.atan2(-direction.X, -direction.Z)
+                HRP.CFrame = CFrame.new(HRP.Position) * CFrame.Angles(0, yRot, 0)
             end
         else
             -- Reset after aim
