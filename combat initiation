@@ -1,299 +1,92 @@
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Utility: apply attributes to a tool if it exists
-local function applyAttributes(toolName, attributes)
+local function modifyToolAttributes(toolName, attributes)
     local tool = LocalPlayer.Backpack:FindFirstChild(toolName) or (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild(toolName))
+
     if tool then
-        for k,v in pairs(attributes) do
-            tool:SetAttribute(k, v)
+        for attribute, value in pairs(attributes) do
+            tool:SetAttribute(attribute, value)
         end
+        print(toolName .. " attributes have been set.")
     end
 end
 
--- Utility: repeat application whenever respawned or backpack updates
-local function setupPersistentTool(toolName, attributes, toggleFlag)
-    local function loop()
-        while Rayfield.Flags[toggleFlag].Value do
-            applyAttributes(toolName, attributes)
-            task.wait(1)
-        end
-    end
-    task.spawn(loop)
+local function utilityRespawn(character)
+    local player = Players.LocalPlayer
+    local accessoryEffects = player:FindFirstChild("AccessoryEffects") or player.Backpack.Parent:FindFirstChild("AccessoryEffects")
 
-    LocalPlayer.CharacterAdded:Connect(function(char)
-        char:WaitForChild("HumanoidRootPart")
-        task.wait(1)
-        if Rayfield.Flags[toggleFlag].Value then
-            loop()
-        end
-    end)
+    if accessoryEffects then
+        accessoryEffects:SetAttribute("Lightning_Chance", 100)
+        accessoryEffects:SetAttribute("Melee_Range", 2.5)
+        accessoryEffects:SetAttribute("Pogo_Range", 1.5)
+    else
+        print("AccessoryEffects not found.")
+    end
+
+    if character then
+        character:SetAttribute("DashRegenTime", 0.01)
+        character:SetAttribute("DashRegenFury", 0.01)
+        character:SetAttribute("UtilityBoost", 1.5)
+    end
 end
 
--- Utility: repeat application for character attributes
-local function setupPersistentCharacter(attributes, toggleFlag)
-    local function loop()
-        while Rayfield.Flags[toggleFlag].Value do
-            local char = LocalPlayer.Character
-            if char then
-                for k,v in pairs(attributes) do
-                    char:SetAttribute(k, v)
-                end
-            end
-            task.wait(1)
+local toolsToModify = {
+    ["Sword"] = {
+        LungeRate = 0,
+        Swingrate = 0,
+        OffhandSwingRate = 0
+    },
+    ["Firebrand"] = {
+        LungeRate = 0,
+        Swingrate = 0,
+        OffhandSwingRate = 0,
+        Windup = 0
+    },
+    ["Katana"] = {
+        LungeRate = 0,
+        Swingrate = 0,
+        OffhandSwingRate = 0
+    },
+    ["Slingshot"] = {
+        Capacity = 10000,
+        ChargeRate = 0,
+        Firerate = 0,
+        Spread = 0,
+        ProjectileSpeed = 6767
+    },
+    ["Freeze Ray"] = {
+        Firerate = 0,
+        ProjectileSpeed = 2250,
+        ChargeTime = 0
+    },
+    ["Paintbull Gun"] = {
+        Firerate = 0,
+        ProjectileSpeed = 2250
+    },
+    ["BB Gun"] = {
+        Firerate = 0,
+        MinShots = 2,
+        MaxShots = math.huge
+    },
+    ["Bazooka"] = {
+        Firerate = 0,
+        ReloadTick = 0,
+        Capacity = 100,
+        PassiveReloadTick = 0
+    }
+}
+
+task.spawn(function()
+    while task.wait(5) do
+        for toolName, attributes in pairs(toolsToModify) do
+            modifyToolAttributes(toolName, attributes)
         end
     end
-    task.spawn(loop)
+end)
 
-    LocalPlayer.CharacterAdded:Connect(function(char)
-        task.wait(1)
-        if Rayfield.Flags[toggleFlag].Value then
-            loop()
-        end
-    end)
+if LocalPlayer.Character then
+    utilityRespawn(LocalPlayer.Character)
 end
 
--- Window
-local Window = Rayfield:CreateWindow({
-   Name = "Combat Initation Script (v2.1.2)",
-   Icon = 0,
-   LoadingTitle = "Rayfield Interface Suite",
-   LoadingSubtitle = "by Sirius",
-   Theme = "Default"
-})
-
-----------------------------------------------------
--- Fun Stuffz
-----------------------------------------------------
-local Tab = Window:CreateTab("Fun Stuffz", 0)
-
--- Sword
-Tab:CreateToggle({
-    Name = "Modded Sword",
-    Flag = "SwordToggle",
-    Callback = function(Value)
-        if Value then
-            setupPersistentTool("Sword", {LungeRate = 0, Swingrate = 0, OffhandSwingRate = 0}, "SwordToggle")
-        end
-    end
-})
-
-Tab:CreateToggle({
-    Name = "Modded Firebrand",
-    Flag = "FirebrandToggle",
-    Callback = function(Value)
-        if Value then
-            setupPersistentTool("Firebrand", {LungeRate = 0, Swingrate = 0, OffhandSwingRate = 0, Windup = 0}, "FirebrandToggle")
-        end
-    end
-})
-
-Tab:CreateToggle({
-    Name = "Modded Katana",
-    Flag = "KatanaToggle",
-    Callback = function(Value)
-        if Value then
-            setupPersistentTool("Katana", {LungeRate = 0, Swingrate = 0, OffhandSwingRate = 0}, "KatanaToggle")
-        end
-    end
-})
-
--- Slingshot
-Tab:CreateToggle({
-    Name = "Modded Slingshot",
-    Flag = "SlingshotToggle",
-    Callback = function(Value)
-        if Value then
-            setupPersistentTool("Slingshot", {Capacity = 10000, ChargeRate = 0, Firerate = 0, Spread = 0, ProjectileSpeed = 2250}, "SlingshotToggle")
-        end
-    end
-})
-
-Tab:CreateToggle({
-    Name = "Modded Flamethrower",
-    Flag = "FlamethrowerToggle",
-    Callback = function(Value)
-        if Value then
-            setupPersistentTool("Flamethrower", {Cooldown = 0}, "FlamethrowerToggle")
-        end
-    end
-})
-
--- Paintball Guns
-Tab:CreateToggle({
-    Name = "Modded Paintball Gun",
-    Flag = "PaintballGunToggle",
-    Callback = function(Value)
-        if Value then
-            setupPersistentTool("Paintball Gun", {Firerate = 0, ProjectileSpeed = 2250}, "PaintballGunToggle")
-        end
-    end
-})
-
-Tab:CreateToggle({
-    Name = "Modded BB Gun",
-    Flag = "BBGunToggle",
-    Callback = function(Value)
-        if Value then
-            setupPersistentTool("BB Gun", {Firerate = 0, MinShots = 2, MaxShots = math.huge}, "BBGunToggle")
-        end
-    end
-})
-
-Tab:CreateToggle({
-    Name = "Modded Freeze Ray (Always Charged)",
-    Flag = "FreezeRayAlwaysToggle",
-    Callback = function(Value)
-        if Value then
-            setupPersistentTool("Freeze Ray", {Firerate = 0, ProjectileSpeed = 2250, ChargeTime = 0}, "FreezeRayAlwaysToggle")
-        end
-    end
-})
-
-Tab:CreateToggle({
-    Name = "Modded Freeze Ray (Hold to Charge)",
-    Flag = "FreezeRayHoldToggle",
-    Callback = function(Value)
-        if Value then
-            setupPersistentTool("Freeze Ray", {Firerate = 0, ProjectileSpeed = 2250}, "FreezeRayHoldToggle")
-        end
-    end
-})
-
--- Ninja Stars
-Tab:CreateToggle({
-    Name = "Modded Ninja Stars",
-    Flag = "NinjaStarsToggle",
-    Callback = function(Value)
-        if Value then
-            setupPersistentTool("Ninja Stars", {ThrowRate = 0, Capacity = 10000000, ChargeRate = 0}, "NinjaStarsToggle")
-        end
-    end
-})
-
--- Bazooka
-Tab:CreateToggle({
-    Name = "Modded Bazooka",
-    Flag = "BazookaToggle",
-    Callback = function(Value)
-        if Value then
-            setupPersistentTool("Bazooka", {ReloadTick = 0, Capacity = 100, PassiveReloadTick = 0}, "BazookaToggle")
-        end
-    end
-})
-
--- Timebombs
-Tab:CreateToggle({
-    Name = "Modded Subspace Tripmine",
-    Flag = "TripmineToggle",
-    Callback = function(Value)
-        if Value then
-            setupPersistentTool("Subspace Tripmine", {Cooldown = 0}, "TripmineToggle")
-        end
-    end
-})
-
-Tab:CreateToggle({
-    Name = "Modded Explosive Pinata",
-    Flag = "PinataToggle",
-    Callback = function(Value)
-        if Value then
-            setupPersistentTool("Explosive Pinata", {Cooldown = 0}, "PinataToggle")
-        end
-    end
-})
-
--- Wrench
-Tab:CreateToggle({
-    Name = "Frozen Wrench",
-    Flag = "WrenchToggle",
-    Callback = function(Value)
-        local function loop()
-            while Rayfield.Flags["WrenchToggle"].Value do
-                local tool = LocalPlayer.Backpack:FindFirstChild("Wrench") or (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Wrench"))
-                if tool then
-                    tool:SetAttribute("TimeScale", 0)
-                end
-                task.wait(1)
-            end
-        end
-        if Value then task.spawn(loop) end
-    end
-})
-
-----------------------------------------------------
--- Hats
-----------------------------------------------------
-local Tab2 = Window:CreateTab("Hats", 0)
-
-Tab2:CreateToggle({
-    Name = "Electric Punk (Lightning Chance)",
-    Flag = "PunkToggle",
-    Callback = function(Value)
-        local function loop()
-            while Rayfield.Flags["PunkToggle"].Value do
-                local ae = LocalPlayer.Backpack.Parent:FindFirstChild("AccessoryEffects")
-                if ae then
-                    ae:SetAttribute("Lightning_Chance", 100)
-                end
-                task.wait(1)
-            end
-        end
-        if Value then task.spawn(loop) end
-    end
-})
-
-Tab2:CreateToggle({
-    Name = "Bandit/Stage Prop (Melee & Pogo Range)",
-    Flag = "BanditToggle",
-    Callback = function(Value)
-        local function loop()
-            while Rayfield.Flags["BanditToggle"].Value do
-                local ae = LocalPlayer.Backpack.Parent:FindFirstChild("AccessoryEffects")
-                if ae then
-                    ae:SetAttribute("Melee_Range", 3)
-                    ae:SetAttribute("Pogo_Range", 1.5)
-                end
-                task.wait(1)
-            end
-        end
-        if Value then task.spawn(loop) end
-    end
-})
-
-----------------------------------------------------
--- Character
-----------------------------------------------------
-local Tab3 = Window:CreateTab("Character")
-
-Tab3:CreateToggle({
-    Name = "Infinite Dashes",
-    Flag = "DashToggle",
-    Callback = function(Value)
-        if Value then
-            setupPersistentCharacter({DashRegenTime = 0.05, DashRegenFury = 0.05}, "DashToggle")
-        end
-    end
-})
-
-Tab3:CreateToggle({
-    Name = "Utility Boost (x2)",
-    Flag = "UtilityToggle",
-    Callback = function(Value)
-        if Value then
-            setupPersistentCharacter({UtilityBoost = 1.2}, "UtilityToggle")
-        end
-    end
-})
-
-----------------------------------------------------
--- Information
-----------------------------------------------------
-local Tab4 = Window:CreateTab("Information", 0)
-Tab4:CreateParagraph({Title = "v2.1.2", Content = "Updated for"})
-Tab4:CreateParagraph({Title = "v1.4 ALPHA", Content = "Current version"})
-Tab4:CreateParagraph({Title = "marik611277", Content = "Made by"})
-Tab4:CreateParagraph({Title = "Synapse X Remake", Content = "Created firstly in"})
-Tab4:CreateParagraph({Title = "Non-GUI script", Content = "Inspired by"})
-Tab4:CreateParagraph({Title = "discord.gg/HmP63uHfWq", Content = "Synapse X Remake Discord"})
+LocalPlayer.CharacterAdded:Connect(utilityRespawn)
