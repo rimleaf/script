@@ -69,6 +69,11 @@ local toolsToModify = {
         Spread = 0,
         ProjectileSpeed = 6767
     },
+    ["Scatterblaster"] = {
+        Firerate = 0,
+        Spread = 0,
+        ProjectileSpeed = 2250
+    },
     ["Freeze Ray"] = {
         Firerate = 0,
         ProjectileSpeed = 2250,
