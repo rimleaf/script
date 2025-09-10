@@ -74,7 +74,7 @@ local toolsToModify = {
         ProjectileSpeed = 2250,
         ChargeTime = 0
     },
-    ["Paintbull Gun"] = {
+    ["Paintball Gun"] = {
         Firerate = 0,
         ProjectileSpeed = 2250
     },
