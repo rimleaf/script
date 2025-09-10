@@ -1,14 +1,32 @@
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
-local function modifyToolAttributes(toolName, attributes)
-    local tool = LocalPlayer.Backpack:FindFirstChild(toolName) or (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild(toolName))
-
-    if tool then
-        for attribute, value in pairs(attributes) do
-            tool:SetAttribute(attribute, value)
+local function modifyAllTools(toolsToModify)
+    local function applyAttributes(tool, attributes)
+        if tool then
+            for attribute, value in pairs(attributes) do
+                tool:SetAttribute(attribute, value)
+            end
+            print(tool.Name .. " attributes set.")
         end
-        print(toolName .. " attributes have been set.")
+    end
+
+    -- Check Backpack
+    for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
+        local attributes = toolsToModify[tool.Name]
+        if attributes then
+            applyAttributes(tool, attributes)
+        end
+    end
+
+    -- Check Character
+    if LocalPlayer.Character then
+        for _, tool in pairs(LocalPlayer.Character:GetChildren()) do
+            local attributes = toolsToModify[tool.Name]
+            if attributes then
+                applyAttributes(tool, attributes)
+            end
+        end
     end
 end
 
@@ -20,8 +38,6 @@ local function utilityRespawn(character)
         accessoryEffects:SetAttribute("Lightning_Chance", 100)
         accessoryEffects:SetAttribute("Melee_Range", 2.5)
         accessoryEffects:SetAttribute("Pogo_Range", 1.5)
-    else
-        print("AccessoryEffects not found.")
     end
 
     if character then
@@ -79,9 +95,7 @@ local toolsToModify = {
 
 task.spawn(function()
     while task.wait(5) do
-        for toolName, attributes in pairs(toolsToModify) do
-            modifyToolAttributes(toolName, attributes)
-        end
+        modifyAllTools(toolsToModify)
     end
 end)
 
