@@ -20,13 +20,13 @@ RunService.RenderStepped:Connect(function()
 	local humanoid = Character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
 		if humanoid.Health >= 200 then
-			Module.MaxStamina = 110
-			Module.StaminaGain = 45
-			Module.StaminaLoss = 7
-			Module.SprintSpeed = 29.5
+			Module.MaxStamina = 120
+			Module.StaminaGain = 67
+			Module.StaminaLoss = 10
+			Module.SprintSpeed = 29
 		else
-			Module.MaxStamina = 100
-			Module.StaminaGain = 40
+			Module.MaxStamina = 110
+			Module.StaminaGain = 67
 			Module.StaminaLoss = 10
 			Module.SprintSpeed = 27
 		end
