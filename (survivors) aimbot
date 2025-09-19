@@ -82,15 +82,15 @@ LocalPlayer.CharacterAdded:Connect(setupCharacter)
 
 -- Grab the nearest valid target
 local function getValidTarget()
-    local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
-    if not killersFolder or not HRP then return nil end
+    local playersFolder = workspace:FindFirstChild("Players")
+    if not playersFolder or not HRP then return nil end
 
     local nearest, nearestDist = nil, math.huge
-    for _, killer in ipairs(killersFolder:GetChildren()) do
-        local humanoid = killer:FindFirstChildOfClass("Humanoid")
-        local root = killer:FindFirstChild("HumanoidRootPart")
+    for _, playerModel in ipairs(playersFolder:GetChildren()) do
+        local humanoid = playerModel:FindFirstChildOfClass("Humanoid")
+        local root = playerModel:FindFirstChild("HumanoidRootPart")
 
-        if humanoid and root and humanoid.Health > 0 then
+        if humanoid and root and humanoid.Health > 250 then
             local dist = (root.Position - HRP.Position).Magnitude
             if dist < nearestDist then
                 nearestDist = dist
@@ -101,6 +101,7 @@ local function getValidTarget()
 
     return nearest
 end
+
 
 -- Get ping in seconds
 local function getPingSeconds()
