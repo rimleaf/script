@@ -584,7 +584,7 @@ task.spawn(function()
             local killers = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
             if killers then
                 for _, k in ipairs(killers:GetChildren()) do
-                    getOrCreateHighlight(k, Color3.fromRGB(255,0,0), 0.8, 0.5)
+                    getOrCreateHighlight(k, Color3.fromRGB(255,0,0), 0.5, 0.3)
                 end
             end
         else
@@ -597,7 +597,7 @@ task.spawn(function()
             local survivors = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Survivors")
             if survivors then
                 for _, s in ipairs(survivors:GetChildren()) do
-                    getOrCreateHighlight(s, Color3.fromRGB(255,255,255), 0.8, 0.5)
+                    getOrCreateHighlight(s, Color3.fromRGB(255,255,255), 0.5, 0.3)
                 end
             end
         else
@@ -617,7 +617,7 @@ task.spawn(function()
                 if espGenerators and obj.Name == "Generator" then
                     local progressVal = obj:FindFirstChild("Progress")
                     if progressVal and progressVal.Value < 100 then
-                        getOrCreateHighlight(obj, Color3.fromRGB(255,255,0), 0.6, 0.6)
+                        getOrCreateHighlight(obj, Color3.fromRGB(255,255,0), 0.5, 0.3)
                     else
                         clearESP(obj)
                     end
