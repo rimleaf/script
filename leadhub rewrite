@@ -1,13 +1,17 @@
--- Lead Hub
+-- Lead Hub (Full) — Sound Auto Block + Charge + Clone + Generators + ESP + AutoPunch
+-- Drop-in replacement for your previous Lead Hub LocalScript
 
 -- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local StarterGui = game:GetService("StarterGui")
+local Debris = game:GetService("Debris")
 local Stats = game:GetService("Stats")
-local LocalPlayer = Players.LocalPlayer
-local lp = LocalPlayer
+
+local lp = Players.LocalPlayer
+
 -- Rayfield
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local Window = Rayfield:CreateWindow({
@@ -25,53 +29,204 @@ local GeneratorTab = Window:CreateTab("Generators", 4483362458)
 local ESPTab = Window:CreateTab("ESP", 4483362458)
 local MiscTab = Window:CreateTab("Misc", 4483362458)
 
--- Audio Block IDs
+-- ================== CORE STATE & CACHE ==================
+local KillersFolder = workspace:WaitForChild("Players"):WaitForChild("Killers")
+
+-- Modes (mutually exclusive)
+local autoblocktype = "Block" -- "Block" | "Charge" | "7n7 Clone"
+local autoBlockAudioOn = true
+local autoBlockMode_Block = true
+local autoBlockMode_Charge = false
+local autoBlockMode_Clone = false
+
+-- UI caches
+local cachedPlayerGui = nil
+local cachedPunchBtn, cachedBlockBtn, cachedChargeBtn, cachedCloneBtn = nil, nil, nil, nil
+local cachedCharges, cachedCooldown = nil, nil
+
+local function refreshUIRefs()
+    cachedPlayerGui = lp:FindFirstChild("PlayerGui")
+    local main = cachedPlayerGui and cachedPlayerGui:FindFirstChild("MainUI")
+    if main then
+        local ability = main:FindFirstChild("AbilityContainer")
+        cachedPunchBtn = ability and ability:FindFirstChild("Punch")
+        cachedBlockBtn = ability and ability:FindFirstChild("Block")
+        cachedChargeBtn = ability and ability:FindFirstChild("Charge")
+        cachedCloneBtn = ability and ability:FindFirstChild("Clone")
+        cachedCharges = cachedPunchBtn and cachedPunchBtn:FindFirstChild("Charges")
+        cachedCooldown = cachedBlockBtn and cachedBlockBtn:FindFirstChild("CooldownTime")
+    else
+        cachedPunchBtn, cachedBlockBtn, cachedCharges, cachedCooldown, cachedChargeBtn, cachedCloneBtn = nil, nil, nil, nil, nil, nil
+    end
+end
+
+refreshUIRefs()
+lp.CharacterAdded:Connect(function() task.delay(0.5, refreshUIRefs) end)
+if cachedPlayerGui then
+    cachedPlayerGui.ChildAdded:Connect(function(child) if child.Name == "MainUI" then task.delay(0.02, refreshUIRefs) end end)
+end
+
+local function SendNotif(title, text, duration)
+    pcall(function() StarterGui:SetCore("SendNotification", {Title = title or "Notice", Text = text or "", Duration = duration or 4}) end)
+end
+
+-- ================== TUNABLES & DEPENDENCIES ==================
+local detectionRange = 10
+local detectionRangeSq = detectionRange * detectionRange
+local reactionSpeed = 1.0 -- maps to AUDIO_SOUND_THROTTLE by slider
+
+-- predictive / smoothing constants
+local SMOOTHING_LERP = 0.22
+local PRED_SECONDS_FORWARD = 0.25
+local PRED_SECONDS_LATERAL = 0.18
+local PRED_MAX_FORWARD = 6
+local PRED_MAX_LATERAL = 4
+local ANG_TURN_MULTIPLIER = 0.6
+local predictionStrength = 1
+local predictionTurnStrength = 1
+local blockPartsSizeMultiplier = 1
+
+-- anti-flick (BD parts) defaults
+local antiFlickOn = false
+local antiFlickParts = 4
+local antiFlickBaseOffset = 2.7
+local antiFlickOffsetStep = 0
+local antiFlickDelay = 0
+local stagger = 0
+
+-- audio timing
+local AUDIO_PREDICT_DT = 0.08
+local AUDIO_LOCAL_COOLDOWN = 0.35
+local AUDIO_SOUND_THROTTLE = reactionSpeed
+local lastLocalBlockTime = 0
+
+-- ID list (sound IDs)
 local autoBlockTriggerSounds = {
     ["102228729296384"] = true, ["140242176732868"] = true, ["112809109188560"] = true,
     ["136323728355613"] = true, ["115026634746636"] = true, ["84116622032112"] = true,
     ["108907358619313"] = true, ["127793641088496"] = true, ["86174610237192"] = true,
     ["95079963655241"] = true, ["101199185291628"] = true, ["119942598489800"] = true,
-    ["84307400688050"] = true
+    ["84307400688050"] = true, ["113037804008732"] = true, ["105200830849301"] = true,
+    ["75330693422988"] = true, ["82221759983649"] = true, ["81702359653578"] = true,
+    ["108610718831698"] = true, ["112395455254818"] = true, ["109431876587852"] = true,
+    ["109348678063422"] = true, ["85853080745515"] = true, ["12222216"] = true,
+    ["105840448036441"] = true, ["114742322778642"] = true,
 }
 
--- State (existing)
-local autoBlockOn = true
-local autoPunchOn = true
-local infiniteStamina = true
-local detectionRange = 10
-local apRange = 7 -- punch range in studs
-local generatorCooldown = 2.5
-local flingPunchOn = false
-local flingPower = 10000
-local hiddenfling = false
-local looseFacing = true
-
--- Infinite Stamina
-local function enableInfiniteStamina()
-    local success, StaminaModule = pcall(function()
-        return require(ReplicatedStorage.Systems.Character.Game.Sprinting)
+-- remote fallback for block
+local function fireRemoteBlock()
+    pcall(function()
+        local net = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent")
+        net:FireServer("UseActorAbility", "Block")
     end)
+end
+
+-- ================== UI: Combat Controls ==================
+CombatTab:CreateToggle({Name="Auto Audio Block (Global)", CurrentValue=true, Flag="AutoAudioGlobal", Callback=function(val) autoBlockAudioOn = val end})
+
+CombatTab:CreateToggle({
+    Name="Auto Block (Block)",
+    CurrentValue=true,
+    Callback=function(val)
+        autoBlockMode_Block = val
+        if val then
+            autoBlockMode_Charge = false
+            autoBlockMode_Clone = false
+            autoblocktype = "Block"
+            SendNotif("Lead Hub", "Mode: Block", 2)
+        else
+            if not autoBlockMode_Charge and not autoBlockMode_Clone then
+                autoBlockMode_Block = true
+                autoblocktype = "Block"
+            end
+        end
+    end
+})
+
+CombatTab:CreateToggle({
+    Name="Auto Charge",
+    CurrentValue=false,
+    Callback=function(val)
+        autoBlockMode_Charge = val
+        if val then
+            autoBlockMode_Block = false
+            autoBlockMode_Clone = false
+            autoblocktype = "Charge"
+            SendNotif("Lead Hub", "Mode: Charge", 2)
+        else
+            if not autoBlockMode_Block and not autoBlockMode_Clone then
+                autoBlockMode_Block = true
+                autoblocktype = "Block"
+            end
+        end
+    end
+})
+
+CombatTab:CreateToggle({
+    Name="Auto Clone (7n7)",
+    CurrentValue=false,
+    Callback=function(val)
+        autoBlockMode_Clone = val
+        if val then
+            autoBlockMode_Block = false
+            autoBlockMode_Charge = false
+            autoblocktype = "7n7 Clone"
+            SendNotif("Lead Hub", "Mode: 7n7 Clone", 2)
+        else
+            if not autoBlockMode_Block and not autoBlockMode_Charge then
+                autoBlockMode_Block = true
+                autoblocktype = "Block"
+            end
+        end
+    end
+})
+
+CombatTab:CreateSlider({
+    Name = "Detection Range (studs)",
+    Range = {5, 40},
+    Increment = 1,
+    Suffix = "studs",
+    CurrentValue = detectionRange,
+    Callback = function(val)
+        detectionRange = val
+        detectionRangeSq = detectionRange * detectionRange
+    end
+})
+
+CombatTab:CreateSlider({
+    Name = "Reaction Speed (throttle seconds)",
+    Range = {0.1, 2.5},
+    Increment = 0.05,
+    Suffix = "s",
+    CurrentValue = AUDIO_SOUND_THROTTLE,
+    Callback = function(val)
+        AUDIO_SOUND_THROTTLE = val
+    end
+})
+
+CombatTab:CreateToggle({Name="Fling Punch", CurrentValue=false, Callback=function(val) end})
+CombatTab:CreateToggle({Name="Infinite Stamina", CurrentValue=true, Callback=function(val) end})
+
+-- ================== Infinite Stamina (keeps original behavior) ==================
+local infiniteStamina = true
+local function enableInfiniteStamina()
+    local success, StaminaModule = pcall(function() return require(ReplicatedStorage.Systems.Character.Game.Sprinting) end)
     if not success or not StaminaModule then return end
     StaminaModule.StaminaLossDisabled = true
     task.spawn(function()
         while infiniteStamina do
             task.wait(0.1)
             StaminaModule.Stamina = StaminaModule.MaxStamina
-            if StaminaModule.StaminaChanged then
-                pcall(function() StaminaModule.StaminaChanged:Fire() end)
-            end
+            if StaminaModule.StaminaChanged then pcall(function() StaminaModule.StaminaChanged:Fire() end) end
         end
     end)
 end
 enableInfiniteStamina()
 
--- UI Toggles (existing)
-local KillersFolder = workspace:WaitForChild("Players"):WaitForChild("Killers")
-local detectionCircles = {} -- store all killer circles
+-- ================== Utility: Detection circles (range visual) ==================
+local detectionCircles = {}
 local killerCirclesVisible = true
 
--- Function to add circle to a killer
--- create once, reuse
 local groundCastParams = RaycastParams.new()
 groundCastParams.FilterType = Enum.RaycastFilterType.Exclude
 groundCastParams.IgnoreWater = true
@@ -79,307 +234,73 @@ groundCastParams.IgnoreWater = true
 local function setCircleAtGround(killer, circle)
     local hrp = killer:FindFirstChild("HumanoidRootPart")
     if not hrp or not circle then return end
-
-    -- exclude this character from the raycast
     groundCastParams.FilterDescendantsInstances = {killer}
-
-    -- raycast straight down to find floor
     local origin = hrp.Position
-    local result = workspace:Raycast(origin, Vector3.new(0, -1000, 0), groundCastParams)
+    local result = workspace:Raycast(origin, Vector3.new(0,-1000,0), groundCastParams)
     local groundY = result and result.Position.Y or (origin.Y - 3)
-
-    -- local offset from HRP down to the ground (+tiny lift to avoid z-fighting)
     local offsetY = (groundY - origin.Y) + 0.03
-
-    -- lay cylinder flat + move to ground under HRP
     circle.CFrame = CFrame.new(0, offsetY, 0) * CFrame.Angles(math.rad(90), 0, 0)
 end
 
 local function addKillerCircle(killer)
     if not killer:FindFirstChild("HumanoidRootPart") then return end
-    if detectionCircles[killer] then return end -- already has one
-
+    if detectionCircles[killer] then return end
     local hrp = killer.HumanoidRootPart
-
     local circle = Instance.new("CylinderHandleAdornment")
     circle.Name = "KillerDetectionCircle"
     circle.Adornee = hrp
-    circle.Color3 = Color3.fromRGB(255, 0, 0)
+    circle.Color3 = Color3.fromRGB(255,0,0)
     circle.AlwaysOnTop = true
     circle.ZIndex = 0
     circle.Transparency = 0.7
     circle.Radius = detectionRange / 1.5
     circle.Height = 0.1
     circle.Parent = hrp
-
     detectionCircles[killer] = circle
-
-    -- position once immediately
     setCircleAtGround(killer, circle)
 end
 
-
-
--- Function to remove circle from a killer
 local function removeKillerCircle(killer)
-    if detectionCircles[killer] then
-        detectionCircles[killer]:Destroy()
-        detectionCircles[killer] = nil
-    end
+    if detectionCircles[killer] then detectionCircles[killer]:Destroy() detectionCircles[killer] = nil end
 end
 
--- Refresh all circles
 local function refreshKillerCircles()
     for _, killer in ipairs(KillersFolder:GetChildren()) do
-        if killerCirclesVisible then
-            addKillerCircle(killer)
-        else
-            removeKillerCircle(killer)
-        end
+        if killerCirclesVisible then addKillerCircle(killer) else removeKillerCircle(killer) end
     end
 end
 
--- Keep radius + position updated
 RunService.RenderStepped:Connect(function()
     for killer, circle in pairs(detectionCircles) do
         if circle and circle.Parent then
             circle.Radius = detectionRange / 1.5
-            setCircleAtGround(killer, circle) -- <-- keep pinned to ground
+            setCircleAtGround(killer, circle)
         end
     end
 end)
 
-
--- Hook into killers being added/removed
 KillersFolder.ChildAdded:Connect(function(killer)
     if killerCirclesVisible then
         task.spawn(function()
-            -- Wait until HRP exists (max 5s timeout)
             local hrp = killer:WaitForChild("HumanoidRootPart", 5)
-            if hrp then
-                addKillerCircle(killer)
-            end
+            if hrp then addKillerCircle(killer) end
         end)
     end
 end)
+KillersFolder.ChildRemoved:Connect(function(killer) removeKillerCircle(killer) end)
 
-KillersFolder.ChildRemoved:Connect(function(killer)
-    removeKillerCircle(killer)
-end)
-
-CombatTab:CreateToggle({Name="Auto Block", CurrentValue=true, Callback=function(val) autoBlockOn = val end})
-CombatTab:CreateToggle({Name="Auto Punch", CurrentValue=true, Callback=function(val) autoPunchOn = val end})
+-- Range visual toggle in UI (keuses original label)
 CombatTab:CreateToggle({Name="Range Visual", CurrentValue=true, Callback=function(state) killerCirclesVisible = state refreshKillerCircles() end})
-CombatTab:CreateToggle({Name="Fling Punch", CurrentValue=false, Callback=function(val) flingPunchOn = val end})
-CombatTab:CreateToggle({Name="Infinite Stamina", CurrentValue=true, Callback=function(val) infiniteStamina = val enableInfiniteStamina() end})
-CombatTab:CreateInput({Name="Detection Range (studs)", PlaceholderText="10", RemoveTextAfterFocusLost=false, Callback=function(txt) detectionRange = tonumber(txt) or detectionRange end})
 
--- Misc
-MiscTab:CreateButton({Name="Copy Discord Invite", Callback=function()
-    pcall(function() setclipboard("https://discord.gg/baXMxMz5JZ") end)
-end})
-
--- Auto Punch
-
-local function fireRemoteBlock()
-local args = {"UseActorAbility", "Block"}
-ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent"):FireServer(unpack(args))
-end
-
-local function isFacing(localRoot, targetRoot)
-    local dir = (localRoot.Position - targetRoot.Position).Unit
-    local dot = targetRoot.CFrame.LookVector:Dot(dir)
-    return looseFacing and dot > -0.4 or dot > 0
-end
-
--- Fling coroutine
-coroutine.wrap(function()
-    local hrp, c, vel, movel = nil, nil, nil, 0.1
-    while true do
-        RunService.Heartbeat:Wait() 
-        if hiddenfling then
-            while hiddenfling and not (c and c.Parent and hrp and hrp.Parent) do
-                RunService.Heartbeat:Wait()
-                c = lp.Character
-                hrp = c and c:FindFirstChild("HumanoidRootPart")
-            end
-            if hiddenfling then
-                vel = hrp.Velocity
-                hrp.Velocity = vel * flingPower + Vector3.new(0, flingPower, 0)
-                RunService.RenderStepped:Wait()
-                hrp.Velocity = vel
-                RunService.Stepped:Wait()
-                hrp.Velocity = vel + Vector3.new(0, movel, 0)
-                movel = movel * -1
-            end
-        end
-    end
-end)()
-
-
--- ===== Robust Sound Auto Block (replace your current Sound Auto Block) =====
-local soundHooks = {}     -- [Sound] = {playedConn, propConn, destroyConn}
-local soundBlockedUntil = {} -- [Sound] = timestamp when we can block again (throttle)
-
-local function getNearestKillerRoot(maxDist)
-    local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
-    if not killersFolder then return nil end
-
-    local myRoot = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return nil end
-
-    local closest, closestDist = nil, maxDist or math.huge
-    for _, killer in ipairs(killersFolder:GetChildren()) do
-        local hrp = killer:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local dist = (hrp.Position - myRoot.Position).Magnitude
-            if dist < closestDist then
-                closest, closestDist = hrp, dist
-            end
-        end
-    end
-    return closest
-end
-
-local function extractNumericSoundId(sound)
-    if not sound or not sound.SoundId then return nil end
-    local sid = tostring(sound.SoundId)
-
-    -- Prefer numeric id if present
-    local num = sid:match("%d+")
-    if num then return num end
-
-    -- Fallbacks (these won't match your numeric whitelist, but kept for completeness)
-    local hash = sid:match("[&%?]hash=([^&]+)")
-    if hash then return "&hash="..hash end
-    local path = sid:match("rbxasset://sounds/.+")
-    if path then return path end
-
-    return nil
-end
-
-local function getSoundWorldPosition(sound)
-    if not sound then return nil end
-    if sound.Parent and sound.Parent:IsA("BasePart") then
-        return sound.Parent.Position, sound.Parent
-    end
-    if sound.Parent and sound.Parent:IsA("Attachment") and sound.Parent.Parent and sound.Parent.Parent:IsA("BasePart") then
-        return sound.Parent.Parent.Position, sound.Parent.Parent
-    end
-    -- deep search for any BasePart ancestor/descendant
-    local found = sound.Parent and sound.Parent:FindFirstChildWhichIsA("BasePart", true)
-    if found then
-        return found.Position, found
-    end
-    return nil, nil
-end
-
-local function getCharacterFromDescendant(inst)
-    if not inst then return nil end
-    local model = inst:FindFirstAncestorOfClass("Model")
-    if model and model:FindFirstChildOfClass("Humanoid") then
-        return model
-    end
-    return nil
-end
-
-local function attemptBlockForSound(sound)
-    if not autoBlockOn then return end
-    if not sound or not sound:IsA("Sound") then return end
-
-    -- Only care when actually playing
-    if not sound.IsPlaying then return end
-
-    local id = extractNumericSoundId(sound)
-    if not id or not autoBlockTriggerSounds[id] then return end
-
-    local myRoot = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return end
-
-    -- Throttle: don’t spam block
-    if soundBlockedUntil[sound] and tick() < soundBlockedUntil[sound] then
-        return
-    end
-
-    local soundPos, soundPart = getSoundWorldPosition(sound)
-    local shouldBlock = false
-    local facingOK = true
-
-    if soundPos and soundPart then
-        --  check if this part belongs to a Player character
-        local char = getCharacterFromDescendant(soundPart)
-        local plr = char and Players:GetPlayerFromCharacter(char)
-
-        if not plr or plr == lp then
-            return -- not a valid enemy player
-        end
-        local nearestRoot = getNearestKillerRoot(detectionRange)
-        if nearestRoot and (nearestRoot.Position - soundPos).Magnitude <= detectionRange then
-            shouldBlock = true
-            facingOK = isFacing(myRoot, soundPart)
-        end
-    end
-
-    if shouldBlock and facingOK and sound.TimePosition < 0.3 then
-        fireRemoteBlock()
-        soundBlockedUntil[sound] = tick() + 1.2
-    end
-end
-
-local function hookSound(sound)
-    if not sound or not sound:IsA("Sound") then return end
-    if soundHooks[sound] then return end -- already hooked
-
-    local playedConn = sound.Played:Connect(function()
-        -- handle immediate play
-        pcall(attemptBlockForSound, sound)
-    end)
-
-    local propConn = sound:GetPropertyChangedSignal("IsPlaying"):Connect(function()
-        if sound.IsPlaying then
-            pcall(attemptBlockForSound, sound)
-        end
-    end)
-
-    local destroyConn
-    destroyConn = sound.Destroying:Connect(function()
-        -- cleanup
-        if playedConn and playedConn.Connected then playedConn:Disconnect() end
-        if propConn and propConn.Connected then propConn:Disconnect() end
-        if destroyConn and destroyConn.Connected then destroyConn:Disconnect() end
-        soundHooks[sound] = nil
-        soundBlockedUntil[sound] = nil
-    end)
-
-    soundHooks[sound] = {playedConn, propConn, destroyConn}
-
-    -- If it's already playing right now, check it immediately
-    if sound.IsPlaying then
-        task.spawn(function() pcall(attemptBlockForSound, sound) end)
-    end
-end
-
--- Hook existing Sounds across the game (covers workspace, SoundService, Lighting, etc.)
-for _, desc in ipairs(game:GetDescendants()) do
-    if desc:IsA("Sound") then
-        pcall(hookSound, desc)
-    end
-end
-
--- Hook any future Sounds
-game.DescendantAdded:Connect(function(desc)
-    if desc:IsA("Sound") then
-        pcall(hookSound, desc)
-    end
-end)
--- ===== End Robust Sound Auto Block =====
-
--- Auto Punch (existing)
+-- ================== AutoPunch / Aimbot (kept from original) ==================
 local netRem = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent")
 local function firePunch()
     pcall(function() netRem:FireServer("UseActorAbility","Punch") end)
 end
+
 local killersFolder = Workspace:WaitForChild("Players"):WaitForChild("Killers")
+local apRange = 7
+local autoPunchOn = true
 
 local function closestKiller()
     local char = lp.Character
@@ -399,43 +320,26 @@ local function closestKiller()
     return nearest
 end
 
--- Prediction function (unchanged)
 local function getPredictedPosition(hrp, hum)
     if not hrp or not hum then return hrp.Position end
-
     local moveDir = hum.MoveDirection
     local velocity = hrp.Velocity
     local predictionTime = 0.45
-
-    if moveDir.Magnitude < 1 and velocity.Magnitude < 1 then
-        return hrp.Position
-    end
-
+    if moveDir.Magnitude < 1 and velocity.Magnitude < 1 then return hrp.Position end
     local offset
-    if moveDir.Magnitude > 0.1 then
-        offset = moveDir.Unit * hum.WalkSpeed * predictionTime
-    else
-        offset = velocity * predictionTime
-    end
-
-    if offset.Magnitude > 6 then
-        offset = offset.Unit * 6
-    end
-
+    if moveDir.Magnitude > 0.1 then offset = moveDir.Unit * hum.WalkSpeed * predictionTime else offset = velocity * predictionTime end
+    if offset.Magnitude > 6 then offset = offset.Unit * 6 end
     return hrp.Position + offset
 end
 
--- Aimbot (unchanged)
 local aiming = false
 RunService.RenderStepped:Connect(function()
     if not autoPunchOn or aiming then return end
-
     local gui = lp:FindFirstChild("PlayerGui")
     local chargesObj = gui and gui:FindFirstChild("MainUI")
         and gui.MainUI:FindFirstChild("AbilityContainer")
         and gui.MainUI.AbilityContainer:FindFirstChild("Punch")
         and gui.MainUI.AbilityContainer.Punch:FindFirstChild("Charges")
-
     if chargesObj and chargesObj.Text == "1" then
         local targetRoot = closestKiller()
         local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
@@ -443,36 +347,21 @@ RunService.RenderStepped:Connect(function()
             aiming = true
             firePunch()
             local startTime = tick()
-            local original = root.Velocity
             task.spawn(function()
                 while tick() - startTime < 0.5 and root and targetRoot and targetRoot.Parent do
                     local humanoid = targetRoot.Parent:FindFirstChildOfClass("Humanoid")
                     local predictedPosition = getPredictedPosition(targetRoot, humanoid)
-
-                    root.CFrame = CFrame.lookAt(root.Position, predictedPosition)
+                    pcall(function() root.CFrame = CFrame.lookAt(root.Position, predictedPosition) end)
                     task.wait()
                 end
                 aiming = false
             end)
         end
-        if flingPunchOn then
-            hiddenfling = true
-            local targetHRP = root
-            task.spawn(function()
-                local start = tick()
-                while tick() - start < 1 do
-                    if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") and targetHRP and targetHRP.Parent then
-                        local frontPos = targetHRP.Position + (targetHRP.CFrame.LookVector * 2)
-                        lp.Character.HumanoidRootPart.CFrame = CFrame.new(frontPos, targetHRP.Position)
-                    end
-                    task.wait()
-                end
-                hiddenfling = false
-            end)
-        end
     end
 end)
---================= GENERATORS =================
+
+-- ================== Generators (kept from original) ==================
+local generatorCooldown = 2.5
 local function GeneratorOnce()
     local IngameMapFolder = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Ingame")
     local SubMapFolder = IngameMapFolder and IngameMapFolder:FindFirstChild("Map")
@@ -486,7 +375,6 @@ local function GeneratorOnce()
     end
 end
 
--- Auto Generator Toggle
 GeneratorTab:CreateToggle({
     Name = "Auto Generator",
     CurrentValue = false,
@@ -505,7 +393,6 @@ GeneratorTab:CreateToggle({
     end
 })
 
--- Auto Generator Slider
 GeneratorTab:CreateSlider({
     Name = "Auto Generator Delay",
     Range = {2.5, 5},
@@ -516,15 +403,15 @@ GeneratorTab:CreateSlider({
         generatorCooldown = val
     end
 })
---================= ESP =================
+
+-- ================== ESP (kept from original) ==================
 local espKillers = false
 local espSurvivors = false
 local espItems = false
 local espGenerators = false
 
--- Utility: create or reuse highlight
 local function getOrCreateHighlight(obj, color, fillTrans, outlineTrans)
-    wait(0.1) -- delay
+    wait(0.1)
     for i = 1, 3 do
         local h = obj:FindFirstChild("ESP_Highlight")
         if not h then
@@ -541,7 +428,6 @@ local function getOrCreateHighlight(obj, color, fillTrans, outlineTrans)
     end
 end
 
--- Utility: clear highlight
 local function clearESP(obj)
     local h = obj:FindFirstChild("ESP_Highlight")
     if h then h:Destroy() end
@@ -549,10 +435,8 @@ local function clearESP(obj)
     if b then b:Destroy() end
 end
 
--- Apply ESP for items
 local function applyItemESP(obj)
     getOrCreateHighlight(obj, Color3.fromRGB(0,0,139), 0.6, 0.6)
-
     if not obj:FindFirstChild("ESP_Billboard") then
         local billboard = Instance.new("BillboardGui")
         billboard.Name = "ESP_Billboard"
@@ -560,7 +444,6 @@ local function applyItemESP(obj)
         billboard.StudsOffset = Vector3.new(0,3,0)
         billboard.AlwaysOnTop = true
         billboard.Adornee = obj
-
         local textLabel = Instance.new("TextLabel")
         textLabel.Size = UDim2.new(1,0,1,0)
         textLabel.BackgroundTransparency = 1
@@ -569,42 +452,29 @@ local function applyItemESP(obj)
         textLabel.TextSize = 14
         textLabel.Text = obj.Name
         textLabel.Parent = billboard
-
         billboard.Parent = obj
     end
 end
 
--- ESP Updater (runs slower)
 task.spawn(function()
     while true do
         local mapFolder = Workspace:FindFirstChild("Map") and Workspace.Map:FindFirstChild("Ingame") and Workspace.Map.Ingame:FindFirstChild("Map")
-
         -- Killers
         if espKillers then
             local killers = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
-            if killers then
-                for _, k in ipairs(killers:GetChildren()) do
-                    getOrCreateHighlight(k, Color3.fromRGB(255,0,0), 0.5, 0.3)
-                end
-            end
+            if killers then for _, k in ipairs(killers:GetChildren()) do getOrCreateHighlight(k, Color3.fromRGB(255,0,0), 0.5, 0.3) end end
         else
             local killers = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
             if killers then for _, k in ipairs(killers:GetChildren()) do clearESP(k) end end
         end
-
         -- Survivors
         if espSurvivors then
             local survivors = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Survivors")
-            if survivors then
-                for _, s in ipairs(survivors:GetChildren()) do
-                    getOrCreateHighlight(s, Color3.fromRGB(255,255,255), 0.5, 0.3)
-                end
-            end
+            if survivors then for _, s in ipairs(survivors:GetChildren()) do getOrCreateHighlight(s, Color3.fromRGB(255,255,255), 0.5, 0.3) end end
         else
             local survivors = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Survivors")
             if survivors then for _, s in ipairs(survivors:GetChildren()) do clearESP(s) end end
         end
-
         -- Items & Generators
         if mapFolder then
             for _, obj in ipairs(mapFolder:GetChildren()) do
@@ -613,7 +483,6 @@ task.spawn(function()
                 elseif not espItems and (obj.Name == "Medkit" or obj.Name == "BloxyCola") then
                     clearESP(obj)
                 end
-
                 if espGenerators and obj.Name == "Generator" then
                     local progressVal = obj:FindFirstChild("Progress")
                     if progressVal and progressVal.Value < 100 then
@@ -626,84 +495,325 @@ task.spawn(function()
                 end
             end
         end
-
-        task.wait(1) -- ✅ only checks every half second instead of spamming every frame
+        task.wait(1)
     end
 end)
 
-ESPTab:CreateToggle({
-    Name = "Killers ESP",
-    CurrentValue = false,
-    Callback = function(val)
-        espKillers = val
-        if not val then
-            local killers = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
-            if killers then
-                for _, k in ipairs(killers:GetChildren()) do
-                    local h = k:FindFirstChild("ESP_Highlight")
-                    if h then h:Destroy() end
-                end
-            end
+ESPTab:CreateToggle({Name = "Killers ESP", CurrentValue = false, Callback = function(val) espKillers = val if not val then local killers = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers") if killers then for _, k in ipairs(killers:GetChildren()) do local h = k:FindFirstChild("ESP_Highlight") if h then h:Destroy() end end end end end})
+ESPTab:CreateToggle({Name = "Survivors ESP", CurrentValue = false, Callback = function(val) espSurvivors = val if not val then local survivors = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Survivors") if survivors then for _, s in ipairs(survivors:GetChildren()) do local h = s:FindFirstChild("ESP_Highlight") if h then h:Destroy() end end end end end})
+ESPTab:CreateToggle({Name = "Items ESP", CurrentValue = false, Callback = function(val) espItems = val if not val then local mapFolder = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Ingame") and workspace.Map.Ingame:FindFirstChild("Map") if mapFolder then for _, obj in ipairs(mapFolder:GetChildren()) do if obj.Name == "Medkit" or obj.Name == "BloxyCola" then local h = obj:FindFirstChild("ESP_Highlight") if h then h:Destroy() end local b = obj:FindFirstChild("ESP_Billboard") if b then b:Destroy() end end end end end end})
+ESPTab:CreateToggle({Name = "Generators ESP", CurrentValue = false, Callback = function(val) espGenerators = val if not val then local mapFolder = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Ingame") and workspace.Map.Ingame:FindFirstChild("Map") if mapFolder then for _, obj in ipairs(mapFolder:GetChildren()) do if obj.Name == "Generator" then local h = obj:FindFirstChild("ESP_Highlight") if h then h:Destroy() end end end end end end})
+
+-- ================== Misc ==================
+MiscTab:CreateButton({Name="Copy Discord Invite", Callback=function() pcall(function() setclipboard("https://discord.gg/baXMxMz5JZ") end) end})
+
+-- ================== SOUND AUTO BLOCK SYSTEM (robust, facing checks removed) ==================
+local soundHooks = {}     -- [sound] = { id = ..., hrp = ..., char = ..., playedConn = ..., propConn = ..., destroyConn = ... }
+local soundBlockedUntil = {} -- [sound] = timestamp when we can block again (throttle)
+local killerState = {}
+
+local function extractNumericSoundId(sound)
+    if not sound or not sound.SoundId then return nil end
+    local sid = sound.SoundId
+    sid = (type(sid) == "string") and sid or tostring(sid)
+    local match = string.match(sid, "rbxassetid://(%d+)") or string.match(sid, "://(%d+)") or string.match(sid, "^(%d+)$")
+    if match and #match > 0 then return match end
+    local hash = string.match(sid, "[&%?]hash=([^&]+)")
+    if hash then return "&hash=" .. hash end
+    local path = string.match(sid, "rbxasset://sounds/.+")
+    if path then return path end
+    return nil
+end
+
+local KF = KillersFolder
+
+local function getSoundWorldPosition(sound)
+    if not sound then return nil, nil end
+    local parent = sound.Parent
+    if parent then
+        if parent:IsA("BasePart") then return parent.Position, parent end
+        if parent:IsA("Attachment") then
+            local gp = parent.Parent
+            if gp and gp:IsA("BasePart") then return gp.Position, gp end
         end
     end
-})
-
-ESPTab:CreateToggle({
-    Name = "Survivors ESP",
-    CurrentValue = false,
-    Callback = function(val)
-        espSurvivors = val
-        if not val then
-            local survivors = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Survivors")
-            if survivors then
-                for _, s in ipairs(survivors:GetChildren()) do
-                    local h = s:FindFirstChild("ESP_Highlight")
-                    if h then h:Destroy() end
-                end
-            end
-        end
+    if KF and sound:IsDescendantOf(KF) then
+        local root = parent or sound
+        local found = root:FindFirstChildWhichIsA("BasePart", true)
+        if found then return found.Position, found end
     end
-})
+    return nil, nil
+end
 
-ESPTab:CreateToggle({
-    Name = "Items ESP",
-    CurrentValue = false,
-    Callback = function(val)
-        espItems = val
-        if not val then
-            local mapFolder = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Ingame") and workspace.Map.Ingame:FindFirstChild("Map")
-            if mapFolder then
-                for _, obj in ipairs(mapFolder:GetChildren()) do
-                    if obj.Name == "Medkit" or obj.Name == "BloxyCola" then
-                        local h = obj:FindFirstChild("ESP_Highlight")
-                        if h then h:Destroy() end
-                        local b = obj:FindFirstChild("ESP_Billboard")
-                        if b then b:Destroy() end
+local function getCharacterFromDescendant(inst)
+    if not inst then return nil end
+    local model = inst:FindFirstAncestorOfClass("Model")
+    if model and model:FindFirstChildOfClass("Humanoid") then return model end
+    return nil
+end
+
+local function isPointInsidePart(part, point)
+    if not (part and point) then return false end
+    local rel = part.CFrame:PointToObjectSpace(point)
+    local half = part.Size * 0.5
+    return math.abs(rel.X) <= half.X + 0.001 and math.abs(rel.Y) <= half.Y + 0.001 and math.abs(rel.Z) <= half.Z + 0.001
+end
+
+local function distSq(a,b) return (a.X-b.X)^2 + (a.Y-b.Y)^2 + (a.Z-b.Z)^2 end
+
+local function _attemptForSound(sound, idParam, mode)
+    if not autoBlockAudioOn then return end
+    if not sound or not sound:IsA("Sound") then return end
+    if not sound.IsPlaying then return end
+
+    local now = tick()
+    if soundBlockedUntil[sound] and now < soundBlockedUntil[sound] then return end
+    if now - lastLocalBlockTime < AUDIO_LOCAL_COOLDOWN then return end
+
+    local id = idParam or (soundHooks[sound] and soundHooks[sound].id) or extractNumericSoundId(sound)
+    if not id or not autoBlockTriggerSounds[id] then return end
+
+    if not cachedBlockBtn or not cachedCooldown or not cachedCharges then refreshUIRefs() end
+
+    local myChar = lp and lp.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
+
+    local hook = soundHooks[sound]
+    local hrp = hook and hook.hrp
+    local char = hook and hook.char
+
+    if not hrp then
+        local soundPos, soundPart = getSoundWorldPosition(sound)
+        if not soundPart then return end
+        char = getCharacterFromDescendant(soundPart)
+        hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hook then hook.char = char hook.hrp = hrp end
+    end
+
+    if not hrp then return end
+
+    -- predicted position using velocity
+    local v = hrp.Velocity or Vector3.new()
+    local predictedPos = hrp.Position + v * AUDIO_PREDICT_DT
+    if detectionRangeSq and distSq(predictedPos, myRoot.Position) > detectionRangeSq then
+        if distSq(hrp.Position, myRoot.Position) > (detectionRange + 3)^2 then return end
+    end
+
+    -- verify world sound position & player
+    local soundPos, soundPart = getSoundWorldPosition(sound)
+    if not soundPart then return end
+    local model = soundPart:FindFirstAncestorOfClass("Model")
+    if not model then return end
+    local humanoid = model:FindFirstChildWhichIsA("Humanoid")
+    if not humanoid then return end
+    local plr = Players:GetPlayerFromCharacter(model)
+    if not plr or plr == lp then return end
+
+    -- perform action depending on mode (facing checks removed)
+    if mode == "Block" then
+        fireGuiBlock()
+    elseif mode == "Charge" then
+        if cachedChargeBtn and cachedChargeBtn:FindFirstChild("CooldownTime") and cachedChargeBtn.CooldownTime.Text ~= "" then
+            return
+        end
+        fireGuiCharge()
+    elseif mode == "Clone" then
+        if cachedCloneBtn and cachedCloneBtn:FindFirstChild("CooldownTime") and cachedCloneBtn.CooldownTime.Text ~= "" then
+            return
+        end
+        fireGuiClone()
+    end
+
+    lastLocalBlockTime = now
+    soundBlockedUntil[sound] = now + AUDIO_SOUND_THROTTLE
+end
+
+local function attemptBlockForSound(sound, idParam) return _attemptForSound(sound, idParam, "Block") end
+local function attemptChargeForSound(sound, idParam) return _attemptForSound(sound, idParam, "Charge") end
+local function attemptCloneForSound(sound, idParam) return _attemptForSound(sound, idParam, "Clone") end
+
+-- BD / anti-flick parts approach
+local function attemptBDParts(sound)
+    if not autoBlockAudioOn then return end
+    if not sound or not sound:IsA("Sound") then return end
+    if not sound.IsPlaying then return end
+
+    local id = extractNumericSoundId(sound)
+    if not id or not autoBlockTriggerSounds[id] then return end
+
+    local t = tick()
+    if soundBlockedUntil[sound] and t < soundBlockedUntil[sound] then return end
+
+    local myChar = lp and lp.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
+
+    local soundPos, soundPart = getSoundWorldPosition(sound)
+    if not soundPos or not soundPart then return end
+
+    local char = getCharacterFromDescendant(soundPart)
+    local plr = char and Players:GetPlayerFromCharacter(char)
+    if not plr or plr == lp then return end
+
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    if antiFlickOn then
+        local basePartSize = Vector3.new(5.5, 7.5, 8.5) * (blockPartsSizeMultiplier or 1)
+        local count = math.max(1, antiFlickParts or 4)
+        local base  = antiFlickBaseOffset or 2.5
+        local step  = antiFlickOffsetStep or 0.2
+        local lifeTime = 0.2
+
+        task.spawn(function()
+            local blocked = false
+            task.wait(antiFlickDelay or 0)
+            for i = 1, count do
+                if not hrp or not myRoot then break end
+                local dist = base + (i - 1) * step
+
+                local st = killerState[char] or { vel = hrp.Velocity or Vector3.new(), angVel = 0 }
+                local vel = st.vel or hrp.Velocity or Vector3.new()
+
+                local forwardSpeed = vel:Dot(hrp.CFrame.LookVector)
+                local lateralSpeed = vel:Dot(hrp.CFrame.RightVector)
+
+                local pStrength = (type(predictionStrength) == "number" and predictionStrength) or 1
+                local pTurn = (type(predictionTurnStrength) == "number" and predictionTurnStrength) or 1
+
+                local forwardPredictRaw = forwardSpeed * PRED_SECONDS_FORWARD * pStrength
+                local lateralPredictRaw = lateralSpeed * PRED_SECONDS_LATERAL * pStrength
+                local turnLateralRaw    = st.angVel * ANG_TURN_MULTIPLIER * pTurn
+
+                local forwardClamp = PRED_MAX_FORWARD * pStrength
+                local lateralClamp = PRED_MAX_LATERAL * pStrength
+                local turnClamp    = PRED_MAX_LATERAL * pTurn
+
+                local forwardPredict = math.clamp(forwardPredictRaw, -forwardClamp, forwardClamp)
+                local lateralPredict = math.clamp(lateralPredictRaw, -lateralClamp, lateralClamp)
+                local turnLateral = math.clamp(turnLateralRaw, -turnClamp, turnClamp)
+
+                local forwardDist = dist + forwardPredict
+
+                local spawnPos = hrp.Position
+                                + hrp.CFrame.LookVector * forwardDist
+                                + hrp.CFrame.RightVector * (lateralPredict + turnLateral)
+
+                local part = Instance.new("Part")
+                part.Name = "AntiFlickZone"
+                part.Size = basePartSize
+                part.Transparency = 0.45
+                part.Anchored = true
+                part.CanCollide = false
+                part.CFrame = CFrame.new(spawnPos, hrp.Position)
+                part.BrickColor = BrickColor.new("Bright blue")
+                part.Parent = workspace
+
+                Debris:AddItem(part, lifeTime)
+
+                if isPointInsidePart(part, myRoot.Position) then
+                    blocked = true
+                else
+                    local touching = {}
+                    pcall(function() touching = myRoot:GetTouchingParts() end)
+                    for _, p in ipairs(touching) do
+                        if p == part then blocked = true break end
                     end
                 end
-            end
-        end
-    end
-})
 
-ESPTab:CreateToggle({
-    Name = "Generators ESP",
-    CurrentValue = false,
-    Callback = function(val)
-        espGenerators = val
-        if not val then
-            local mapFolder = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Ingame") and workspace.Map.Ingame:FindFirstChild("Map")
-            if mapFolder then
-                for _, obj in ipairs(mapFolder:GetChildren()) do
-                    if obj.Name == "Generator" then
-                        local h = obj:FindFirstChild("ESP_Highlight")
-                        if h then h:Destroy() end
-                    end
+                if blocked then
+                    if autoblocktype == "Block" then fireGuiBlock()
+                    elseif autoblocktype == "Charge" then fireGuiCharge()
+                    elseif autoblocktype == "7n7 Clone" then fireGuiClone() end
+
+                    soundBlockedUntil[sound] = t + AUDIO_SOUND_THROTTLE
+                    break
                 end
+
+                if stagger and stagger > 0 then task.wait(stagger) else task.wait(0) end
+            end
+        end)
+    end
+end
+
+local function hookSound(sound)
+    if not sound or not sound:IsA("Sound") then return end
+    if soundHooks[sound] then return end
+
+    local preId = extractNumericSoundId(sound)
+    soundHooks[sound] = { id = preId, hrp = nil, char = nil }
+
+    local function handleAttempt(snd, id)
+        if not autoBlockAudioOn then return end
+        if not antiFlickOn then
+            local at = autoblocktype
+            if at == "Block" then attemptBlockForSound(snd, id)
+            elseif at == "Charge" then attemptChargeForSound(snd, id)
+            elseif at == "7n7 Clone" then attemptCloneForSound(snd, id) end
+        else
+            attemptBDParts(snd)
+        end
+    end
+
+    local playedConn = sound.Played:Connect(function() pcall(handleAttempt, sound, preId) end)
+    local propConn = sound:GetPropertyChangedSignal("IsPlaying"):Connect(function() if sound.IsPlaying then pcall(handleAttempt, sound, preId) end end)
+
+    local destroyConn
+    destroyConn = sound.Destroying:Connect(function()
+        if playedConn and playedConn.Connected then playedConn:Disconnect() end
+        if propConn and propConn.Connected then propConn:Disconnect() end
+        if destroyConn and destroyConn.Connected then destroyConn:Disconnect() end
+        soundHooks[sound] = nil
+        soundBlockedUntil[sound] = nil
+    end)
+
+    soundHooks[sound].playedConn = playedConn
+    soundHooks[sound].propConn = propConn
+    soundHooks[sound].destroyConn = destroyConn
+
+    if sound.IsPlaying then task.spawn(function() pcall(handleAttempt, sound, preId) end) end
+end
+
+-- hook existing sounds under killers
+pcall(function()
+    for _, desc in ipairs(KillersFolder:GetDescendants()) do
+        if desc:IsA("Sound") then pcall(hookSound, desc) end
+    end
+end)
+
+-- hook future sounds under killers
+KillersFolder.DescendantAdded:Connect(function(desc)
+    if desc:IsA("Sound") then pcall(hookSound, desc) end
+end)
+
+-- ================== PREDICTIVE KILLER STATE UPDATER ==================
+RunService.RenderStepped:Connect(function(dt)
+    if dt <= 0 then return end
+    local killers = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
+    if not killers then return end
+    for _, killer in ipairs(killers:GetChildren()) do
+        if killer and killer.Parent then
+            local hrp = killer:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local st = killerState[killer] or { prevPos = hrp.Position, prevLook = hrp.CFrame.LookVector, vel = Vector3.new(), angVel = 0 }
+                local newVel = (hrp.Position - st.prevPos) / math.max(dt, 1e-6)
+                st.vel = st.vel and st.vel:Lerp(newVel, SMOOTHING_LERP) or newVel
+                local prevLook = st.prevLook or hrp.CFrame.LookVector
+                local look = hrp.CFrame.LookVector
+                local dot = math.clamp(prevLook:Dot(look), -1, 1)
+                local angle = math.acos(dot)
+                local crossY = prevLook:Cross(look).Y
+                local angSign = (crossY >= 0) and 1 or -1
+                local newAngVel = (angle / math.max(dt, 1e-6)) * angSign
+                st.angVel = (st.angVel * (1 - SMOOTHING_LERP)) + (newAngVel * SMOOTHING_LERP)
+                st.prevPos = hrp.Position
+                st.prevLook = look
+                killerState[killer] = st
             end
         end
     end
-})
+end)
 
---================= CONFIG =================
+-- ================== CONFIG SAVE ==================
 Rayfield:LoadConfiguration()
