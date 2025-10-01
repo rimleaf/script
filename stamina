@@ -120,3 +120,36 @@ end)
 LocalPlayer.CharacterAdded:Connect(function(character)
     setupCharacter(character)
 end)
+wait(0.4)
+--[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+if getgenv().SpawnistAreGay then
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "u already executed what are you stupid?",
+        Text = "lol",
+        Duration = 10
+    })
+    return
+end
+getgenv().SpawnistAreGay = true
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Util = require(ReplicatedStorage.Modules.Util)
+local Behavior = require(ReplicatedStorage.Assets.Survivors.Dusekkar.Behavior)
+
+hookfunction(Util.IsOnScreen, function(...)
+    return true
+end)
+
+local isCharWithinRadius = debug.getupvalue(Behavior.Created, 3)
+hookfunction(isCharWithinRadius, function(...)
+    return true, 0
+end)
+
+game.StarterGui:SetCore("SendNotification", {
+    Title = "spawn protection bypass ez niggernigger",
+    Text = "smd nigger",
+    Duration = 5
+})
