@@ -136,13 +136,15 @@ local _cachedCharges = cachedCharges
 local LOCAL_BLOCK_COOLDOWN = 1   -- optimistic local cooldown (tune as needed)
 local lastLocalBlockTime = 0
 
+-- Utility: get nearest killer HRP within a max distance
 local function getNearestKillerRoot(maxDist)
+    local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
     if not killersFolder then return nil end
 
     local myRoot = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
     if not myRoot then return nil end
 
-    local closest, closestDist = nil, maxDist or math.huge
+    local closest, closestDist = nil, maxDist or apRange or math.huge
     for _, killer in ipairs(killersFolder:GetChildren()) do
         local hrp = killer:FindFirstChild("HumanoidRootPart")
         if hrp then
@@ -154,6 +156,7 @@ local function getNearestKillerRoot(maxDist)
     end
     return closest
 end
+
 
 -- Robust GUI-based activation (NO remotes)
 local function tryActivateButton(btn)
