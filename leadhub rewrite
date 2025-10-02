@@ -137,7 +137,6 @@ local LOCAL_BLOCK_COOLDOWN = 0.7   -- optimistic local cooldown (tune as needed)
 local lastLocalBlockTime = 0
 
 local function getNearestKillerRoot(maxDist)
-    local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
     if not killersFolder then return nil end
 
     local myRoot = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
