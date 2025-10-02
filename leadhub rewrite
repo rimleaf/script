@@ -116,7 +116,7 @@ refreshUIRefs()
 if cachedPlayerGui then
     cachedPlayerGui.ChildAdded:Connect(function(child)
         if child.Name == "MainUI" then
-            task.delay(0.02, refreshUIRefs)
+            task.delay(0.1, refreshUIRefs)
         end
     end)
 end
@@ -133,7 +133,7 @@ local _fireRemotePunch = fireRemotePunch
 local _cachedBlockBtn = cachedBlockBtn
 local _cachedCooldown = cachedCooldown            -- these may be updated by refreshUIRefs
 local _cachedCharges = cachedCharges
-local LOCAL_BLOCK_COOLDOWN = 0.7   -- optimistic local cooldown (tune as needed)
+local LOCAL_BLOCK_COOLDOWN = 1   -- optimistic local cooldown (tune as needed)
 local lastLocalBlockTime = 0
 
 local function getNearestKillerRoot(maxDist)
