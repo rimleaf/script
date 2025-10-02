@@ -779,7 +779,7 @@ local function beginDragIntoKiller(killerModel)
         end
 
         -- stop condition: when very close to killer (adjust threshold as needed)
-        local stopDist = 2.0
+        local stopDist = 1.0
         if dist <= stopDist then
             _hitboxDraggingDebounce = false
             -- cleanup will happen in next loop tick
