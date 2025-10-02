@@ -279,7 +279,7 @@ RunService.Heartbeat:Connect(function()
 						return
 					end
 					local elapsed = tick() - start
-					if elapsed >= 0.5 then
+					if elapsed >= 0.47 then
 						if connection then connection:Disconnect() end
 						return
 					end
