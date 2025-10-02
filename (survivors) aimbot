@@ -166,7 +166,7 @@ end
 
 -- Main loop
 RunService.Heartbeat:Connect(function()
-	if not enabled or cooldown then return end
+	if not enabled or isDaggerReady() then return end
 
 	local char = lp.Character
 	if not (char and char:FindFirstChild("HumanoidRootPart")) then return end
