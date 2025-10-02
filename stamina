@@ -15,7 +15,8 @@ local toggled = false
 local Sprinting = ReplicatedStorage.Systems.Character.Game.Sprinting
 local Module = require(Sprinting)
 
--- [ lol guys legitimate gameplay right here yall lalalala ]
+-- lol guys legitimate gameplay right here yall lalalala 
+-- [ Stamina Script ]
 RunService.RenderStepped:Connect(function()
 	local humanoid = Character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
@@ -29,8 +30,8 @@ RunService.RenderStepped:Connect(function()
 			Module.SprintSpeed = 27.4
 		end
 
-		-- Check stamina value and stop loss at 1
-		if Module.Stamina and Module.Stamina <= 1 then
+		-- check stamina value and stop loss at 3 or less idk im so fucked up rn
+		if Module.Stamina and Module.Stamina <= 3 then
 			Module.StaminaLoss = 0
 		else
 			Module.StaminaLoss = 10
