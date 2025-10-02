@@ -51,7 +51,7 @@ local enabled = false
 local cooldown = false
 local lastTarget = nil
 local range = 4
-local killerNames = { "Jason", "c00lkidd", "JohnDoe", "1x1x1x1", "Noli" }
+local killerNames = { "Slasher", "c00lkidd", "JohnDoe", "1x1x1x1", "Noli" }
 local killersFolder = workspace:WaitForChild("Players"):WaitForChild("Killers")
 
 -- GUI toggle
