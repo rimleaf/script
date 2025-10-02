@@ -136,6 +136,34 @@ local function activateDagger()
 	end
 end
 
+local function isDaggerReady()
+    local daggerBtn = lp:FindFirstChild("PlayerGui")
+        and lp.PlayerGui:FindFirstChild("MainUI")
+        and lp.PlayerGui.MainUI:FindFirstChild("AbilityContainer")
+        and lp.PlayerGui.MainUI.AbilityContainer:FindFirstChild("Dagger")
+
+    if not daggerBtn then return false end
+
+    -- Try CooldownTime first
+    local cooldownLabel = daggerBtn:FindFirstChild("CooldownTime")
+    if cooldownLabel and cooldownLabel:IsA("TextLabel") then
+        if cooldownLabel.Text ~= "" then
+            return false
+        end
+    end
+
+    -- Try Charges (if dagger works like punch)
+    local charges = daggerBtn:FindFirstChild("Charges")
+    if charges and charges:IsA("TextLabel") then
+        local num = tonumber(charges.Text)
+        if not num or num < 1 then
+            return false
+        end
+    end
+
+    return true
+end
+
 -- Main loop
 RunService.Heartbeat:Connect(function()
 	if not enabled or cooldown then return end
@@ -170,7 +198,7 @@ RunService.Heartbeat:Connect(function()
 					end
 
 					-- Constant TP behind killer
-					local behindPos = kHRP.Position - (kHRP.CFrame.LookVector * 0.3)
+					local behindPos = kHRP.Position - (kHRP.CFrame.LookVector * 3)
 					hrp.CFrame = CFrame.new(behindPos, behindPos + kHRP.CFrame.LookVector)
 
 					-- Align look direction & use dagger (once at start)
@@ -190,7 +218,9 @@ RunService.Heartbeat:Connect(function()
 
 						-- ✅ Dagger via GUI button instead of FireServer
                         wait(0.07)
-						activateDagger()
+						if isDaggerReady() then
+							activateDagger()
+						end
 					end
 				end)
 
