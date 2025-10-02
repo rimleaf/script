@@ -475,23 +475,29 @@ RunService.RenderStepped:Connect(function()
         and gui.MainUI.AbilityContainer:FindFirstChild("Punch")
         and gui.MainUI.AbilityContainer.Punch:FindFirstChild("Charges")
 
-    if chargesObj and tostring(chargesObj.Text) == "1" then
-        local target = getNearestKillerRoot()
+    local charges = chargesObj and tonumber(chargesObj.Text) or 0
+    if charges > 0 then
         local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+        local target = getNearestKillerRoot(apRange)
         if target and root then
             aiming = true
+            refreshUIRefs()
             fireGuiPunch()
+
             local startTime = tick()
             task.spawn(function()
-                while tick() - startTime < 1.3 and root and target do
-                    root.CFrame = CFrame.new(root.Position, target.Position)
-                    task.wait()
-                end
+                pcall(function()
+                    while tick() - startTime < 1.3 and root and target and target.Parent do
+                        root.CFrame = CFrame.new(root.Position, target.Position)
+                        task.wait()
+                    end
+                end)
                 aiming = false
             end)
         end
     end
 end)
+
 
 
 local Dspeed = 12 -- you can tweak these numbers
