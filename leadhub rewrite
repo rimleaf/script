@@ -810,7 +810,7 @@ RunService.RenderStepped:Connect(function()
                     -- spawn so we don't block the RenderStepped loop
                     task.wait(Ddelay)
                     task.spawn(function() beginDragIntoKiller(nearest) end)
-                    startChargeAimUntilChargeEnds(0.4)
+                    --startChargeAimUntilChargeEnds(0.4)
                 end
             end
         end
