@@ -1,5 +1,7 @@
 loadstring(game:HttpGet("https://raw.githubusercontent.com/skibidi399/Chance-aimbot/refs/heads/main/Chance%20aimbot%20v2"))()
 wait(0.1)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/skibidi399/Auto-backstab-two-time/refs/heads/main/Script"))()
+wait(0.2)
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 
