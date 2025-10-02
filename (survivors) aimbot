@@ -1,3 +1,14 @@
 loadstring(game:HttpGet("https://raw.githubusercontent.com/skibidi399/Chance-aimbot/refs/heads/main/Chance%20aimbot%20v2"))()
 wait(0.1)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/skibidi399/Auto-backstab-two-time/refs/heads/main/bakctsab%20v2.3"))()
+wait(0.2)
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local function enforceZoom()
+    if LocalPlayer and LocalPlayer.CameraMaxZoomDistance ~= MaxZoomValue then
+        LocalPlayer.CameraMaxZoomDistance = MaxZoomValue
+    end
+end
+
+LocalPlayer:GetPropertyChangedSignal("CameraMaxZoomDistance"):Connect(enforceZoom)
