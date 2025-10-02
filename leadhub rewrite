@@ -12,10 +12,10 @@ local lp = LocalPlayer
 -- Rayfield
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local Window = Rayfield:CreateWindow({
-    Name = "Lead Hub",
-    LoadingTitle = "Lead Hub",
-    LoadingSubtitle = "by Triplex",
-    ConfigurationSaving = {Enabled = true, FolderName = "LeadHub", FileName = "Settings"},
+    Name = "NIGGER HUB",
+    LoadingTitle = "NIGGER HUB",
+    LoadingSubtitle = "by NIGGER",
+    ConfigurationSaving = {Enabled = true, FolderName = "NIGGER", FileName = "Settings"},
     Discord = {Enabled = false},
     KeySystem = false
 })
