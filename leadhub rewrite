@@ -60,7 +60,7 @@ local autoBlockOn = false
 local autoPunchOn = false
 local infiniteStamina = true
 local detectionRange = 13
-local apRange = 7 -- punch range in studs
+local apRange = 13 -- punch range in studs
 local generatorCooldown = 2.5
 
 local blockAnimIds = {
