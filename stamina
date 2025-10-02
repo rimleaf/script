@@ -20,12 +20,12 @@ RunService.RenderStepped:Connect(function()
 	local humanoid = Character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
 		if humanoid.Health >= 200 then
-			Module.MaxStamina = 120
-			Module.StaminaGain = 60
-			Module.StaminaLoss = 10
-			Module.SprintSpeed = 29.5
-		else
 			Module.MaxStamina = 110
+			Module.StaminaGain = 40
+			Module.StaminaLoss = 10
+			Module.SprintSpeed = 28.5
+		else
+			Module.MaxStamina = 100
 			Module.StaminaGain = 40
 			Module.StaminaLoss = 10
 			Module.SprintSpeed = 27.4
@@ -57,7 +57,7 @@ end
 
 
 -- The speed of the original Void Rush from your config
-local ORIGINAL_DASH_SPEED = 80
+local ORIGINAL_DASH_SPEED = 100
 
 local isOverrideActive = false
 local connection
