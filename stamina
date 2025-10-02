@@ -31,7 +31,7 @@ RunService.RenderStepped:Connect(function()
 		end
 
 		-- check stamina value and stop loss at 3 or less idk im so fucked up rn
-		if Module.Stamina and Module.Stamina <= 1 then
+		if Module.Stamina and Module.Stamina <= 1.5 then
 			Module.StaminaLoss = 0
 		else
 			Module.StaminaLoss = 8
