@@ -11,32 +11,42 @@ screenGui.Name = "BackstabToggleGui"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = lp:WaitForChild("PlayerGui")
 
+-- Main draggable frame (the full UI)
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 180, 0, 150)
+mainFrame.Position = UDim2.new(0, 10, 0, 10)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+mainFrame.BackgroundTransparency = 0.3
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
 -- Toggle Button
 local toggleButton = Instance.new("TextButton")
 toggleButton.Size = UDim2.new(0, 150, 0, 40)
-toggleButton.Position = UDim2.new(0, 10, 0, 10)
+toggleButton.Position = UDim2.new(0, 15, 0, 10)
 toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggleButton.Font = Enum.Font.SourceSansBold
 toggleButton.TextSize = 20
 toggleButton.Text = "Backstab: OFF"
-toggleButton.Parent = screenGui
+toggleButton.Parent = mainFrame
 
 -- Range Label
 local rangeLabel = Instance.new("TextLabel")
 rangeLabel.Size = UDim2.new(0, 150, 0, 20)
-rangeLabel.Position = UDim2.new(0, 10, 0, 55)
+rangeLabel.Position = UDim2.new(0, 15, 0, 55)
 rangeLabel.BackgroundTransparency = 1
 rangeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 rangeLabel.Font = Enum.Font.SourceSans
 rangeLabel.TextSize = 16
 rangeLabel.Text = "Range:"
-rangeLabel.Parent = screenGui
+rangeLabel.Parent = mainFrame
 
 -- TextBox for Range Input
 local rangeBox = Instance.new("TextBox")
 rangeBox.Size = UDim2.new(0, 150, 0, 25)
-rangeBox.Position = UDim2.new(0, 10, 0, 75)
+rangeBox.Position = UDim2.new(0, 15, 0, 75)
 rangeBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 rangeBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 rangeBox.Font = Enum.Font.SourceSans
@@ -44,9 +54,55 @@ rangeBox.TextSize = 16
 rangeBox.PlaceholderText = "Enter range (1 - 10)"
 rangeBox.Text = "4"
 rangeBox.ClearTextOnFocus = false
-rangeBox.Parent = screenGui
+rangeBox.Parent = mainFrame
 
--- Vars
+-- Mode Toggle
+local modeButton = Instance.new("TextButton")
+modeButton.Size = UDim2.new(0, 150, 0, 25)
+modeButton.Position = UDim2.new(0, 15, 0, 105)
+modeButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+modeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+modeButton.Font = Enum.Font.SourceSans
+modeButton.TextSize = 16
+modeButton.Text = "Mode: Behind"
+modeButton.Parent = mainFrame
+
+---------------------------------------------------------
+-- 🔽 Master Toggle UI (new small draggable toggle) 🔽 --
+---------------------------------------------------------
+
+local miniGui = Instance.new("ScreenGui")
+miniGui.Name = "BackstabMiniToggle"
+miniGui.ResetOnSpawn = false
+miniGui.Parent = lp:WaitForChild("PlayerGui")
+
+local miniFrame = Instance.new("Frame")
+miniFrame.Size = UDim2.new(0, 120, 0, 35)
+miniFrame.Position = UDim2.new(0, 200, 0, 10)
+miniFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+miniFrame.Active = true
+miniFrame.Draggable = true
+miniFrame.Parent = miniGui
+
+local miniButton = Instance.new("TextButton")
+miniButton.Size = UDim2.new(1, 0, 1, 0)
+miniButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+miniButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+miniButton.Font = Enum.Font.SourceSansBold
+miniButton.TextSize = 16
+miniButton.Text = "Hide UI"
+miniButton.Parent = miniFrame
+
+-- Toggle mainFrame visibility
+miniButton.MouseButton1Click:Connect(function()
+	mainFrame.Visible = not mainFrame.Visible
+	miniButton.Text = mainFrame.Visible and "Hide UI" or "Show UI"
+end)
+
+---------------------------------------------------------
+-- 🔽 Logic + Backstab system code 🔽 --
+---------------------------------------------------------
+
 local enabled = false
 local cooldown = false
 local lastTarget = nil
@@ -71,18 +127,8 @@ rangeBox.FocusLost:Connect(function()
 	end
 end)
 
--- Mode Toggle
+-- Mode toggle
 local mode = "Behind"
-local modeButton = Instance.new("TextButton")
-modeButton.Size = UDim2.new(0, 150, 0, 25)
-modeButton.Position = UDim2.new(0, 10, 0, 105)
-modeButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-modeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-modeButton.Font = Enum.Font.SourceSans
-modeButton.TextSize = 16
-modeButton.Text = "Mode: Behind"
-modeButton.Parent = screenGui
-
 modeButton.MouseButton1Click:Connect(function()
 	if mode == "Behind" then
 		mode = "Around"
@@ -116,10 +162,8 @@ local function activateDagger()
 		and lp.PlayerGui.MainUI.AbilityContainer:FindFirstChild("Dagger")
 
 	if daggerBtn then
-		-- Try Activate()
 		pcall(function() daggerBtn:Activate() end)
 
-		-- Try getconnections if available
 		if typeof(getconnections) == "function" then
 			for _, conn in ipairs(getconnections(daggerBtn.MouseButton1Click)) do
 				pcall(function()
@@ -144,7 +188,6 @@ local function isDaggerReady()
 
     if not daggerBtn then return false end
 
-    -- Try CooldownTime first
     local cooldownLabel = daggerBtn:FindFirstChild("CooldownTime")
     if cooldownLabel and cooldownLabel:IsA("TextLabel") then
         if cooldownLabel.Text ~= "" then
@@ -152,7 +195,6 @@ local function isDaggerReady()
         end
     end
 
-    -- Try Charges (if dagger works like punch)
     local charges = daggerBtn:FindFirstChild("Charges")
     if charges and charges:IsA("TextLabel") then
         local num = tonumber(charges.Text)
@@ -181,7 +223,6 @@ RunService.Heartbeat:Connect(function()
 				cooldown = true
 				lastTarget = killer
 
-				-- Begin sum secs constant teleporting behind killer
 				local start = tick()
 				local didDagger = false
 
@@ -197,15 +238,12 @@ RunService.Heartbeat:Connect(function()
 						return
 					end
 
-					-- Constant TP behind killer
 					local behindPos = kHRP.Position - (kHRP.CFrame.LookVector * 3)
 					hrp.CFrame = CFrame.new(behindPos, behindPos + kHRP.CFrame.LookVector)
 
-					-- Align look direction & use dagger (once at start)
 					if not didDagger then
 						didDagger = true
 
-						-- Align to killer’s facing
 						local faceStart = tick()
 						local faceConn
 						faceConn = RunService.Heartbeat:Connect(function()
@@ -216,15 +254,13 @@ RunService.Heartbeat:Connect(function()
 							hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + kHRP.CFrame.LookVector)
 						end)
 
-						-- ✅ Dagger via GUI button instead of FireServer
-                        wait(0.07)
+						wait(0.07)
 						if isDaggerReady() then
 							activateDagger()
 						end
 					end
 				end)
 
-				-- Wait and reset cooldown after leaving range
 				task.delay(2, function()
 					RunService.Heartbeat:Wait()
 					while isBehindTarget(hrp, kHRP) do
