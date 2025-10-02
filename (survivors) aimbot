@@ -1,3 +1,57 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/skibidi399/Chance-aimbot/refs/heads/main/Chance%20aimbot%20v2"))()
+wait(0.1)
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
+
+local LocalPlayer = Players.LocalPlayer
+
+--// Config
+local BrightnessValue = 2
+local TimeOfDayValue = "12:00:00" -- Noon
+local FogEndValue = 1e6
+local GlobalShadowsValue = false
+local MaxZoomValue = 100 -- change this to whatever max zoom you want
+
+--// Function to enforce lighting
+local function enforceSettings()
+    Lighting.Brightness = BrightnessValue
+    Lighting.TimeOfDay = TimeOfDayValue
+    Lighting.FogEnd = FogEndValue
+    Lighting.GlobalShadows = GlobalShadowsValue
+
+    -- If Atmosphere exists, override its settings too
+    local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+    if atmosphere then
+        atmosphere.Haze = 0
+        atmosphere.Density = 0
+    end
+end
+
+--// Function to enforce zoom
+local function enforceZoom()
+    if LocalPlayer and LocalPlayer.CameraMaxZoomDistance ~= MaxZoomValue then
+        LocalPlayer.CameraMaxZoomDistance = MaxZoomValue
+    end
+end
+
+-- Initial enforcement
+enforceSettings()
+enforceZoom()
+
+-- Keep lighting consistent
+Lighting:GetPropertyChangedSignal("Brightness"):Connect(enforceSettings)
+Lighting:GetPropertyChangedSignal("TimeOfDay"):Connect(enforceSettings)
+Lighting:GetPropertyChangedSignal("FogEnd"):Connect(enforceSettings)
+Lighting:GetPropertyChangedSignal("GlobalShadows"):Connect(enforceSettings)
+Lighting.ChildAdded:Connect(function(child)
+    if child:IsA("Atmosphere") then
+        enforceSettings()
+    end
+end)
+
+-- Keep zoom consistent
+LocalPlayer:GetPropertyChangedSignal("CameraMaxZoomDistance"):Connect(enforceZoom)
+wait(0.2)
 -- Backstab Script (final style, cooldown-only Dagger)
 
 local Players = game:GetService("Players")
