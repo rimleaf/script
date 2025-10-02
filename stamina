@@ -15,20 +15,25 @@ local toggled = false
 local Sprinting = ReplicatedStorage.Systems.Character.Game.Sprinting
 local Module = require(Sprinting)
 
--- [ Real-time Stamina Override Based on HP ]
+-- [ lol guys legitimate gameplay right here yall lalalala ]
 RunService.RenderStepped:Connect(function()
 	local humanoid = Character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
 		if humanoid.Health >= 200 then
 			Module.MaxStamina = 110
-			Module.StaminaGain = 40
-			Module.StaminaLoss = 10
+			Module.StaminaGain = 30
 			Module.SprintSpeed = 28.5
 		else
 			Module.MaxStamina = 100
-			Module.StaminaGain = 40
-			Module.StaminaLoss = 10
+			Module.StaminaGain = 25
 			Module.SprintSpeed = 27.4
+		end
+
+		-- Check stamina value and stop loss at 1
+		if Module.Stamina and Module.Stamina <= 1 then
+			Module.StaminaLoss = 0
+		else
+			Module.StaminaLoss = 10
 		end
 	end
 end)
@@ -37,6 +42,7 @@ end)
 LocalPlayer.CharacterAdded:Connect(function(char)
 	Character = char
 end)
+
 
 -- Toggle state
 local toggled = false
