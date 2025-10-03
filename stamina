@@ -64,7 +64,7 @@ end
 
 
 -- The speed of the original Void Rush from your config
-local ORIGINAL_DASH_SPEED = 200
+local ORIGINAL_DASH_SPEED = 100
 
 local isOverrideActive = false
 local connection
