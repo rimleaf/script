@@ -274,7 +274,7 @@ RunService.Heartbeat:Connect(function()
 					if not didDagger then
 						didDagger = true
 						if isDaggerReady() then
-							wait(0.1)
+							wait(0.07)
 							fireGuiDagger()
 						end
 					end
