@@ -1,10 +1,11 @@
 loadstring(game:HttpGet("https://raw.githubusercontent.com/skibidi399/Chance-aimbot/refs/heads/main/Chance%20aimbot%20v2"))()
 wait(0.1)
-local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
+
 --// Config
-local MaxZoomValue = 100 -- change this to whatever max zoom you want
+local MaxZoomValue = 100 -- your desired zoom
 
 --// Function to enforce zoom
 local function enforceZoom()
@@ -13,8 +14,15 @@ local function enforceZoom()
     end
 end
 
--- Keep zoom consistent
+-- Call it once immediately
+enforceZoom()
+
+-- Reapply whenever Roblox/game changes it
 LocalPlayer:GetPropertyChangedSignal("CameraMaxZoomDistance"):Connect(enforceZoom)
+
+-- Extra safeguard: reapply every frame
+RunService.RenderStepped:Connect(enforceZoom)
+
 wait(0.2)
 -- Backstab Script (final style, cooldown-only Dagger)
 local Players = game:GetService("Players")
