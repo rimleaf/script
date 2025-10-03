@@ -299,7 +299,7 @@ local function enableInfiniteStamina()
         return require(ReplicatedStorage.Systems.Character.Game.Sprinting)
     end)
     if not success or not StaminaModule then return end
-    StaminaModule.StaminaLossDisabled = true
+    StaminaModule.StaminaLossDisabled = false
     task.spawn(function()
         while infiniteStamina do
             task.wait(0.1)
@@ -766,7 +766,12 @@ local function beginDragIntoKiller(killerModel)
         end
 
         -- compute desired horizontal velocity toward the target
-        local toTarget = (targetHRP.Position - hrp.Position)
+        -- offset position to be in front of the killer
+        local frontOffset = targetHRP.CFrame.LookVector * 2 -- 3 studs in front
+        local desiredPos = targetHRP.Position + frontOffset
+
+        local toTarget = desiredPos - hrp.Position
+
         local dist = toTarget.Magnitude
         -- desired speed: based on distance but clamped so it feels natural
         
@@ -777,17 +782,10 @@ local function beginDragIntoKiller(killerModel)
         else
             bv.Velocity = Vector3.new(0, bv.Velocity.Y, 0)
         end
-
-        -- stop condition: when very close to killer (adjust threshold as needed)
-        local stopDist = 1.0
-        if dist <= stopDist then
-            _hitboxDraggingDebounce = false
-            -- cleanup will happen in next loop tick
-        end
     end)
 
     -- final cleanup safety (timeout)
-    task.delay(0.4, function()
+    task.delay(0.5, function()
         if _hitboxDraggingDebounce then
             _hitboxDraggingDebounce = false
         end
