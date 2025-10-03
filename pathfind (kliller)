@@ -1,174 +1,150 @@
--- Pathfollow (robust) -- place as a LocalScript
+--// Services
 local Players = game:GetService("Players")
 local PathfindingService = game:GetService("PathfindingService")
+
+--// Player
 local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local HRP = Character:WaitForChild("HumanoidRootPart")
 
--- refs that will be refreshed
-local hum, root
+--// Config
+local FOLLOW_ENABLED = false
+local CurrentTarget = nil
+local Path = nil
+local WaypointIndex = 0
 
-local function bindCharacter(character)
-    if not character then return end
-    hum = character:WaitForChild("Humanoid")
-    root = character:WaitForChild("HumanoidRootPart")
-end
+--// UI Setup
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "PathfindGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = PlayerGui
 
--- initial bind
-if LocalPlayer.Character then
-    bindCharacter(LocalPlayer.Character)
-else
-    LocalPlayer.CharacterAdded:Wait()
-    bindCharacter(LocalPlayer.Character)
-end
-LocalPlayer.CharacterAdded:Connect(bindCharacter)
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 120, 0, 40)
+toggleButton.Position = UDim2.new(0, 20, 0, 200)
+toggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.TextSize = 18
+toggleButton.Text = "Start Follow"
+toggleButton.Parent = screenGui
 
--- UI (persist across respawns)
-local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-local screenGui = playerGui:FindFirstChild("PathFollowGui")
-if not screenGui then
-    screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "PathFollowGui"
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = playerGui
-end
-
+--// Dragging logic
+local dragging = false
+local dragInput, dragStart, startPos
 local UserInputService = game:GetService("UserInputService")
 
-local function makeDraggable(guiObject)
-    local dragging = false
-    local dragStart, startPos
-
-    guiObject.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-           input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = guiObject.Position
-
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-
-    guiObject.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or 
-           input.UserInputType == Enum.UserInputType.Touch then
-            if dragging then
-                local delta = input.Position - dragStart
-                guiObject.Position = UDim2.new(
-                    startPos.X.Scale, startPos.X.Offset + delta.X,
-                    startPos.Y.Scale, startPos.Y.Offset + delta.Y
-                )
-            end
-        end
-    end)
+local function update(input)
+	local delta = input.Position - dragStart
+	toggleButton.Position = UDim2.new(
+		startPos.X.Scale, startPos.X.Offset + delta.X,
+		startPos.Y.Scale, startPos.Y.Offset + delta.Y
+	)
 end
 
--- Create button
-local button = screenGui:FindFirstChild("FollowButton")
-if not button then
-    button = Instance.new("TextButton")
-    button.Name = "FollowButton"
-    button.Size = UDim2.new(0, 120, 0, 40)
-    button.Position = UDim2.new(0, 20, 0, 200)
-    button.Text = "Follow"
-    button.Parent = screenGui
+toggleButton.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = toggleButton.Position
+
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+toggleButton.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement then
+		dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		update(input)
+	end
+end)
+
+--// Helper: find nearest player
+local function getNearestPlayer()
+	local closestPlayer = nil
+	local closestDist = math.huge
+
+	for _, plr in pairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+			local dist = (HRP.Position - plr.Character.HumanoidRootPart.Position).Magnitude
+			if dist < closestDist then
+				closestDist = dist
+				closestPlayer = plr
+			end
+		end
+	end
+	return closestPlayer
 end
 
-makeDraggable(button) -- ✅ button is now draggable
-
--- follow state
-local followEnabled = false
-local targetPlayer = nil
-
-local function safeGetRoot(character)
-    if character then
-        return character:FindFirstChild("HumanoidRootPart")
-    end
-    return nil
+--// Helper: create path
+local function createPathToTarget(target)
+	if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then return nil end
+	local targetPos = target.Character.HumanoidRootPart.Position
+	local path = PathfindingService:CreatePath({
+		AgentRadius = 2,
+		AgentHeight = 5,
+		AgentCanJump = true,
+		AgentJumpHeight = Humanoid.JumpHeight,
+		AgentMaxSlope = Humanoid.MaxSlopeAngle
+	})
+	path:ComputeAsync(HRP.Position, targetPos)
+	if path.Status == Enum.PathStatus.Success then
+		return path
+	end
+	return nil
 end
 
-local function computeAndFollow()
-    while followEnabled and targetPlayer and targetPlayer.Character do
-        if not hum or not root then
-            task.wait()
-            continue
-        end
+--// Move along path once
+local function followPath(path)
+	local waypoints = path:GetWaypoints()
+	WaypointIndex = 0
 
-        local targetRoot = safeGetRoot(targetPlayer.Character)
-        if not targetRoot then
-            task.wait()
-            continue
-        end
+	local function moveToNext()
+		WaypointIndex += 1
+		if WaypointIndex <= #waypoints and FOLLOW_ENABLED then
+			local waypoint = waypoints[WaypointIndex]
+			Humanoid:MoveTo(waypoint.Position)
+			if waypoint.Action == Enum.PathWaypointAction.Jump then
+				Humanoid.Jump = true
+			end
+		end
+	end
 
-        local ok, path = pcall(function()
-            local p = PathfindingService:CreatePath({
-                AgentRadius = 2,
-                AgentHeight = 5,
-                AgentCanJump = true,
-                AgentCanClimb = true
-            })
-            p:ComputeAsync(root.Position, targetRoot.Position)
-            return p
-        end)
-
-        if not ok or not path then
-            if hum and targetRoot then
-                pcall(function() hum:MoveTo(targetRoot.Position) end)
-            end
-            task.wait(0.5)
-        else
-            if path.Status == Enum.PathStatus.Success or path.Status == Enum.PathStatus.Complete then
-                local waypoints = path:GetWaypoints()
-                for _, waypoint in ipairs(waypoints) do
-                    if not followEnabled then break end
-                    if waypoint.Action == Enum.PathWaypointAction.Jump and hum then
-                        pcall(function() hum:ChangeState(Enum.HumanoidStateType.Jumping) end)
-                    end
-
-                    if hum then
-                        pcall(function() hum:MoveTo(waypoint.Position) end)
-                        local reached = hum.MoveToFinished:Wait()
-                        if not reached then
-                            local start = tick()
-                            while hum and root and (root.Position - waypoint.Position).magnitude > 6 and tick() - start < 2 and followEnabled do
-                                task.wait()
-                            end
-                        end
-                    end
-                end
-            else
-                if hum and targetRoot then
-                    pcall(function() hum:MoveTo(targetRoot.Position) end)
-                end
-            end
-        end
-        task.wait()
-    end
+	moveToNext()
+	Humanoid.MoveToFinished:Connect(function(reached)
+		if reached and FOLLOW_ENABLED then
+			moveToNext()
+		end
+	end)
 end
 
-button.MouseButton1Click:Connect(function()
-    if not followEnabled then
-        targetPlayer = nil
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer and plr.Character and safeGetRoot(plr.Character) then
-                targetPlayer = plr
-                break
-            end
-        end
+--// Button logic
+toggleButton.MouseButton1Click:Connect(function()
+	if dragging then return end -- don’t toggle when just dragging
 
-        if targetPlayer then
-            followEnabled = true
-            button.Text = "Stop Following"
-            task.spawn(computeAndFollow)
-        else
-            button.Text = "No Players"
-            task.delay(1.5, function() if not followEnabled then button.Text = "Follow" end end)
-        end
-    else
-        followEnabled = false
-        button.Text = "Follow"
-    end
+	FOLLOW_ENABLED = not FOLLOW_ENABLED
+	if FOLLOW_ENABLED then
+		toggleButton.Text = "Stop Follow"
+		CurrentTarget = getNearestPlayer()
+		if CurrentTarget then
+			Path = createPathToTarget(CurrentTarget)
+			if Path then
+				followPath(Path)
+			end
+		end
+	else
+		toggleButton.Text = "Start Follow"
+		CurrentTarget = nil
+		Humanoid:MoveTo(HRP.Position) -- stop moving
+	end
 end)
