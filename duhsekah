@@ -1,0 +1,60 @@
+--// Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+--// Settings
+local AIMBOT_ENABLED = false -- set to true to enable aimbot
+local ANIM_IDS = {
+    "77894750279891",
+    "118933622288262"
+}
+
+--// Find nearest survivor
+local function getNearestSurvivor()
+    local nearest, dist = nil, math.huge
+    if not (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")) then
+        return nil
+    end
+    local myPos = LocalPlayer.Character.HumanoidRootPart.Position
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local mag = (plr.Character.HumanoidRootPart.Position - myPos).Magnitude
+            if mag < dist then
+                nearest = plr
+                dist = mag
+            end
+        end
+    end
+    return nearest
+end
+
+--// Utility to check if an animation id matches any in ANIM_IDS
+local function animationMatches(animId)
+    if not animId then return false end
+    for _, id in ipairs(ANIM_IDS) do
+        if string.find(animId, id) then
+            return true
+        end
+    end
+    return false
+end
+
+--// Detect animation + aimbot loop
+RunService.RenderStepped:Connect(function()
+    if not AIMBOT_ENABLED then return end
+    if not (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")) then return end
+
+    local humanoid = LocalPlayer.Character.Humanoid
+    for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+        local anim = track.Animation
+        if anim and animationMatches(anim.AnimationId) then
+            local target = getNearestSurvivor()
+            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.HumanoidRootPart.Position)
+            end
+        end
+    end
+end)
