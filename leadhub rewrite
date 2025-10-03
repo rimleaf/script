@@ -503,7 +503,7 @@ end)
 
 
 
-local Dspeed = 20 -- you can tweak these numbers
+local Dspeed = 25 -- you can tweak these numbers
 local Ddelay = 0
 
 -- auto block (integrated and skidded from my own script @scripted.skibidi WAS HERE)
@@ -785,7 +785,7 @@ local function beginDragIntoKiller(killerModel)
     end)
 
     -- final cleanup safety (timeout)
-    task.delay(0.5, function()
+    task.delay(0.6, function()
         if _hitboxDraggingDebounce then
             _hitboxDraggingDebounce = false
         end
