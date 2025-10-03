@@ -1,6 +1,7 @@
 --// Services
 local Players = game:GetService("Players")
 local PathfindingService = game:GetService("PathfindingService")
+local UserInputService = game:GetService("UserInputService")
 
 --// Player
 local LocalPlayer = Players.LocalPlayer
@@ -30,10 +31,9 @@ toggleButton.TextSize = 18
 toggleButton.Text = "Start Follow"
 toggleButton.Parent = screenGui
 
---// Dragging logic
+--// Dragging (works on mobile + PC)
 local dragging = false
-local dragInput, dragStart, startPos
-local UserInputService = game:GetService("UserInputService")
+local dragStart, startPos
 
 local function update(input)
 	local delta = input.Position - dragStart
@@ -44,7 +44,7 @@ local function update(input)
 end
 
 toggleButton.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		dragging = true
 		dragStart = input.Position
 		startPos = toggleButton.Position
@@ -57,14 +57,8 @@ toggleButton.InputBegan:Connect(function(input)
 	end
 end)
 
-toggleButton.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement then
-		dragInput = input
-	end
-end)
-
 UserInputService.InputChanged:Connect(function(input)
-	if input == dragInput and dragging then
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 		update(input)
 	end
 end)
@@ -86,17 +80,11 @@ local function getNearestPlayer()
 	return closestPlayer
 end
 
---// Helper: create path
+--// Path creation
 local function createPathToTarget(target)
 	if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then return nil end
 	local targetPos = target.Character.HumanoidRootPart.Position
-	local path = PathfindingService:CreatePath({
-		AgentRadius = 2,
-		AgentHeight = 5,
-		AgentCanJump = true,
-		AgentJumpHeight = Humanoid.JumpHeight,
-		AgentMaxSlope = Humanoid.MaxSlopeAngle
-	})
+	local path = PathfindingService:CreatePath()
 	path:ComputeAsync(HRP.Position, targetPos)
 	if path.Status == Enum.PathStatus.Success then
 		return path
@@ -104,7 +92,7 @@ local function createPathToTarget(target)
 	return nil
 end
 
---// Move along path once
+--// Path following
 local function followPath(path)
 	local waypoints = path:GetWaypoints()
 	WaypointIndex = 0
@@ -130,7 +118,7 @@ end
 
 --// Button logic
 toggleButton.MouseButton1Click:Connect(function()
-	if dragging then return end -- don’t toggle when just dragging
+	if dragging then return end -- don’t toggle if you just dragged
 
 	FOLLOW_ENABLED = not FOLLOW_ENABLED
 	if FOLLOW_ENABLED then
@@ -145,6 +133,6 @@ toggleButton.MouseButton1Click:Connect(function()
 	else
 		toggleButton.Text = "Start Follow"
 		CurrentTarget = nil
-		Humanoid:MoveTo(HRP.Position) -- stop moving
+		Humanoid:MoveTo(HRP.Position)
 	end
 end)
