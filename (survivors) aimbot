@@ -72,7 +72,7 @@ rangeBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 rangeBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 rangeBox.Font = Enum.Font.SourceSans
 rangeBox.TextSize = 16
-rangeBox.PlaceholderText = "Enter range (1 - 10)"
+rangeBox.PlaceholderText = "Enter range (1 - 20)"
 rangeBox.Text = "4"
 rangeBox.ClearTextOnFocus = false
 rangeBox.Parent = mainFrame
@@ -140,7 +140,7 @@ end)
 -- Range input
 rangeBox.FocusLost:Connect(function()
 	local input = tonumber(rangeBox.Text)
-	if input and input >= 1 and input <= 10 then
+	if input and input >= 1 and input <= 20 then
 		range = input
 	else
 		rangeBox.Text = tostring(range)
@@ -227,7 +227,7 @@ RunService.Heartbeat:Connect(function()
 			if isBehindTarget(hrp, kHRP) and isDaggerReady() then
 				-- Auto aim behind killer
 				local behindPos = kHRP.Position - (kHRP.CFrame.LookVector * 3)
-				hrp.CFrame = CFrame.new(hrp.Position, behindPos)
+				hrp.CFrame = CFrame.lookAt(hrp.Position, behindPos)
 				aiming = true
 				break
 			end
