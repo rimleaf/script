@@ -203,21 +203,31 @@ lp.CharacterAdded:Connect(function() task.delay(0.5, refreshUIRefs) end)
 -- Main Backstab Loop
 ---------------------------------------------------------
 RunService.Heartbeat:Connect(function()
-	if not enabled or not isDaggerReady() then return end
+	if not enabled then return end
 	local char = lp.Character
 	if not (char and char:FindFirstChild("HumanoidRootPart")) then return end
 	local hrp = char.HumanoidRootPart
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not hum then return end
+
+	local aiming = false
 
 	for _, name in ipairs(killerNames) do
 		local killer = killersFolder:FindFirstChild(name)
 		if killer and killer:FindFirstChild("HumanoidRootPart") then
 			local kHRP = killer.HumanoidRootPart
-			if isBehindTarget(hrp, kHRP) then
-				-- Auto-aim behind killer (no teleport, no auto-dagger)
+			if isBehindTarget(hrp, kHRP) and isDaggerReady() then
+				-- Auto aim behind killer
 				local behindPos = kHRP.Position - (kHRP.CFrame.LookVector * 3)
 				hrp.CFrame = CFrame.new(hrp.Position, behindPos)
+				aiming = true
 				break
 			end
 		end
+	end
+
+	-- Toggle AutoRotate depending on aiming state
+	if hum then
+		hum.AutoRotate = not aiming
 	end
 end)
