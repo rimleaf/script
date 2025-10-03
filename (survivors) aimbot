@@ -5,7 +5,7 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
 --// Config
-local MaxZoomValue = 100 -- your desired zoom
+local MaxZoomValue = 1000 -- your desired zoom
 
 --// Function to enforce zoom
 local function enforceZoom()
