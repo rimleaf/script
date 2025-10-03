@@ -19,6 +19,7 @@ wait(0.2)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local lp = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
 ---------------------------------------------------------
 -- GUI Setup
 ---------------------------------------------------------
