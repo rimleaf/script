@@ -1,28 +1,536 @@
+♡ kandy .ᐟ ֹ
+rimleaf
+Invisible
+
+♡ kandy .ᐟ ֹ
+
+ — 06/09/2025 11:14 pm
+loadstring(game:HttpGet('https://raw.githubusercontent.com/andrewdarkyyofficial/thunderclient/main/main.lua'))();
+♡ kandy .ᐟ ֹ
+
+ — 07/09/2025 10:31 am
+♡ kandy .ᐟ ֹ
+
+ — 07/09/2025 10:38 am
+https://www.youtube.com/watch?v=JQu3LSk1odo
+YouTube
+kzze3
+Milestone III / IV Slasher Chase Theme - Forsaken OST
+Image
+♡ kandy .ᐟ ֹ
+
+ — 09/09/2025 9:46 am
+loadstring(game:HttpGet('https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/combat%20initiation'))();
+♡ kandy .ᐟ ֹ
+
+ — 10/09/2025 11:40 pm
+Lua
+loadstring(game:HttpGet('https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/combat%20initiation'))();
+wait(0.1)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+wait(0.2)
+-- Variables
+local lp = game.Players.LocalPlayer
+local path = game.Workspace.Enemies
+local UserInputService = game:GetService("UserInputService")
+getgenv().Farm = false
+local distance = 13 -- Adjustable distance
+-- Farming loop
+local function BringNPCs()
+    while getgenv().Farm do
+        local playerHRP = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+        if playerHRP then
+            for _, npc in ipairs(path:GetChildren()) do
+                local npcHRP = npc:FindFirstChild("HumanoidRootPart")
+                local npcHumanoid = npc:FindFirstChild("Humanoid")
+                if npcHRP and npcHumanoid and npcHumanoid.Health > 0 then
+                    npcHRP.CFrame = playerHRP.CFrame + playerHRP.CFrame.LookVector * distance
+                end
+            end
+        end
+        task.wait(0.1)
+    end
+end
+-- Keybind Toggle (T)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.G then
+        getgenv().Farm = not getgenv().Farm
+        if getgenv().Farm then
+            print("Farm Enabled")
+            task.spawn(BringNPCs)
+        else
+            print("Farm Disabled")
+        end
+    end
+end)
+♡ kandy .ᐟ ֹ
+
+ — 11/09/2025 1:30 am
+--[[
+    WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+-- leave a like pls
+
+
+_G.HeadSize = 15
+_G.Disabled = true
+ 
+game:GetService('RunService').RenderStepped:connect(function()
+if _G.Disabled then
+for i,v in next, game:GetService('Players'):GetPlayers() do
+if v.Name ~= game:GetService('Players').LocalPlayer.Name then
+pcall(function()
+v.Character.HumanoidRootPart.Size = Vector3.new(_G.HeadSize,_G.HeadSize,_G.HeadSize)
+v.Character.HumanoidRootPart.Transparency = 0.7
+v.Character.HumanoidRootPart.BrickColor = BrickColor.new("Really blue")
+v.Character.HumanoidRootPart.Material = "Neon"
+v.Character.HumanoidRootPart.CanCollide = false
+end)
+end
+end
+end
+end)
+♡ kandy .ᐟ ֹ
+
+ — 11/09/2025 6:02 pm
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Insertl/QuotasHub/main/BETAv1.3"))()
+♡ kandy .ᐟ ֹ
+
+ — 12/09/2025 12:41 pm
+-- Load Infinite Yield
+loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+wait(0.1)
+local player = game.Players.LocalPlayer
+local rp = game:GetService("ReplicatedStorage")
+Expand
+eHaEJJc.txt
+5 KB
+♡ kandy .ᐟ ֹ
+
+ — 13/09/2025 1:07 am
+loadstring(game:HttpGet('https://raw.githubusercontent.com/DarkNetworks/Infinite-Yield/main/latest.lua'))()
+wait(0.1)
+--[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+local UserInputService = game:GetService("UserInputService")
+Expand
+oPLTQ1h.txt
+5 KB
+♡ kandy .ᐟ ֹ
+
+ — 14/09/2025 10:00 am
+r'
+rimleaf
+Online
+r'
+[࣪ ₊]
+Expand
+EXI0Z8n.txt
+24 KB
+loadstring(game:HttpGet('https://raw.githubusercontent.com/DarkNetworks/Infinite-Yield/main/latest.lua'))()
+wait(0.1)
+--[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+local UserInputService = game:GetService("UserInputService")
+Expand
+yzTK93y.txt
+5 KB
+♡ kandy .ᐟ ֹ
+
+ — 15/09/2025 6:19 pm
+loadstring(game:HttpGet('https://raw.githubusercontent.com/DarkNetworks/Infinite-Yield/main/latest.lua'))()
+wait(0.1)
+--[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+local UserInputService = game:GetService("UserInputService")
+Expand
+79eeFJc.txt
+7 KB
+♡ kandy .ᐟ ֹ
+
+ — 15/09/2025 10:21 pm
+loadstring(game:HttpGet('https://raw.githubusercontent.com/DarkNetworks/Infinite-Yield/main/latest.lua'))()
+wait(0.1)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Nwepnet/Skibidi/refs/heads/main/hawktuahwah"))()
+wait(0.2)
+--[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+Expand
+pRqrboo.txt
+7 KB
+♡ kandy .ᐟ ֹ
+
+ — 16/09/2025 12:01 am
+loadstring(game:HttpGet('https://raw.githubusercontent.com/DarkNetworks/Infinite-Yield/main/latest.lua'))()
+wait(0.1)
+--[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+local UserInputService = game:GetService("UserInputService")
+Expand
+ZeTwzUw.txt
+9 KB
+♡ kandy .ᐟ ֹ
+
+ — 16/09/2025 9:12 pm
+im gonna get straight to the point. im not ok rn. i mean literally, im not ok. stepping back away from socmeds rn but i dont think itll even help with what im overthinking rn. yes ik its my fault pero im tired and drained to even do the webpage na which was what my groupmates complained about. may or may not do it solo since i despise bringing people down, even if it means that itll be harder for myself. i want to be better for you. its just like what you told me and with what you're doing right now. stepping back to focus on yourself so that you can love me at your fullest. i want to do that too. i want to love YOU at my fullest, not some weakling who is currently being held as a burden being tormented from his thoughts. i want to trust you, but already im overthinking too much. theres some other stuff that i want to point out but this bot cant send out much of a message and would take forever to send. yes, i specifically made a bot to send this later on because i cant handle myself rn or have myself tell you this myself. i just want to sleep because the thought of there being someone else just already makes my heart sink back to the point where i was while i was with micha. like damn, i never thought i could get this low again. im losing track of what im saying but i just want to say that im sorry for the way i am. as i mentioned about there being someone else, it just hurts. i had to find out myself with my past relationships every time. each and every one of those times felt like i was just an option. i was never much of a priority to anyone. i know, just blabbering about some shit right now but god i am already so messed up. so im sorry with how i am or the way i am, i have just been through so much that i dont know what to believe or trust in anymore.
+
+im sorry for being like this.
+okt esting because imun sure if this bot works test test test
+bro why is there a 5 minute delay
+♡ kandy .ᐟ ֹ
+
+ — 18/09/2025 6:59 pm
+♡ kandy .ᐟ ֹ
+
+ — 18/09/2025 8:34 pm
+--// Services
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
+local Lighting = game:GetService("Lighting")
+Expand
+tiGxoD1.txt
+3 KB
+https://raw.githubusercontent.com/MrWhite1110/Decaying-Winter-Op-Script-V2/main/Decaying%20Winter%20Op%20script
+https://rawscripts.net/raw/Decaying-Winter-DW-OP-Script-6859
+♡ kandy .ᐟ ֹ
+
+ — 19/09/2025 1:46 pm
+--// variables and services
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local localplayer = Players.LocalPlayer
+Expand
+FJrxaxs.txt
+6 KB
+♡ kandy .ᐟ ֹ
+
+ — 20/09/2025 1:15 am
+loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+wait(0.1)
+--// variables and services
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+Expand
+message.txt
+7 KB
+♡ kandy .ᐟ ֹ
+
+ — 20/09/2025 11:29 am
+Image
+♡ kandy .ᐟ ֹ
+
+ — 20/09/2025 2:33 pm
+Image
+♡ kandy .ᐟ ֹ
+
+ — 21/09/2025 4:23 am
+loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+wait(0.1)
+--// variables and services
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+Expand
+message.txt
+6 KB
+♡ kandy .ᐟ ֹ
+
+ — 21/09/2025 12:39 pm
+loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+wait(0.1)
+--// variables and services
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+Expand
+message.txt
+6 KB
+♡ kandy .ᐟ ֹ
+
+ — 22/09/2025 5:22 pm
+loadstring(game:HttpGet('https://raw.githubusercontent.com/DarkNetworks/Infinite-Yield/main/latest.lua'))()
+wait(0.1)
+--[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+local UserInputService = game:GetService("UserInputService")
+Expand
+1ce6tUs.txt
+7 KB
+♡ kandy .ᐟ ֹ
+
+ — 23/09/2025 1:32 pm
+loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+wait(0.1)
+--// variables and services
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+Expand
+MieeWqJ.txt
+9 KB
+loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+wait(0.1)
+--// variables and services
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+Expand
+GNEWzVT.txt
+9 KB
+♡ kandy .ᐟ ֹ
+
+ — 23/09/2025 3:43 pm
+https://open.spotify.com/playlist/3hocyI7Dw7Ob4jJSf7VKTE?si=a56f5f9381b04afb
+
+♡ kandy .ᐟ ֹ
+
+ — 24/09/2025 4:57 pm
+https://www.roblox.com/users/3626821777/profile
+Roblox
+s3ikrvkz's Profile
+s3ikrvkz is one of the millions creating and exploring the endless possibilities of Roblox. Join s3ikrvkz on Roblox and explore together!araynaman
+Image
+♡ kandy .ᐟ ֹ
+
+ — 24/09/2025 8:34 pm
+Image
+♡ kandy .ᐟ ֹ
+
+ — 25/09/2025 1:18 am
+https://www.youtube.com/watch?v=kR8t0Spc-Q4
+YouTube
+Nooby
+idiots laughing at instagram reels 20
+Image
+♡ kandy .ᐟ ֹ
+
+ — 25/09/2025 1:13 pm
+https://www.youtube.com/watch?v=xTax3vUsOp0
+YouTube
+Kyoshi
+pretty cvnt
+Image
+♡ kandy .ᐟ ֹ
+
+ — 25/09/2025 4:00 pm
+Image
+♡ kandy .ᐟ ֹ
+
+ — 27/09/2025 2:35 pm
+loadstring(game:HttpGet("https://raw.githubusercontent.com/LolnotaKid/project/refs/heads/main/AutoBLOCKKKWAHV1"))()
+wait(0.1)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/stamina"))()
+wait(0.2)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/(survivors)%20aimbot"))()
+wait(0.3)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/(killer)%20hitbox%20and%20aimbot"))()
+♡ kandy .ᐟ ֹ
+
+ — 27/09/2025 10:17 pm
+https://www.youtube.com/watch?v=GzpLpNBZwoI
+YouTube
+norternn
+losing you
+Image
+rim. — 28/09/2025 6:49 pm
+Forwarded
+Forwarded
+Image
+Image
+Image
+Image
+Forwarded
+Image
+Image
+Forwarded
+BECAUSE THIS IS BENIFICIAL PROOF THAT I KNWO THEY LIKE ME BECAUSE I LOOK TOO BOYISH
+Image
+rim. — 28/09/2025 8:06 pm
+--[[
+    WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Daessyn/Forsaken-Autoblock/refs/heads/main/ABVersion2"))()
+♡ kandy .ᐟ ֹ
+
+ — 29/09/2025 1:03 am
+--// Shift TeleportWalk (stops when releasing Shift)
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local speed = 0.3 -- adjust this to change teleport speed
+local teleporting = false
+
+RunService.Heartbeat:Connect(function(delta)
+    if not character or not humanoid or humanoid.Parent == nil then
+        return
+    end
+
+    if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+        teleporting = true
+        if humanoid.MoveDirection.Magnitude > 0 then
+            character:TranslateBy(humanoid.MoveDirection * (delta * 10 * speed))
+        end
+    else
+        -- Shift not held, stop teleportwalk
+        if teleporting then
+            teleporting = false
+        end
+    end
+end)
+
+-- Respawn handling
+player.CharacterAdded:Connect(function(char)
+    character = char
+    humanoid = character:WaitForChild("Humanoid")
+end)
+♡ kandy .ᐟ ֹ
+
+ — 30/09/2025 12:42 am
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/leadhub%20rewrite"))()
+wait(0.2)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/(survivors)%20aimbot"))()
+wait(0.3)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/(killer)%20hitbox%20and%20aimbot"))()
+wait(0.4)
+--// Shift TeleportWalk (stops when releasing Shift)
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local speed = 0.3 -- adjust this to change teleport speed
+local teleporting = false
+
+RunService.Heartbeat:Connect(function(delta)
+    if not character or not humanoid or humanoid.Parent == nil then
+        return
+    end
+
+    if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+        teleporting = true
+        if humanoid.MoveDirection.Magnitude > 0 then
+            character:TranslateBy(humanoid.MoveDirection * (delta * 10 * speed))
+        end
+    else
+        -- Shift not held, stop teleportwalk
+        if teleporting then
+            teleporting = false
+        end
+    end
+end)
+
+-- Respawn handling
+player.CharacterAdded:Connect(function(char)
+    character = char
+    humanoid = character:WaitForChild("Humanoid")
+end)
+♡ kandy .ᐟ ֹ
+
+ — 30/09/2025 12:51 am
+-- john dtoe parry script yez
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+Expand
+message.txt
+5 KB
+♡ kandy .ᐟ ֹ
+
+ — Yesterday at 9:00 pm
 loadstring(game:HttpGet("https://raw.githubusercontent.com/skibidi399/Chance-aimbot/refs/heads/main/Chance%20aimbot%20v2"))()
 wait(0.1)
+local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
+Expand
+TLHbjaF.txt
+11 KB
+♡ kandy .ᐟ ֹ
 
+ — 1:20 pm
+Image
+♡ kandy .ᐟ ֹ
+
+ — 4:27 pm
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/leadhub%20rewrite"))()
+wait(0.1)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/stamina"))()
+wait(0.2)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/(survivors)%20aimbot"))()
+wait(0.3)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/(killer)%20hitbox%20and%20aimbot"))()
+wait(0.4)
+loadstring(game:HttpGet('https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/pathfind%20(kliller)'))()
+♡ kandy .ᐟ ֹ
+
+ — 5:46 pm
+Image
+﻿
+rim.
+rimleaf_
+loadstring(game:HttpGet("https://raw.githubusercontent.com/skibidi399/Chance-aimbot/refs/heads/main/Chance%20aimbot%20v2"))()
+wait(0.1)
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 --// Config
-local MaxZoomValue = 1000 -- your desired zoom
-
+local BrightnessValue = 2
+local TimeOfDayValue = "12:00:00" -- Noon
+local FogEndValue = 1e6
+local GlobalShadowsValue = false
+local MaxZoomValue = 100 -- change this to whatever max zoom you want
+--// Function to enforce lighting
+local function enforceSettings()
+    Lighting.Brightness = BrightnessValue
+    Lighting.TimeOfDay = TimeOfDayValue
+    Lighting.FogEnd = FogEndValue
+    Lighting.GlobalShadows = GlobalShadowsValue
+    -- If Atmosphere exists, override its settings too
+    local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+    if atmosphere then
+        atmosphere.Haze = 0
+        atmosphere.Density = 0
+    end
+end
 --// Function to enforce zoom
 local function enforceZoom()
     if LocalPlayer and LocalPlayer.CameraMaxZoomDistance ~= MaxZoomValue then
         LocalPlayer.CameraMaxZoomDistance = MaxZoomValue
     end
 end
-
--- Call it once immediately
+-- Initial enforcement
+enforceSettings()
 enforceZoom()
-
--- Reapply whenever Roblox/game changes it
+-- Keep lighting consistent
+Lighting:GetPropertyChangedSignal("Brightness"):Connect(enforceSettings)
+Lighting:GetPropertyChangedSignal("TimeOfDay"):Connect(enforceSettings)
+Lighting:GetPropertyChangedSignal("FogEnd"):Connect(enforceSettings)
+Lighting:GetPropertyChangedSignal("GlobalShadows"):Connect(enforceSettings)
+Lighting.ChildAdded:Connect(function(child)
+    if child:IsA("Atmosphere") then
+        enforceSettings()
+    end
+end)
+-- Keep zoom consistent
 LocalPlayer:GetPropertyChangedSignal("CameraMaxZoomDistance"):Connect(enforceZoom)
-
--- Extra safeguard: reapply every frame
-RunService.RenderStepped:Connect(enforceZoom)
-
 wait(0.2)
 -- Backstab Script (final style, cooldown-only Dagger)
 local Players = game:GetService("Players")
@@ -72,7 +580,7 @@ rangeBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 rangeBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 rangeBox.Font = Enum.Font.SourceSans
 rangeBox.TextSize = 16
-rangeBox.PlaceholderText = "Enter range (1 - 20)"
+rangeBox.PlaceholderText = "Enter range (1 - 10)"
 rangeBox.Text = "4"
 rangeBox.ClearTextOnFocus = false
 rangeBox.Parent = mainFrame
@@ -87,91 +595,30 @@ modeButton.TextSize = 16
 modeButton.Text = "Mode: Behind"
 modeButton.Parent = mainFrame
 ---------------------------------------------------------
--- Mini Toggle UI (robust mobile + PC draggable Show/Hide)
+-- Mini Toggle UI (draggable master toggle)
 ---------------------------------------------------------
 local miniGui = Instance.new("ScreenGui")
 miniGui.Name = "BackstabMiniToggle"
 miniGui.ResetOnSpawn = false
 miniGui.Parent = lp:WaitForChild("PlayerGui")
-
 local miniFrame = Instance.new("Frame")
 miniFrame.Size = UDim2.new(0, 120, 0, 35)
 miniFrame.Position = UDim2.new(0, 200, 0, 10)
 miniFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 miniFrame.Active = true
+miniFrame.Draggable = true
 miniFrame.Parent = miniGui
-
 local miniButton = Instance.new("TextButton")
 miniButton.Size = UDim2.new(1, 0, 1, 0)
-miniButton.Position = UDim2.new(0, 0, 0, 0)
 miniButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 miniButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 miniButton.Font = Enum.Font.SourceSansBold
 miniButton.TextSize = 16
 miniButton.Text = "Hide UI"
 miniButton.Parent = miniFrame
-miniButton.Active = true
-
--- Toggle visibility but ignore clicks that came from a drag
-local dragMoved = false
 miniButton.MouseButton1Click:Connect(function()
-    if dragMoved then
-        -- reset flag and ignore this click because it came from a drag
-        dragMoved = false
-        return
-    end
-    mainFrame.Visible = not mainFrame.Visible
-    miniButton.Text = mainFrame.Visible and "Hide UI" or "Show UI"
-end)
-
--- Dragging logic
-local UserInputService = game:GetService("UserInputService")
-local dragging = false
-local dragInput = nil
-local dragStart = Vector2.new(0, 0)
-local startPos = miniFrame.Position
-local DRAG_THRESHOLD = 8 -- pixels before we consider it a drag
-
-local function onInputBegan(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragInput = input
-        dragStart = input.Position
-        startPos = miniFrame.Position
-        dragMoved = false
-
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-                dragInput = nil
-                -- keep dragMoved true briefly so the click event that fires right after release is ignored
-                task.delay(0.12, function()
-                    dragMoved = false
-                end)
-            end
-        end)
-    end
-end
-
-miniButton.InputBegan:Connect(onInputBegan)
-
-miniButton.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        if not dragMoved and delta.Magnitude > DRAG_THRESHOLD then
-            dragMoved = true
-        end
-        miniFrame.Position = UDim2.new(
-            startPos.X.Scale, startPos.X.Offset + delta.X,
-            startPos.Y.Scale, startPos.Y.Offset + delta.Y
-        )
-    end
+	mainFrame.Visible = not mainFrame.Visible
+	miniButton.Text = mainFrame.Visible and "Hide UI" or "Show UI"
 end)
 ---------------------------------------------------------
 -- Logic + Dagger Handling
@@ -195,7 +642,7 @@ end)
 -- Range input
 rangeBox.FocusLost:Connect(function()
 	local input = tonumber(rangeBox.Text)
-	if input and input >= 1 and input <= 20 then
+	if input and input >= 1 and input <= 10 then
 		range = input
 	else
 		rangeBox.Text = tostring(range)
@@ -266,31 +713,48 @@ lp.CharacterAdded:Connect(function() task.delay(0.5, refreshUIRefs) end)
 -- Main Backstab Loop
 ---------------------------------------------------------
 RunService.Heartbeat:Connect(function()
-	if not enabled then return end
+	if not enabled or not isDaggerReady() then return end
 	local char = lp.Character
 	if not (char and char:FindFirstChild("HumanoidRootPart")) then return end
 	local hrp = char.HumanoidRootPart
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	if not hum then return end
-
-	local aiming = false
-
 	for _, name in ipairs(killerNames) do
 		local killer = killersFolder:FindFirstChild(name)
 		if killer and killer:FindFirstChild("HumanoidRootPart") then
 			local kHRP = killer.HumanoidRootPart
-			if isBehindTarget(hrp, kHRP) and isDaggerReady() then
-				-- Auto aim behind killer
-				local behindPos = kHRP.Position - (kHRP.CFrame.LookVector * 3)
-				hrp.CFrame = CFrame.lookAt(hrp.Position, behindPos)
-				aiming = true
+			if isBehindTarget(hrp, kHRP) and killer ~= lastTarget then
+				cooldown, lastTarget = true, killer
+				local start = tick()
+				local didDagger = false
+				local connection
+				connection = RunService.Heartbeat:Connect(function()
+					if not (char and char.Parent and kHRP and kHRP.Parent) then
+						if connection then connection:Disconnect() end
+						return
+					end
+					local elapsed = tick() - start
+					if elapsed >= 0.5 then
+						if connection then connection:Disconnect() end
+						return
+					end
+					-- Constant TP behind killer
+					local behindPos = kHRP.Position - (kHRP.CFrame.LookVector * 2.5)
+					hrp.CFrame = CFrame.new(behindPos, behindPos + kHRP.CFrame.LookVector)
+					if not didDagger then
+						didDagger = true
+						if isDaggerReady() then
+							fireGuiDagger()
+						end
+					end
+				end)
+				task.delay(2, function()
+					RunService.Heartbeat:Wait()
+					while isBehindTarget(hrp, kHRP) do
+						RunService.Heartbeat:Wait()
+					end
+					lastTarget, cooldown = nil, false
+				end)
 				break
 			end
 		end
-	end
-
-	-- Toggle AutoRotate depending on aiming state
-	if hum then
-		hum.AutoRotate = not aiming
 	end
 end)
