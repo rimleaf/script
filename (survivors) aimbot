@@ -100,7 +100,6 @@ miniFrame.Size = UDim2.new(0, 120, 0, 35)
 miniFrame.Position = UDim2.new(0, 200, 0, 10)
 miniFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 miniFrame.Active = true
-miniFrame.Draggable = true
 miniFrame.Parent = miniGui
 
 -- Button inside
@@ -118,6 +117,51 @@ miniButton.MouseButton1Click:Connect(function()
 	mainFrame.Visible = not mainFrame.Visible
 	miniButton.Text = mainFrame.Visible and "Hide UI" or "Show UI"
 end)
+
+---------------------------------------------------------
+-- Mobile + PC Drag Support
+---------------------------------------------------------
+local UserInputService = game:GetService("UserInputService")
+
+local dragging
+local dragInput
+local dragStart
+local startPos
+
+local function update(input)
+	local delta = input.Position - dragStart
+	miniFrame.Position = UDim2.new(
+		startPos.X.Scale, startPos.X.Offset + delta.X,
+		startPos.Y.Scale, startPos.Y.Offset + delta.Y
+	)
+end
+
+miniFrame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = miniFrame.Position
+
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+miniFrame.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		update(input)
+	end
+end)
+
 ---------------------------------------------------------
 -- Logic + Dagger Handling
 ---------------------------------------------------------
