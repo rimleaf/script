@@ -87,14 +87,13 @@ modeButton.TextSize = 16
 modeButton.Text = "Mode: Behind"
 modeButton.Parent = mainFrame
 ---------------------------------------------------------
--- Mini Toggle UI (draggable master toggle)
+-- Mini Toggle UI (robust mobile + PC draggable Show/Hide)
 ---------------------------------------------------------
 local miniGui = Instance.new("ScreenGui")
 miniGui.Name = "BackstabMiniToggle"
 miniGui.ResetOnSpawn = false
 miniGui.Parent = lp:WaitForChild("PlayerGui")
 
--- Frame for drag
 local miniFrame = Instance.new("Frame")
 miniFrame.Size = UDim2.new(0, 120, 0, 35)
 miniFrame.Position = UDim2.new(0, 200, 0, 10)
@@ -102,66 +101,78 @@ miniFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 miniFrame.Active = true
 miniFrame.Parent = miniGui
 
--- Button inside
 local miniButton = Instance.new("TextButton")
 miniButton.Size = UDim2.new(1, 0, 1, 0)
+miniButton.Position = UDim2.new(0, 0, 0, 0)
 miniButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 miniButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 miniButton.Font = Enum.Font.SourceSansBold
 miniButton.TextSize = 16
 miniButton.Text = "Hide UI"
 miniButton.Parent = miniFrame
+miniButton.Active = true
 
--- Toggle visibility
+-- Toggle visibility but ignore clicks that came from a drag
+local dragMoved = false
 miniButton.MouseButton1Click:Connect(function()
-	mainFrame.Visible = not mainFrame.Visible
-	miniButton.Text = mainFrame.Visible and "Hide UI" or "Show UI"
+    if dragMoved then
+        -- reset flag and ignore this click because it came from a drag
+        dragMoved = false
+        return
+    end
+    mainFrame.Visible = not mainFrame.Visible
+    miniButton.Text = mainFrame.Visible and "Hide UI" or "Show UI"
 end)
 
----------------------------------------------------------
--- Mobile + PC Drag Support
----------------------------------------------------------
+-- Dragging logic
 local UserInputService = game:GetService("UserInputService")
+local dragging = false
+local dragInput = nil
+local dragStart = Vector2.new(0, 0)
+local startPos = miniFrame.Position
+local DRAG_THRESHOLD = 8 -- pixels before we consider it a drag
 
-local dragging
-local dragInput
-local dragStart
-local startPos
+local function onInputBegan(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragInput = input
+        dragStart = input.Position
+        startPos = miniFrame.Position
+        dragMoved = false
 
-local function update(input)
-	local delta = input.Position - dragStart
-	miniFrame.Position = UDim2.new(
-		startPos.X.Scale, startPos.X.Offset + delta.X,
-		startPos.Y.Scale, startPos.Y.Offset + delta.Y
-	)
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+                dragInput = nil
+                -- keep dragMoved true briefly so the click event that fires right after release is ignored
+                task.delay(0.12, function()
+                    dragMoved = false
+                end)
+            end
+        end)
+    end
 end
 
-miniFrame.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = input.Position
-		startPos = miniFrame.Position
+miniButton.InputBegan:Connect(onInputBegan)
 
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then
-				dragging = false
-			end
-		end)
-	end
-end)
-
-miniFrame.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-		dragInput = input
-	end
+miniButton.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-	if input == dragInput and dragging then
-		update(input)
-	end
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        if not dragMoved and delta.Magnitude > DRAG_THRESHOLD then
+            dragMoved = true
+        end
+        miniFrame.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
 end)
-
 ---------------------------------------------------------
 -- Logic + Dagger Handling
 ---------------------------------------------------------
