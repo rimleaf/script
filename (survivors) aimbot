@@ -5,6 +5,8 @@ wait(0.2)
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
+local MaxZoomValue = 1e3
+
 local function enforceZoom()
     if LocalPlayer and LocalPlayer.CameraMaxZoomDistance ~= MaxZoomValue then
         LocalPlayer.CameraMaxZoomDistance = MaxZoomValue
