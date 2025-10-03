@@ -85,6 +85,8 @@ local miniGui = Instance.new("ScreenGui")
 miniGui.Name = "BackstabMiniToggle"
 miniGui.ResetOnSpawn = false
 miniGui.Parent = lp:WaitForChild("PlayerGui")
+
+-- Frame for drag
 local miniFrame = Instance.new("Frame")
 miniFrame.Size = UDim2.new(0, 120, 0, 35)
 miniFrame.Position = UDim2.new(0, 200, 0, 10)
@@ -92,6 +94,8 @@ miniFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 miniFrame.Active = true
 miniFrame.Draggable = true
 miniFrame.Parent = miniGui
+
+-- Button inside
 local miniButton = Instance.new("TextButton")
 miniButton.Size = UDim2.new(1, 0, 1, 0)
 miniButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -100,6 +104,8 @@ miniButton.Font = Enum.Font.SourceSansBold
 miniButton.TextSize = 16
 miniButton.Text = "Hide UI"
 miniButton.Parent = miniFrame
+
+-- Toggle visibility
 miniButton.MouseButton1Click:Connect(function()
 	mainFrame.Visible = not mainFrame.Visible
 	miniButton.Text = mainFrame.Visible and "Hide UI" or "Show UI"
@@ -201,42 +207,15 @@ RunService.Heartbeat:Connect(function()
 	local char = lp.Character
 	if not (char and char:FindFirstChild("HumanoidRootPart")) then return end
 	local hrp = char.HumanoidRootPart
+
 	for _, name in ipairs(killerNames) do
 		local killer = killersFolder:FindFirstChild(name)
 		if killer and killer:FindFirstChild("HumanoidRootPart") then
 			local kHRP = killer.HumanoidRootPart
-			if isBehindTarget(hrp, kHRP) and killer ~= lastTarget then
-				cooldown, lastTarget = true, killer
-				local start = tick()
-				local didDagger = false
-				local connection
-				connection = RunService.Heartbeat:Connect(function()
-					if not (char and char.Parent and kHRP and kHRP.Parent) then
-						if connection then connection:Disconnect() end
-						return
-					end
-					local elapsed = tick() - start
-					if elapsed >= 0.47 then
-						if connection then connection:Disconnect() end
-						return
-					end
-					-- Constant TP behind killer
-					local behindPos = kHRP.Position - (kHRP.CFrame.LookVector * 2.3)
-					hrp.CFrame = CFrame.new(behindPos, behindPos + kHRP.CFrame.LookVector)
-					if not didDagger then
-						didDagger = true
-						if isDaggerReady() then
-							fireGuiDagger()
-						end
-					end
-				end)
-				task.delay(2, function()
-					RunService.Heartbeat:Wait()
-					while isBehindTarget(hrp, kHRP) do
-						RunService.Heartbeat:Wait()
-					end
-					lastTarget, cooldown = nil, false
-				end)
+			if isBehindTarget(hrp, kHRP) then
+				-- Auto-aim behind killer (no teleport, no auto-dagger)
+				local behindPos = kHRP.Position - (kHRP.CFrame.LookVector * 3)
+				hrp.CFrame = CFrame.new(hrp.Position, behindPos)
 				break
 			end
 		end
