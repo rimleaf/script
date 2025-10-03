@@ -1,4 +1,5 @@
 --loadstring(game:HttpGet("https://raw.githubusercontent.com/skibidi399/Chance-aimbot/refs/heads/main/Chance%20aimbot%20v2"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/duhsekah"))()
 wait(0.1)
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
