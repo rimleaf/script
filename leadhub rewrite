@@ -503,7 +503,7 @@ end)
 
 
 
-local Dspeed = 40 -- you can tweak these numbers
+local Dspeed = 20 -- you can tweak these numbers
 local Ddelay = 0
 
 -- auto block (integrated and skidded from my own script @scripted.skibidi WAS HERE)
