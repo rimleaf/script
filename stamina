@@ -1,5 +1,3 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
-wait(0.1)
 loadstring(game:HttpGet("https://pastebin.com/raw/Sg7YR1pp"))()
 wait(0.2)
 -- [ Services ]
@@ -22,11 +20,11 @@ RunService.RenderStepped:Connect(function()
 	if humanoid then
 		if humanoid.Health >= 200 then
 			Module.MaxStamina = 110
-			Module.StaminaGain = 25
+			Module.StaminaGain = 30
 			Module.SprintSpeed = 29.4
 		else
 			Module.MaxStamina = 100
-			Module.StaminaGain = 25
+			Module.StaminaGain = 30
 			Module.SprintSpeed = 27.3
 		end
 
@@ -34,7 +32,7 @@ RunService.RenderStepped:Connect(function()
 		if Module.Stamina and Module.Stamina <= 1.5 then
 			Module.StaminaLoss = 0
 		else
-			Module.StaminaLoss = 9
+			Module.StaminaLoss = 7
 		end
 	end
 end)
