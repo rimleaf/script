@@ -503,7 +503,7 @@ end)
 
 
 
-local Dspeed = 25 -- you can tweak these numbers
+local Dspeed = 30 -- you can tweak these numbers
 local Ddelay = 0
 
 -- auto block (integrated and skidded from my own script @scripted.skibidi WAS HERE)
@@ -767,7 +767,7 @@ local function beginDragIntoKiller(killerModel)
 
         -- compute desired horizontal velocity toward the target
         -- offset position to be in front of the killer
-        local frontOffset = targetHRP.CFrame.LookVector * 2 -- 3 studs in front
+        local frontOffset = targetHRP.CFrame.LookVector * 1
         local desiredPos = targetHRP.Position + frontOffset
 
         local toTarget = desiredPos - hrp.Position
