@@ -257,8 +257,10 @@ lp.CharacterAdded:Connect(function() task.delay(0.5, refreshUIRefs) end)
 RunService.Heartbeat:Connect(function()
 	if not enabled or not isDaggerReady() then return end
 	local char = lp.Character
-	if not (char and char:FindFirstChild("HumanoidRootPart")) then return end
+	if not (char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChildOfClass("Humanoid")) then return end
 	local hrp = char.HumanoidRootPart
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+
 	for _, name in ipairs(killerNames) do
 		local killer = killersFolder:FindFirstChild(name)
 		if killer and killer:FindFirstChild("HumanoidRootPart") then
@@ -268,9 +270,15 @@ RunService.Heartbeat:Connect(function()
 				local start = tick()
 				local didDagger = false
 				local connection
+
+				-- Disable auto-rotate before teleporting
+				humanoid.AutoRotate = false
+
 				connection = RunService.Heartbeat:Connect(function()
 					if not (char and char.Parent and kHRP and kHRP.Parent) then
 						if connection then connection:Disconnect() end
+						-- Re-enable auto-rotate if something breaks early
+						humanoid.AutoRotate = true
 						return
 					end
 					if not didDagger then
@@ -282,21 +290,30 @@ RunService.Heartbeat:Connect(function()
 					local elapsed = tick() - start
 					if elapsed >= 0.47 then
 						if connection then connection:Disconnect() end
+						-- Re-enable auto-rotate once done teleporting
+						humanoid.AutoRotate = true
 						return
 					end
 					-- Constant TP behind killer
 					local behindPos = kHRP.Position - (kHRP.CFrame.LookVector * 3)
 					hrp.CFrame = CFrame.new(behindPos, behindPos + kHRP.CFrame.LookVector)
 				end)
+
 				task.delay(2, function()
 					RunService.Heartbeat:Wait()
 					while isBehindTarget(hrp, kHRP) do
 						RunService.Heartbeat:Wait()
 					end
 					lastTarget, cooldown = nil, false
+					-- Ensure auto-rotate re-enables after sequence ends
+					if humanoid then
+						humanoid.AutoRotate = true
+					end
 				end)
+
 				break
 			end
 		end
 	end
 end)
+
