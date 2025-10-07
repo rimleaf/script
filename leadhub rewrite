@@ -60,7 +60,7 @@ local autoBlockOn = false
 local autoPunchOn = false
 local infiniteStamina = true
 local detectionRange = 13
-local apRange = 13 -- punch range in studs
+local apRange = 15 -- punch range in studs
 local generatorCooldown = 2.5
 
 local blockAnimIds = {
@@ -767,7 +767,7 @@ local function beginDragIntoKiller(killerModel)
 
         -- compute desired horizontal velocity toward the target
         -- offset position to be in front of the killer
-        local frontOffset = targetHRP.CFrame.LookVector * 2
+        local frontOffset = targetHRP.CFrame.LookVector * 1
         local desiredPos = targetHRP.Position + frontOffset
 
         local toTarget = desiredPos - hrp.Position
