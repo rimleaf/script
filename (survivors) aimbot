@@ -273,19 +273,18 @@ RunService.Heartbeat:Connect(function()
 
 				-- Disable auto-rotate before teleporting
 				humanoid.AutoRotate = false
-
+                if not didDagger then
+					didDagger = true
+					if isDaggerReady() then
+						fireGuiDagger()
+					end
+		        end
 				connection = RunService.Heartbeat:Connect(function()
 					if not (char and char.Parent and kHRP and kHRP.Parent) then
 						if connection then connection:Disconnect() end
 						-- Re-enable auto-rotate if something breaks early
 						humanoid.AutoRotate = true
 						return
-					end
-                    if not didDagger then
-						didDagger = true
-						if isDaggerReady() then
-							fireGuiDagger()
-						end
 					end
 					local elapsed = tick() - start
 					if elapsed >= 0.55 then
@@ -295,7 +294,7 @@ RunService.Heartbeat:Connect(function()
 						return
 					end
 					-- Constant TP behind killer
-					local behindPos = kHRP.Position - (kHRP.CFrame.LookVector * 1.5)
+					local behindPos = kHRP.Position - (kHRP.CFrame.LookVector * 2)
 					hrp.CFrame = CFrame.new(behindPos, behindPos + kHRP.CFrame.LookVector)
 				end)
 
