@@ -254,10 +254,19 @@ lp.CharacterAdded:Connect(function() task.delay(0.5, refreshUIRefs) end)
 ---------------------------------------------------------
 -- Main Backstab Loop
 ---------------------------------------------------------
+--// Settings
+local PREDICTION_ENABLED = true
+local PREDICTION_STRENGTH = 0.6  -- how strongly prediction affects positioning (0 to 1)
+local PREDICTION_TIME = 0.12      -- seconds to predict ahead
+local LERP_SPEED = 0.35           -- movement smoothing
+local BEHIND_DISTANCE = 1.8       -- how far behind the killer to position
+
 RunService.Heartbeat:Connect(function()
 	if not enabled or not isDaggerReady() then return end
+
 	local char = lp.Character
 	if not (char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChildOfClass("Humanoid")) then return end
+
 	local hrp = char.HumanoidRootPart
 	local humanoid = char:FindFirstChildOfClass("Humanoid")
 
@@ -265,50 +274,44 @@ RunService.Heartbeat:Connect(function()
 		local killer = killersFolder:FindFirstChild(name)
 		if killer and killer:FindFirstChild("HumanoidRootPart") then
 			local kHRP = killer.HumanoidRootPart
-			if isBehindTarget(hrp, kHRP) and killer ~= lastTarget then
-				cooldown, lastTarget = true, killer
-				local start = tick()
-				local didDagger = false
-				local connection
 
+			if isBehindTarget(hrp, kHRP) then
 				humanoid.AutoRotate = false
-
-				if not didDagger then
-					didDagger = true
-					if isDaggerReady() then
-						fireGuiDagger()
-					end
+				if isDaggerReady() then
+					fireGuiDagger()
 				end
 
+				local start = tick()
+				local connection
 				connection = RunService.Heartbeat:Connect(function(dt)
-					if not (char and char.Parent and kHRP and kHRP.Parent) then
+					if not (char and kHRP and kHRP.Parent) then
 						if connection then connection:Disconnect() end
 						humanoid.AutoRotate = true
 						return
 					end
 
 					local elapsed = tick() - start
-					if elapsed >= 0.55 then
+					if elapsed >= 0.5 then
 						if connection then connection:Disconnect() end
 						humanoid.AutoRotate = true
 						return
 					end
 
-					-- Smooth Lerp movement behind killer
-					local targetPos = kHRP.Position - (kHRP.CFrame.LookVector * 1.7)
-					local targetCFrame = CFrame.new(targetPos, targetPos + kHRP.CFrame.LookVector)
-					hrp.CFrame = hrp.CFrame:Lerp(targetCFrame, 0.4) -- smoothness value (0.25 = moderate speed)
-				end)
+					-- Base position behind the killer
+					local kCFrame = kHRP.CFrame
+					local behindPos = kCFrame.Position - (kCFrame.LookVector * BEHIND_DISTANCE)
 
-				task.delay(2, function()
-					RunService.Heartbeat:Wait()
-					while isBehindTarget(hrp, kHRP) do
-						RunService.Heartbeat:Wait()
+					-- Prediction adjustment
+					if PREDICTION_ENABLED then
+						local vel = kHRP.Velocity
+						local horizVel = Vector3.new(vel.X, 0, vel.Z)
+						local predictedOffset = horizVel * (PREDICTION_TIME * PREDICTION_STRENGTH)
+						behindPos += predictedOffset
 					end
-					lastTarget, cooldown = nil, false
-					if humanoid then
-						humanoid.AutoRotate = true
-					end
+
+					-- Compute final CFrame and Lerp smoothly
+					local targetCFrame = CFrame.new(behindPos, behindPos + kCFrame.LookVector)
+					hrp.CFrame = hrp.CFrame:Lerp(targetCFrame, LERP_SPEED)
 				end)
 
 				break
