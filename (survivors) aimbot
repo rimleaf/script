@@ -276,6 +276,7 @@ RunService.Heartbeat:Connect(function()
 			local kHRP = killer.HumanoidRootPart
 
 			if isBehindTarget(hrp, kHRP) then
+				humanoid.AutoRotate = false
 				if isDaggerReady() then
 					fireGuiDagger()
 				end
@@ -285,12 +286,14 @@ RunService.Heartbeat:Connect(function()
 				connection = RunService.Heartbeat:Connect(function(dt)
 					if not (char and kHRP and kHRP.Parent) then
 						if connection then connection:Disconnect() end
+						humanoid.AutoRotate = true
 						return
 					end
 
 					local elapsed = tick() - start
 					if elapsed >= 0.5 then
 						if connection then connection:Disconnect() end
+						humanoid.AutoRotate = true
 						return
 					end
 
