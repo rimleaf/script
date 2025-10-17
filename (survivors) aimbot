@@ -297,7 +297,7 @@ RunService.Heartbeat:Connect(function()
 					-- Smooth Lerp movement behind killer
 					local targetPos = kHRP.Position - (kHRP.CFrame.LookVector * 1.7)
 					local targetCFrame = CFrame.new(targetPos, targetPos + kHRP.CFrame.LookVector)
-					hrp.CFrame = hrp.CFrame:Lerp(targetCFrame, 0.25) -- smoothness value (0.25 = moderate speed)
+					hrp.CFrame = hrp.CFrame:Lerp(targetCFrame, 0.4) -- smoothness value (0.25 = moderate speed)
 				end)
 
 				task.delay(2, function()
