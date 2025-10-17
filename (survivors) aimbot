@@ -255,12 +255,11 @@ lp.CharacterAdded:Connect(function() task.delay(0.5, refreshUIRefs) end)
 -- Main Backstab Loop
 ---------------------------------------------------------
 --// Settings
-local PREDICTION_ENABLED = true
-local PREDICTION_STRENGTH = 0.6  -- how strongly prediction affects positioning (0 to 1)
-local PREDICTION_TIME = 0.12      -- seconds to predict ahead
-local LERP_SPEED = 0.25           -- movement smoothing
+--// Settings
+local LERP_SPEED = 0.25           -- how smoothly it moves behind the killer
 local BEHIND_DISTANCE = 1.7       -- how far behind the killer to position
 
+--// Services
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 
@@ -274,6 +273,7 @@ RunService.Heartbeat:Connect(function()
 	Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
 end)
 
+--// Main dagger + movement logic
 RunService.Heartbeat:Connect(function()
 	if not enabled or not isDaggerReady() then return end
 
@@ -296,7 +296,7 @@ RunService.Heartbeat:Connect(function()
 
 				local start = tick()
 				local connection
-				connection = RunService.Heartbeat:Connect(function(dt)
+				connection = RunService.Heartbeat:Connect(function()
 					if not (char and kHRP and kHRP.Parent) then
 						if connection then connection:Disconnect() end
 						humanoid.AutoRotate = true
@@ -310,19 +310,11 @@ RunService.Heartbeat:Connect(function()
 						return
 					end
 
-					-- Base position behind the killer
+					-- Base position behind the killer (no prediction)
 					local kCFrame = kHRP.CFrame
 					local behindPos = kCFrame.Position - (kCFrame.LookVector * BEHIND_DISTANCE)
 
-					-- Prediction adjustment
-					if PREDICTION_ENABLED then
-						local vel = kHRP.Velocity
-						local horizVel = Vector3.new(vel.X, 0, vel.Z)
-						local predictedOffset = horizVel * (PREDICTION_TIME * PREDICTION_STRENGTH)
-						behindPos += predictedOffset
-					end
-
-					-- Compute final CFrame and Lerp smoothly
+					-- Lerp smoothly behind the killer
 					local targetCFrame = CFrame.new(behindPos, behindPos + kCFrame.LookVector)
 					hrp.CFrame = hrp.CFrame:Lerp(targetCFrame, LERP_SPEED)
 				end)
