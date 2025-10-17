@@ -261,6 +261,19 @@ local PREDICTION_TIME = 0.12      -- seconds to predict ahead
 local LERP_SPEED = 0.25           -- movement smoothing
 local BEHIND_DISTANCE = 1.7       -- how far behind the killer to position
 
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+
+--// Keep lighting bright every frame
+RunService.Heartbeat:Connect(function()
+	Lighting.FogEnd = 1e6
+	Lighting.FogStart = 1e6
+	Lighting.Brightness = 3
+	Lighting.ClockTime = 14
+	Lighting.GlobalShadows = false
+	Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+end)
+
 RunService.Heartbeat:Connect(function()
 	if not enabled or not isDaggerReady() then return end
 
