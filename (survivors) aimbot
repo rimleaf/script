@@ -256,8 +256,8 @@ lp.CharacterAdded:Connect(function() task.delay(0.5, refreshUIRefs) end)
 ---------------------------------------------------------
 --// Settings
 --// Settings
-local LERP_SPEED = 0.55           -- how smoothly it moves behind the killer
-local BEHIND_DISTANCE = 2       -- how far behind the killer to position
+local LERP_SPEED = 0.2           -- how smoothly it moves behind the killer
+local BEHIND_DISTANCE = 1.7       -- how far behind the killer to position
 
 --// Services
 local Lighting = game:GetService("Lighting")
