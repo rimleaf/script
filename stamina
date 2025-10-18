@@ -32,7 +32,7 @@ RunService.RenderStepped:Connect(function()
 		if Module.Stamina and Module.Stamina <= 1.5 then
 			Module.StaminaLoss = 0
 		else
-			Module.StaminaLoss = 7
+			Module.StaminaLoss = 9
 		end
 	end
 end)
