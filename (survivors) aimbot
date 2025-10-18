@@ -295,10 +295,6 @@ RunService.Heartbeat:Connect(function()
 
 			if isBehindTarget(hrp, kHRP) then
 				humanoid.WalkSpeed = 0 -- lock movement
-				if isDaggerReady() then
-					fireGuiDagger()
-				end
-
 				local start = tick()
 				local connection
 				connection = RunService.Heartbeat:Connect(function()
@@ -314,7 +310,6 @@ RunService.Heartbeat:Connect(function()
 						humanoid.WalkSpeed = oldSpeed
 						return
 					end
-
 					-- Base position behind the killer (no prediction)
                     local alpha = math.clamp(elapsed / LERP_SPEED, 0, 1)
                     local eased = easeInOutSine(alpha)
@@ -325,6 +320,9 @@ RunService.Heartbeat:Connect(function()
                     )
 
                     hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased)
+					if isDaggerReady() then
+						fireGuiDagger()
+					end
 				end)
 
 				break
