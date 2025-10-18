@@ -118,9 +118,7 @@ local function ExtendHitbox(studs)
 
 	-- start extending
 	hrp.AssemblyLinearVelocity = (lookvec * studs)
-	hrp.Anchored = true
 	game:GetService("RunService").RenderStepped:Wait()
-	hrp.Anchored = false
 	-- stop and restore origin of velocity
 	if (
 		game:GetService("Players").LocalPlayer.Character
