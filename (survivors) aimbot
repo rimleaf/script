@@ -257,7 +257,7 @@ lp.CharacterAdded:Connect(function() task.delay(0.5, refreshUIRefs) end)
 --// Settings
 --// Settings
 local LERP_SPEED = 0.25           -- how smoothly it moves behind the killer
-local BEHIND_DISTANCE = 2.3       -- how far behind the killer to position
+local BEHIND_DISTANCE = 1.7       -- how far behind the killer to position
 
 --// Services
 local Lighting = game:GetService("Lighting")
@@ -288,13 +288,13 @@ RunService.Heartbeat:Connect(function()
 	local humanoid = char:FindFirstChildOfClass("Humanoid")
 
 	for _, name in ipairs(killerNames) do
-		local oldSpeed = hum.WalkSpeed
+		local oldSpeed = humanoid.WalkSpeed
 		local killer = killersFolder:FindFirstChild(name)
 		if killer and killer:FindFirstChild("HumanoidRootPart") then
 			local kHRP = killer.HumanoidRootPart
 
 			if isBehindTarget(hrp, kHRP) then
-				hum.WalkSpeed = 0 -- lock movement
+				humanoid.WalkSpeed = 0 -- lock movement
 				if isDaggerReady() then
 					fireGuiDagger()
 				end
@@ -304,14 +304,14 @@ RunService.Heartbeat:Connect(function()
 				connection = RunService.Heartbeat:Connect(function()
 					if not (char and kHRP and kHRP.Parent) then
 						if connection then connection:Disconnect() end
-						hum.WalkSpeed = oldSpeed
+						humanoid.WalkSpeed = oldSpeed
 						return
 					end
 
 					local elapsed = tick() - start
 					if elapsed >= 0.5 then
 						if connection then connection:Disconnect() end
-						hum.WalkSpeed = oldSpeed
+						humanoid.WalkSpeed = oldSpeed
 						return
 					end
 
