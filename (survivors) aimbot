@@ -273,6 +273,10 @@ RunService.Heartbeat:Connect(function()
 	Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
 end)
 
+local function easeInOutSine(t)
+	return -(math.cos(math.pi * t) - 1) / 2
+end
+
 --// Main dagger + movement logic
 RunService.Heartbeat:Connect(function()
 	if not enabled or not isDaggerReady() then return end
