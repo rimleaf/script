@@ -290,7 +290,6 @@ RunService.Heartbeat:Connect(function()
 	for _, name in ipairs(killerNames) do
 		local oldSpeed = humanoid.WalkSpeed
 		local killer = killersFolder:FindFirstChild(name)
-
 		if killer and killer:FindFirstChild("HumanoidRootPart") then
 			local kHRP = killer.HumanoidRootPart
 
@@ -298,7 +297,6 @@ RunService.Heartbeat:Connect(function()
 				humanoid.WalkSpeed = 0 -- lock movement
 				local start = tick()
 				local connection
-
 				connection = RunService.Heartbeat:Connect(function()
 					if not (char and kHRP and kHRP.Parent) then
 						if connection then connection:Disconnect() end
@@ -312,40 +310,20 @@ RunService.Heartbeat:Connect(function()
 						humanoid.WalkSpeed = oldSpeed
 						return
 					end
-
 					-- Base position behind the killer (no prediction)
-					local alpha = math.clamp(elapsed / LERP_SPEED, 0, 1)
-					local eased = easeInOutSine(alpha)
+                    local alpha = math.clamp(elapsed / LERP_SPEED, 0, 1)
+                    local eased = easeInOutSine(alpha)
 
-					local targetCF = CFrame.new(
-						kHRP.Position - (kHRP.CFrame.LookVector * BEHIND_DISTANCE),
-						kHRP.Position
-					)
+                    local targetCF = CFrame.new(
+                        kHRP.Position - (kHRP.CFrame.LookVector * BEHIND_DISTANCE),
+                        kHRP.Position
+                    )
 
-					hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased)
-
-					if isDaggerReady() then
-						fireGuiDagger()
-
-						local chr = game.Players.LocalPlayer.Character
-						local hrp = chr:FindFirstChild("HumanoidRootPart")
-						local hum = chr:FindFirstChildOfClass("Humanoid")
-
-						if hum and hrp then
-							hum.AnimationPlayed:Connect(function(t)
-								if t.Animation.AnimationId == "rbxassetid://86545133269813" then
-									repeat task.wait() until t.TimePosition >= 0.01
-									hrp.Anchored = true
-									hrp.AssemblyLinearVelocity += hrp.CFrame.LookVector * 25
-									game:GetService("RunService").RenderStepped:Wait()
-									hrp.Anchored = false
-									hrp.AssemblyLinearVelocity = Vector3.zero
-								end
-							end)
-						end
-					end
+                    hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased)
 				end)
-
+				if isDaggerReady() then
+					fireGuiDagger()
+				end
 				break
 			end
 		end
