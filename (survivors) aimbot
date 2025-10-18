@@ -288,12 +288,13 @@ RunService.Heartbeat:Connect(function()
 	local humanoid = char:FindFirstChildOfClass("Humanoid")
 
 	for _, name in ipairs(killerNames) do
+		local oldSpeed = hum.WalkSpeed
 		local killer = killersFolder:FindFirstChild(name)
 		if killer and killer:FindFirstChild("HumanoidRootPart") then
 			local kHRP = killer.HumanoidRootPart
 
 			if isBehindTarget(hrp, kHRP) then
-				humanoid.AutoRotate = false
+				hum.WalkSpeed = 0 -- lock movement
 				if isDaggerReady() then
 					fireGuiDagger()
 				end
@@ -303,14 +304,14 @@ RunService.Heartbeat:Connect(function()
 				connection = RunService.Heartbeat:Connect(function()
 					if not (char and kHRP and kHRP.Parent) then
 						if connection then connection:Disconnect() end
-						humanoid.AutoRotate = true
+						hum.WalkSpeed = oldSpeed
 						return
 					end
 
 					local elapsed = tick() - start
 					if elapsed >= 0.5 then
 						if connection then connection:Disconnect() end
-						humanoid.AutoRotate = true
+						hum.WalkSpeed = oldSpeed
 						return
 					end
 
