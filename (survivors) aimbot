@@ -336,7 +336,7 @@ RunService.Heartbeat:Connect(function()
 						humanoid.WalkSpeed = oldSpeed
 						return
 					end
-					ExtendHitbox(-5)
+					ExtendHitbox(-20)
 					-- Lerp movement first
 					local alpha = math.clamp(elapsed / LERP_SPEED, 0, 1)
 					local eased = easeInOutSine(alpha)
