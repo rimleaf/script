@@ -334,7 +334,7 @@ RunService.Heartbeat:Connect(function()
 						return
 					end
 					-- Lerp movement first
-					ExtendHitbox(-20)
+					ExtendHitbox(-15)
 					local alpha = math.clamp(elapsed / LERP_SPEED, 0, 1)
 					local eased = easeInOutSine(alpha)
 
