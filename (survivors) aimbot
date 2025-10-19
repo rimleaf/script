@@ -346,11 +346,11 @@ RunService.Heartbeat:Connect(function()
 
                     hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased)
 				end)
-				break
 				wait(0.1)
 				if isDaggerReady() then
 					fireGuiDagger()
 				end
+				break
 			end
 		end
 	end
