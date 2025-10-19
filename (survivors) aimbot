@@ -15,7 +15,7 @@ local LERP_SPEED = 0.1
 local BEHIND_DISTANCE = 2.4
 local RANGE_DEFAULT = 4
 local STAB_DELAY = 0.15
-local STAB_COOLDOWN = 0.3
+local STAB_COOLDOWN = 2
 local BACKSTAB_TIME = 0.5
 
 ---------------------------------------------------------
