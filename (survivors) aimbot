@@ -318,9 +318,6 @@ RunService.Heartbeat:Connect(function()
 				humanoid.WalkSpeed = 0 -- lock movement
 				local start = tick()
 				local connection
-				if isDaggerReady() then
-					fireGuiDagger()
-				end
 				connection = RunService.Heartbeat:Connect(function()
 					if not (char and kHRP and kHRP.Parent) then
 						if connection then connection:Disconnect() end
@@ -350,6 +347,10 @@ RunService.Heartbeat:Connect(function()
                     hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased)
 				end)
 				break
+				wait(0.1)
+				if isDaggerReady() then
+					fireGuiDagger()
+				end
 			end
 		end
 	end
