@@ -184,6 +184,17 @@ end
 local function easeInOutSine(t)
 	return -(math.cos(math.pi * t) - 1) / 2
 end
+local canStab = true
+local stabCooldown = 0.3
+
+local function safeStab()
+	if not canStab then return end
+	canStab = false
+	if isDaggerReady() then fireDagger() end
+	task.delay(stabCooldown, function()
+		canStab = true
+	end)
+end
 
 ---------------------------------------------------------
 -- UI Buttons
@@ -255,7 +266,7 @@ RunService.Heartbeat:Connect(function()
 					stabbed = true
 					task.spawn(function()
 						if isDaggerReady() then
-							fireDagger()
+							safeStab()
 						end
 					end)
 				end
