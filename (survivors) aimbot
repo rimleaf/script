@@ -203,12 +203,10 @@ modeButton.MouseButton1Click:Connect(function()
 end)
 
 ---------------------------------------------------------
--- Smooth Backstab Movement
----------------------------------------------------------
--- Optimized Smooth Backstab Movement
+-- Optimized Smooth Dynamic Backstab Movement
 ---------------------------------------------------------
 local lastStab = 0
-local STAB_COOLDOWN = 0.25 -- prevents repeated stabs too fast
+local STAB_COOLDOWN = 0.25
 
 RunService.Heartbeat:Connect(function(dt)
 	if not enabled or not isDaggerReady() then return end
@@ -218,7 +216,7 @@ RunService.Heartbeat:Connect(function(dt)
 	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
 	if not (hrp and humanoid) then return end
 
-	-- Cache killers once per frame
+	-- Find valid killer once per frame
 	local targetKiller
 	for _, name in ipairs(killerNames) do
 		local killer = killersFolder:FindFirstChild(name)
@@ -228,31 +226,33 @@ RunService.Heartbeat:Connect(function(dt)
 			break
 		end
 	end
-
 	if not targetKiller then return end
 
-	-- Skip if stabbed too recently
 	if tick() - lastStab < STAB_COOLDOWN then return end
 	lastStab = tick()
 
 	local oldSpeed = humanoid.WalkSpeed
 	humanoid.WalkSpeed = 0
 
-	local startCF = hrp.CFrame
-	local kCFrame = targetKiller.CFrame
-	local behindPos = kCFrame.Position - (kCFrame.LookVector * BEHIND_DISTANCE)
-	local targetCF = CFrame.new(Vector3.new(behindPos.X, kCFrame.Position.Y, behindPos.Z), behindPos + kCFrame.LookVector)
-
+	local startTime = tick()
 	local stabTriggered = false
-	local elapsed = 0
-	local duration = 0.4 -- shorter interpolation
+	local duration = 0.4
 
-	while elapsed < duration do
-		elapsed += dt
+	while tick() - startTime < duration do
+		if not targetKiller.Parent then break end -- stop if killer disappears
+
+		local elapsed = tick() - startTime
 		local eased = easeInOutSine(math.clamp(elapsed / LERP_SPEED, 0, 1))
-		hrp.CFrame = startCF:Lerp(targetCF, eased)
 
-		if not stabTriggered and elapsed >= 0.12 then
+		-- Continuously track killer’s current position
+		local kCFrame = targetKiller.CFrame
+		local behindPos = kCFrame.Position - (kCFrame.LookVector * BEHIND_DISTANCE)
+		local targetCF = CFrame.new(Vector3.new(behindPos.X, kCFrame.Position.Y, behindPos.Z), behindPos + kCFrame.LookVector)
+
+		hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased * dt * 20) -- smoother, FPS-scaled motion
+
+		-- Fire dagger mid-way
+		if not stabTriggered and elapsed >= 0.15 then
 			stabTriggered = true
 			task.spawn(fireDagger)
 		end
@@ -262,3 +262,4 @@ RunService.Heartbeat:Connect(function(dt)
 
 	humanoid.WalkSpeed = oldSpeed
 end)
+
