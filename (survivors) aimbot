@@ -281,7 +281,6 @@ RunService.Heartbeat:Connect(function()
 			local kHRP = killer.HumanoidRootPart
 
 			if isBehindTarget(hrp, kHRP) then
-				humanoid.AutoRotate = false
 				humanoid.WalkSpeed = 0 -- lock movement
 				local start = tick()
 				local connection
