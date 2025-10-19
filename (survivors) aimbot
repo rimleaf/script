@@ -245,7 +245,7 @@ RunService.Heartbeat:Connect(function(dt)
 
 	local stabTriggered = false
 	local elapsed = 0
-	local duration = 0.3 -- shorter interpolation
+	local duration = 0.4 -- shorter interpolation
 
 	while elapsed < duration do
 		elapsed += dt
