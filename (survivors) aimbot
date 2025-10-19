@@ -236,7 +236,7 @@ RunService.Heartbeat:Connect(function(dt)
 
 	local startTime = tick()
 	local stabTriggered = false
-	local duration = 0.4
+	local duration = 0.5
 
 	while tick() - startTime < duration do
 		if not targetKiller.Parent then break end -- stop if killer disappears
@@ -252,7 +252,7 @@ RunService.Heartbeat:Connect(function(dt)
 		hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased * dt * 20) -- smoother, FPS-scaled motion
 
 		-- Fire dagger mid-way
-		if not stabTriggered and elapsed >= 0 then
+		if not stabTriggered and elapsed >= 0.1 then
 			stabTriggered = true
 			task.spawn(fireDagger)
 		end
