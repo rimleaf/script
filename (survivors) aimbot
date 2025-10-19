@@ -334,13 +334,17 @@ RunService.Heartbeat:Connect(function()
 					ExtendHitbox(-20)
 					local alpha = math.clamp(elapsed / LERP_SPEED, 0, 1)
 					local eased = easeInOutSine(alpha)
+        			local kCFrame = kHRP.CFrame
+        			-- base behind position
+        			local behindPos = kCFrame.Position - (kCFrame.LookVector.Unit * BEHIND_DISTANCE)
+        			behindPos = Vector3.new(behindPos.X, kCFrame.Position.Y, behindPos.Z)
 
 					-- Target position directly behind killer
-                    local targetCF = CFrame.new(kHRP.Position - (kHRP.CFrame.LookVector * BEHIND_DISTANCE), kHRP.Position)
+                    local targetCF = CFrame.new(behindPos, behindPos + kCFrame.LookVector.Unit)
 
                     hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased)
 
-					--hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + kHRP.CFrame.LookVector)
+					--hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + kHRP.CFrame.LookVector.Unit)
 				end)
 				wait(0.2)
 				if isDaggerReady() then
