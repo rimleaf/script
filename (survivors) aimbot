@@ -256,7 +256,7 @@ lp.CharacterAdded:Connect(function() task.delay(0.5, refreshUIRefs) end)
 ---------------------------------------------------------
 --// Settings
 --// Settings
-local LERP_SPEED = 0.5           -- how smoothly it moves behind the killer
+local LERP_SPEED = 0.8           -- how smoothly it moves behind the killer
 local BEHIND_DISTANCE = 3       -- how far behind the killer to position
 
 local function easeInOutSine(t)
