@@ -205,46 +205,60 @@ end)
 ---------------------------------------------------------
 -- Smooth Backstab Movement
 ---------------------------------------------------------
-RunService.Heartbeat:Connect(function()
+-- Optimized Smooth Backstab Movement
+---------------------------------------------------------
+local lastStab = 0
+local STAB_COOLDOWN = 0.25 -- prevents repeated stabs too fast
+
+RunService.Heartbeat:Connect(function(dt)
 	if not enabled or not isDaggerReady() then return end
+
 	local char = lp.Character
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
 	if not (hrp and humanoid) then return end
 
+	-- Cache killers once per frame
+	local targetKiller
 	for _, name in ipairs(killerNames) do
 		local killer = killersFolder:FindFirstChild(name)
 		local kHRP = killer and killer:FindFirstChild("HumanoidRootPart")
-		if not kHRP then continue end
-
-		if isBehindTarget(hrp, kHRP) then
-			local oldSpeed = humanoid.WalkSpeed
-			humanoid.WalkSpeed = 0
-
-			local start = tick()
-			local stabbed = false -- prevent multiple stabs
-
-			while tick() - start < 0.5 do
-				local elapsed = tick() - start
-				local eased = easeInOutSine(math.clamp(elapsed / LERP_SPEED, 0, 1))
-				local kCFrame = kHRP.CFrame
-				local behindPos = kCFrame.Position - (kCFrame.LookVector * BEHIND_DISTANCE)
-				local targetCF = CFrame.new(Vector3.new(behindPos.X, kCFrame.Position.Y, behindPos.Z), behindPos + kCFrame.LookVector)
-				hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased)
-
-				-- Stab mid-way through the lerp (after 0.25s)
-				if not stabbed and elapsed >= 0.15 then
-					stabbed = true
-					if isDaggerReady() then
-						task.spawn(fireDagger)
-					end
-				end
-
-				RunService.RenderStepped:Wait()
-			end
-
-			humanoid.WalkSpeed = oldSpeed
+		if kHRP and isBehindTarget(hrp, kHRP) then
+			targetKiller = kHRP
 			break
 		end
 	end
+
+	if not targetKiller then return end
+
+	-- Skip if stabbed too recently
+	if tick() - lastStab < STAB_COOLDOWN then return end
+	lastStab = tick()
+
+	local oldSpeed = humanoid.WalkSpeed
+	humanoid.WalkSpeed = 0
+
+	local startCF = hrp.CFrame
+	local kCFrame = targetKiller.CFrame
+	local behindPos = kCFrame.Position - (kCFrame.LookVector * BEHIND_DISTANCE)
+	local targetCF = CFrame.new(Vector3.new(behindPos.X, kCFrame.Position.Y, behindPos.Z), behindPos + kCFrame.LookVector)
+
+	local stabTriggered = false
+	local elapsed = 0
+	local duration = 0.3 -- shorter interpolation
+
+	while elapsed < duration do
+		elapsed += dt
+		local eased = easeInOutSine(math.clamp(elapsed / LERP_SPEED, 0, 1))
+		hrp.CFrame = startCF:Lerp(targetCF, eased)
+
+		if not stabTriggered and elapsed >= 0.12 then
+			stabTriggered = true
+			task.spawn(fireDagger)
+		end
+
+		RunService.RenderStepped:Wait()
+	end
+
+	humanoid.WalkSpeed = oldSpeed
 end)
