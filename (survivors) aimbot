@@ -224,7 +224,7 @@ RunService.Heartbeat:Connect(function()
 			local start = tick()
 			local stabbed = false -- prevent multiple stabs
 
-			while tick() - start < 0.5 do
+			while tick() - start < 0.4 do
 				local elapsed = tick() - start
 				local eased = easeInOutSine(math.clamp(elapsed / LERP_SPEED, 0, 1))
 				local kCFrame = kHRP.CFrame
@@ -233,7 +233,7 @@ RunService.Heartbeat:Connect(function()
 				hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased)
 
 				-- Stab mid-way through the lerp (after 0.25s)
-				if not stabbed and elapsed >= 0.25 then
+				if not stabbed and elapsed >= 0.1 then
 					stabbed = true
 					if isDaggerReady() then
 						task.spawn(fireDagger)
