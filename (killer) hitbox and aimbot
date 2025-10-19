@@ -118,7 +118,7 @@ local function ExtendHitbox(studs)
 
 	-- start extending
 	hrp.AssemblyLinearVelocity = (lookvec * studs)
-	task.wait() --game:GetService("RunService").RenderStepped:Wait()
+	game:GetService("RunService").RenderStepped:Wait()
 	-- stop and restore origin of velocity
 	if (
 		game:GetService("Players").LocalPlayer.Character
