@@ -345,7 +345,7 @@ RunService.Heartbeat:Connect(function()
 
 					--hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + kHRP.CFrame.LookVector)
 				end)
-				wait(0.15)
+				wait(0.2)
 				if isDaggerReady() then
 					fireGuiDagger()
 				end
