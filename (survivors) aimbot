@@ -252,7 +252,7 @@ RunService.Heartbeat:Connect(function(dt)
 		hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased * dt * 20) -- smoother, FPS-scaled motion
 
 		-- Fire dagger mid-way
-		if not stabTriggered and elapsed >= 0.15 then
+		if not stabTriggered and elapsed >= 0.08 then
 			stabTriggered = true
 			task.spawn(fireDagger)
 		end
