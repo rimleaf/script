@@ -304,11 +304,12 @@ RunService.Heartbeat:Connect(function()
 					local eased = easeInOutSine(alpha)
 
 					-- Target position directly behind killer
-					local targetPos = kHRP.Position - (kHRP.CFrame.LookVector * BEHIND_DISTANCE)
-					local targetCF = CFrame.new(targetPos)
+                    local targetCF = CFrame.new(
+                        kHRP.Position - (kHRP.CFrame.LookVector * BEHIND_DISTANCE),
+                        kHRP.Position
+                    )
 
-					-- Smoothly move with Lerp
-					hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased)
+                    hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased)
 				end)
 
 				task.wait(0.2)
