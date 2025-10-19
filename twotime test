@@ -1,0 +1,259 @@
+-- External dependencies
+--loadstring(game:HttpGet("https://raw.githubusercontent.com/skibidi399/Chance-aimbot/refs/heads/main/Chance%20aimbot%20v2"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/duhsekah"))()
+
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local lp = Players.LocalPlayer
+local playerGui = lp:WaitForChild("PlayerGui")
+
+-- Config
+local MaxZoomValue = 100
+local LERP_SPEED = 0 -- faster movement to reduce lag time
+local BEHIND_DISTANCE = 3
+local RANGE_DEFAULT = 6
+
+---------------------------------------------------------
+-- Camera Zoom Enforcement
+---------------------------------------------------------
+local function enforceZoom()
+	if lp.CameraMaxZoomDistance ~= MaxZoomValue then
+		lp.CameraMaxZoomDistance = MaxZoomValue
+	end
+end
+lp:GetPropertyChangedSignal("CameraMaxZoomDistance"):Connect(enforceZoom)
+enforceZoom()
+
+---------------------------------------------------------
+-- UI Setup
+---------------------------------------------------------
+local screenGui = Instance.new("ScreenGui", playerGui)
+screenGui.Name = "BackstabToggleGui"
+screenGui.ResetOnSpawn = false
+
+local function createButton(parent, text, size, pos, bgColor, textSize)
+	local btn = Instance.new("TextButton")
+	btn.Size = size
+	btn.Position = pos
+	btn.BackgroundColor3 = bgColor
+	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btn.Font = Enum.Font.SourceSansBold
+	btn.TextSize = textSize
+	btn.Text = text
+	btn.Parent = parent
+	return btn
+end
+
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 180, 0, 150)
+mainFrame.Position = UDim2.new(0, 10, 0, 10)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+mainFrame.BackgroundTransparency = 0.3
+mainFrame.Active = true
+mainFrame.Draggable = true
+
+local toggleButton = createButton(mainFrame, "Backstab: OFF", UDim2.new(0, 150, 0, 40), UDim2.new(0, 15, 0, 10), Color3.fromRGB(30, 30, 30), 20)
+
+local rangeLabel = Instance.new("TextLabel", mainFrame)
+rangeLabel.Size = UDim2.new(0, 150, 0, 20)
+rangeLabel.Position = UDim2.new(0, 15, 0, 55)
+rangeLabel.BackgroundTransparency = 1
+rangeLabel.TextColor3 = Color3.new(1,1,1)
+rangeLabel.Font = Enum.Font.SourceSans
+rangeLabel.TextSize = 16
+rangeLabel.Text = "Range:"
+
+local rangeBox = Instance.new("TextBox", mainFrame)
+rangeBox.Size = UDim2.new(0, 150, 0, 25)
+rangeBox.Position = UDim2.new(0, 15, 0, 75)
+rangeBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+rangeBox.TextColor3 = Color3.new(1,1,1)
+rangeBox.Font = Enum.Font.SourceSans
+rangeBox.TextSize = 16
+rangeBox.Text = tostring(RANGE_DEFAULT)
+rangeBox.ClearTextOnFocus = false
+rangeBox.PlaceholderText = "Enter range (1 - 20)"
+
+local modeButton = createButton(mainFrame, "Mode: Behind", UDim2.new(0, 150, 0, 25), UDim2.new(0, 15, 0, 105), Color3.fromRGB(70, 70, 70), 16)
+modeButton.Font = Enum.Font.SourceSans
+
+---------------------------------------------------------
+-- Mini Toggle UI
+---------------------------------------------------------
+local miniGui = Instance.new("ScreenGui", playerGui)
+miniGui.Name = "BackstabMiniToggle"
+miniGui.ResetOnSpawn = false
+
+local miniFrame = Instance.new("Frame", miniGui)
+miniFrame.Size = UDim2.new(0, 120, 0, 35)
+miniFrame.Position = UDim2.new(0, 200, 0, 10)
+miniFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+miniFrame.Active = true
+
+local miniButton = createButton(miniFrame, "Hide UI", UDim2.new(1, 0, 1, 0), UDim2.new(), Color3.fromRGB(40, 40, 40), 16)
+
+-- Draggable mini
+local dragging, dragStart, startPos, dragInput, dragMoved = false, nil, nil, nil, false
+local function clampPosition(x,y)
+	local cam = workspace.CurrentCamera
+	local sW,sH = cam.ViewportSize.X, cam.ViewportSize.Y
+	return math.clamp(x,0,sW-miniFrame.AbsoluteSize.X), math.clamp(y,0,sH-miniFrame.AbsoluteSize.Y)
+end
+local function update(input)
+	if not dragStart or not startPos then return end
+	local delta = input.Position - dragStart
+	local newX,newY = clampPosition(startPos.X.Offset + delta.X, startPos.Y.Offset + delta.Y)
+	miniFrame.Position = UDim2.new(startPos.X.Scale,newX,startPos.Y.Scale,newY)
+end
+miniButton.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = miniFrame.Position
+		dragMoved = false
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+				task.wait(0.02)
+			end
+		end)
+	end
+end)
+miniButton.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		dragInput = input
+	end
+end)
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		local delta = input.Position - (dragStart or input.Position)
+		if math.abs(delta.X) > 4 or math.abs(delta.Y) > 4 then dragMoved = true end
+		update(input)
+	end
+end)
+miniButton.MouseButton1Click:Connect(function()
+	if dragMoved then dragMoved = false return end
+	mainFrame.Visible = not mainFrame.Visible
+	miniButton.Text = mainFrame.Visible and "Hide UI" or "Show UI"
+end)
+
+---------------------------------------------------------
+-- Logic
+---------------------------------------------------------
+local enabled, range, mode = false, RANGE_DEFAULT, "Behind"
+local killerNames = { "Slasher", "c00lkidd", "JohnDoe", "1x1x1x1", "Noli" }
+local killersFolder = workspace:WaitForChild("Players"):WaitForChild("Killers")
+
+local daggerBtn, cooldownText
+local function refreshUIRefs()
+	local mainUI = playerGui:FindFirstChild("MainUI")
+	local ability = mainUI and mainUI:FindFirstChild("AbilityContainer")
+	daggerBtn = ability and ability:FindFirstChild("Dagger")
+	cooldownText = daggerBtn and daggerBtn:FindFirstChild("CooldownTime")
+end
+refreshUIRefs()
+playerGui.ChildAdded:Connect(function(child)
+	if child.Name == "MainUI" then task.delay(0.1, refreshUIRefs) end
+end)
+lp.CharacterAdded:Connect(function() task.delay(0.5, refreshUIRefs) end)
+
+local function isDaggerReady()
+	return daggerBtn and (not cooldownText or cooldownText.Text == "")
+end
+local function tryActivate(btn)
+	if not btn then return end
+	pcall(function() btn:Activate() end)
+	if type(getconnections)=="function" then
+		for _,c in ipairs(getconnections(btn.MouseButton1Click)) do
+			pcall(function() (c.Function or c.func or c.Fire)() end)
+		end
+	end
+end
+local function fireDagger()
+	if daggerBtn then tryActivate(daggerBtn) end
+end
+local function isBehindTarget(hrp, targetHRP)
+	local dist = (hrp.Position - targetHRP.Position).Magnitude
+	if dist > range then return false end
+	if mode == "Around" then return true end
+	return (hrp.Position - targetHRP.Position):Dot(-targetHRP.CFrame.LookVector) > 0.3
+end
+local function easeInOutSine(t)
+	return -(math.cos(math.pi * t) - 1) / 2
+end
+
+---------------------------------------------------------
+-- UI Buttons
+---------------------------------------------------------
+toggleButton.MouseButton1Click:Connect(function()
+	enabled = not enabled
+	toggleButton.Text = "Backstab: " .. (enabled and "ON" or "OFF")
+	toggleButton.BackgroundColor3 = enabled and Color3.fromRGB(50,150,50) or Color3.fromRGB(30,30,30)
+end)
+rangeBox.FocusLost:Connect(function()
+	local input = tonumber(rangeBox.Text)
+	if input and input >= 1 and input <= 20 then range = input else rangeBox.Text = tostring(range) end
+end)
+modeButton.MouseButton1Click:Connect(function()
+	mode = (mode=="Behind") and "Around" or "Behind"
+	modeButton.Text = "Mode: "..mode
+end)
+
+---------------------------------------------------------
+-- Optimized Smooth Dynamic Backstab Movement
+---------------------------------------------------------
+local lastStab = 0
+local STAB_COOLDOWN = 0.25
+
+RunService.Heartbeat:Connect(function(dt)
+	if not enabled or not isDaggerReady() then return end
+
+	local char = lp.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+	if not (hrp and humanoid) then return end
+
+	-- Find valid killer once per frame
+	local targetKiller
+	for _, name in ipairs(killerNames) do
+		local killer = killersFolder:FindFirstChild(name)
+		local kHRP = killer and killer:FindFirstChild("HumanoidRootPart")
+		if kHRP and isBehindTarget(hrp, kHRP) then
+			targetKiller = kHRP
+			break
+		end
+	end
+	if not targetKiller then return end
+
+	if tick() - lastStab < STAB_COOLDOWN then return end
+	lastStab = tick()
+
+	local oldSpeed = humanoid.WalkSpeed
+	humanoid.WalkSpeed = 0
+
+	local startTime = tick()
+	local stabTriggered = false
+	local duration = 0.4
+
+	while tick() - startTime < duration do
+		if not targetKiller.Parent then break end -- stop if killer disappears
+        local elapsed = tick() - startTime
+        local behindPos = kHRP.Position - (kHRP.CFrame.LookVector * 2)
+		hrp.CFrame = CFrame.new(behindPos, behindPos + kHRP.CFrame.LookVector)
+
+		-- Fire dagger mid-way
+		if not stabTriggered and elapsed >= 0.1 then
+			stabTriggered = true
+			task.spawn(fireDagger)
+            hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + kHRP.CFrame.LookVector)
+		end
+
+		RunService.RenderStepped:Wait()
+	end
+
+	humanoid.WalkSpeed = oldSpeed
+end)
+
