@@ -147,7 +147,7 @@ srvRun.Heartbeat:Connect(function()
 	for _, track in humanoid:GetPlayingAnimationTracks() do
 		local animId = track.Animation and track.Animation.AnimationId
 		local normId = normalizeId(animId)
-		if normId and attackIdsRaw["rbxassetid://" .. normId] and (track.TimePosition / track.Length < 0.75) then
+		if normId and attackIdsRaw["rbxassetid://" .. normId] and (track.TimePosition / track.Length < 0.5) then
 			isAttacking = true
 			break
 		end
@@ -155,7 +155,7 @@ srvRun.Heartbeat:Connect(function()
 
 	-- If attack detected, extend timer
 	if isAttacking then
-		aimbotEnd = tick() + 0.15
+		aimbotEnd = tick() + 0.1
 		ExtendHitbox(40)
 	end
 
@@ -171,7 +171,7 @@ srvRun.Heartbeat:Connect(function()
 				local fromPos = root.Position
 				local dir = predicted - fromPos
 				if dir.Magnitude > 1e-3 then
-					--root.CFrame = CFrame.lookAt(fromPos, fromPos + dir)
+					root.CFrame = CFrame.lookAt(fromPos, fromPos + dir)
 				end
 			end
 		end
