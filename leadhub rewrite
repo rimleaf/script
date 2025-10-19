@@ -886,7 +886,6 @@ local espGenerators = false
 
 -- Utility: create or reuse highlight
 local function getOrCreateHighlight(obj, color, fillTrans, outlineTrans)
-    wait(0.5) -- delay
     for i = 1, 3 do
         local h = obj:FindFirstChild("ESP_Highlight")
         if not h then
@@ -989,7 +988,7 @@ task.spawn(function()
             end
         end
 
-        task.wait(0.5) -- ✅ only checks every half second instead of spamming every frame
+        task.wait(1) -- ✅ only checks every half second instead of spamming every frame
     end
 end)
 
