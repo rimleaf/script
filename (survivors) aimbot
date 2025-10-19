@@ -179,7 +179,7 @@ local function isBehindTarget(hrp, targetHRP)
 	local dist = (hrp.Position - targetHRP.Position).Magnitude
 	if dist > range then return false end
 	if mode == "Around" then return true end
-	return (hrp.Position - targetHRP.Position):Dot(-targetHRP.CFrame.LookVector) > 0.4
+	return (hrp.Position - targetHRP.Position):Dot(-targetHRP.CFrame.LookVector) > 0.3
 end
 local function easeInOutSine(t)
 	return -(math.cos(math.pi * t) - 1) / 2
