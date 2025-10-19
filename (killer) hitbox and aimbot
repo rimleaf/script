@@ -117,7 +117,7 @@ local function ExtendHitbox(studs)
 	local lookvec = hrp.CFrame.LookVector
 
 	-- start extending
-	hrp.AssemblyLinearVelocity = (lookvec * studs)
+	hrp.AssemblyLinearVelocity += (lookvec * studs)
 	game:GetService("RunService").RenderStepped:Wait()
 	-- stop and restore origin of velocity
 	if (
@@ -156,7 +156,7 @@ srvRun.Heartbeat:Connect(function()
 	-- If attack detected, extend timer
 	if isAttacking then
 		aimbotEnd = tick() + 0.15
-		ExtendHitbox(40)
+		ExtendHitbox(30)
 	end
 
 	-- Only run while timer is active
