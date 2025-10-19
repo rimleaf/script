@@ -79,7 +79,6 @@ local espSurvivors = false
 local espItems = false
 local espGenerators = false
 
--- Utility: create or reuse highlight
 local function getOrCreateHighlight(obj, color, fillTrans, outlineTrans)
 	if not obj then return end
 	local h = obj:FindFirstChild("ESP_Highlight")
@@ -96,7 +95,6 @@ local function getOrCreateHighlight(obj, color, fillTrans, outlineTrans)
 	return h
 end
 
--- Utility: clear highlight
 local function clearESP(obj)
 	if not obj then return end
 	local h = obj:FindFirstChild("ESP_Highlight")
@@ -105,7 +103,6 @@ local function clearESP(obj)
 	if b then b:Destroy() end
 end
 
--- Apply Item ESP
 local function applyItemESP(obj)
 	getOrCreateHighlight(obj, Color3.fromRGB(0,0,139), 0.6, 0.6)
 	if not obj:FindFirstChild("ESP_Billboard") then
@@ -129,19 +126,25 @@ local function applyItemESP(obj)
 	end
 end
 
--- ESP Loop (restored original logic)
+-- Exclude local player's character
+local function isLocalCharacter(model)
+	return model == lp.Character
+end
+
 task.spawn(function()
 	while true do
 		local mapFolder = Workspace:FindFirstChild("Map")
 			and Workspace.Map:FindFirstChild("Ingame")
 			and Workspace.Map.Ingame:FindFirstChild("Map")
 
-		-- Killers ESP (constant loop refresh)
+		-- Killers ESP (exclude self)
 		if espKillers then
 			local killers = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
 			if killers then
 				for _, k in ipairs(killers:GetChildren()) do
-					getOrCreateHighlight(k, Color3.fromRGB(255,0,0), 0.5, 0.3)
+					if not isLocalCharacter(k) then
+						getOrCreateHighlight(k, Color3.fromRGB(255,0,0), 0.5, 0.3)
+					end
 				end
 			end
 		else
@@ -151,12 +154,14 @@ task.spawn(function()
 			end
 		end
 
-		-- Survivors ESP
+		-- Survivors ESP (exclude self)
 		if espSurvivors then
 			local survivors = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Survivors")
 			if survivors then
 				for _, s in ipairs(survivors:GetChildren()) do
-					getOrCreateHighlight(s, Color3.fromRGB(255,255,255), 0.5, 0.3)
+					if not isLocalCharacter(s) then
+						getOrCreateHighlight(s, Color3.fromRGB(255,255,255), 0.5, 0.3)
+					end
 				end
 			end
 		else
