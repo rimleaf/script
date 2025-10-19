@@ -208,6 +208,12 @@ end)
 local lastStab = 0
 local STAB_COOLDOWN = 0.25
 
+---------------------------------------------------------
+-- Fixed and Stable Backstab Movement
+---------------------------------------------------------
+local lastStab = 0
+local STAB_COOLDOWN = 0.25
+
 RunService.Heartbeat:Connect(function(dt)
 	if not enabled or not isDaggerReady() then return end
 
@@ -228,6 +234,7 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 	if not targetKiller then return end
 
+	-- Prevent spam
 	if tick() - lastStab < STAB_COOLDOWN then return end
 	lastStab = tick()
 
@@ -239,16 +246,17 @@ RunService.Heartbeat:Connect(function(dt)
 	local duration = 0.4
 
 	while tick() - startTime < duration do
-		if not targetKiller.Parent then break end -- stop if killer disappears
-        local elapsed = tick() - startTime
-        local behindPos = kHRP.Position - (kHRP.CFrame.LookVector * 2)
-		hrp.CFrame = CFrame.new(behindPos, behindPos + kHRP.CFrame.LookVector)
+		if not targetKiller or not targetKiller.Parent then break end -- safety check
+
+		local elapsed = tick() - startTime
+		local behindPos = targetKiller.Position - (targetKiller.CFrame.LookVector * 2)
+		hrp.CFrame = CFrame.new(behindPos, behindPos + targetKiller.CFrame.LookVector)
 
 		-- Fire dagger mid-way
 		if not stabTriggered and elapsed >= 0.1 then
 			stabTriggered = true
 			task.spawn(fireDagger)
-            hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + kHRP.CFrame.LookVector)
+			hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + targetKiller.CFrame.LookVector)
 		end
 
 		RunService.RenderStepped:Wait()
