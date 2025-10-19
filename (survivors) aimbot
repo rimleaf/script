@@ -290,38 +290,59 @@ RunService.Heartbeat:Connect(function()
 	for _, name in ipairs(killerNames) do
 		local oldSpeed = humanoid.WalkSpeed
 		local killer = killersFolder:FindFirstChild(name)
+
 		if killer and killer:FindFirstChild("HumanoidRootPart") then
 			local kHRP = killer.HumanoidRootPart
 
 			if isBehindTarget(hrp, kHRP) then
 				humanoid.WalkSpeed = 0 -- lock movement
+				humanoid.Anchored = true
 				local start = tick()
 				local connection
+
 				connection = RunService.Heartbeat:Connect(function()
 					if not (char and kHRP and kHRP.Parent) then
 						if connection then connection:Disconnect() end
 						humanoid.WalkSpeed = oldSpeed
+						humanoid.Anchored = false
 						return
 					end
 
 					local elapsed = tick() - start
-					if elapsed >= 0.5 then
+					if elapsed >= 0.55 then
 						if connection then connection:Disconnect() end
 						humanoid.WalkSpeed = oldSpeed
+						humanoid.Anchored = false
 						return
 					end
-					-- Base position behind the killer (no prediction)
-                    local alpha = math.clamp(elapsed / LERP_SPEED, 0, 1)
-                    local eased = easeInOutSine(alpha)
 
-                    local targetCF = CFrame.new(
-                        kHRP.Position - (kHRP.CFrame.LookVector * BEHIND_DISTANCE),
-                        kHRP.Position
-                    )
+					-- Lerp movement first
+					local alpha = math.clamp(elapsed / LERP_SPEED, 0, 1)
+					local eased = easeInOutSine(alpha)
 
-                    hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased)
+					-- Offset: starts at -1.5, blends to -3
+					local offset
+					if elapsed <= 0.15 then
+						offset = 1.5
+					else
+						local t = math.clamp((elapsed - 0.25) / 0.55, 0, 1)
+						offset = 1.5 + (3 - 1.5) * t
+					end
+
+					-- Target position directly behind killer
+					local targetPos = kHRP.Position - (kHRP.CFrame.LookVector * offset)
+					local targetCF = CFrame.new(targetPos)
+
+					-- Smoothly move with Lerp
+					hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased)
+					
+					-- Then face the same direction the killer is facing
+					local lookDir = kHRP.CFrame.LookVector
+					local aimCF = CFrame.lookAt(hrp.Position, hrp.Position + lookDir)
+					hrp.CFrame = aimCF
 				end)
-				wait(0.14)
+
+				task.wait(0.1)
 				if isDaggerReady() then
 					fireGuiDagger()
 				end
@@ -330,3 +351,4 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 end)
+
