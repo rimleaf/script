@@ -282,7 +282,6 @@ RunService.Heartbeat:Connect(function()
 
 			if isBehindTarget(hrp, kHRP) then
 				humanoid.WalkSpeed = 0 -- lock movement
-				humanoid.Anchored = true
 				local start = tick()
 				local connection
 
@@ -290,7 +289,6 @@ RunService.Heartbeat:Connect(function()
 					if not (char and kHRP and kHRP.Parent) then
 						if connection then connection:Disconnect() end
 						humanoid.WalkSpeed = oldSpeed
-						humanoid.Anchored = false
 						return
 					end
 
@@ -298,7 +296,6 @@ RunService.Heartbeat:Connect(function()
 					if elapsed >= 0.55 then
 						if connection then connection:Disconnect() end
 						humanoid.WalkSpeed = oldSpeed
-						humanoid.Anchored = false
 						return
 					end
 
