@@ -1,403 +1,231 @@
-
--- Lead Hub (cleaned, optimized)
--- Keeps: Rayfield window, Generators tab (auto generator + delay), ESP tab (Killers, Survivors, Items, Generators)
--- Removed: Combat, HDT, sound hooks, stamina, misc, and other bloat
+-- Lead Hub (optimized + restored original Killer & Item ESP behavior)
 
 -- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local lp = Players.LocalPlayer
 
--- Rayfield (load)
+-- Rayfield
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local Window = Rayfield:CreateWindow({
-    Name = "Forsaken",
-    LoadingTitle = "Random Script",
-    LoadingSubtitle = "by rimleaaaf (Instagram)",
-    ConfigurationSaving = {Enabled = true, FolderName = "LeadHub", FileName = "Settings"},
-    Discord = {Enabled = false},
-    KeySystem = false
+	Name = "Lead Hub",
+	LoadingTitle = "Lead Hub",
+	LoadingSubtitle = "by Lead",
+	ConfigurationSaving = {Enabled = true, FolderName = "LeadHub", FileName = "Settings"},
+	Discord = {Enabled = false},
+	KeySystem = false
 })
 
--- Tabs we keep
+-- Tabs
 local GeneratorTab = Window:CreateTab("Generators", 4483362458)
 local ESPTab = Window:CreateTab("ESP", 4483362458)
 
--- ======= GENERATORS =======
+--================= GENERATORS =================
 local generatorCooldown = 2.5
-local autoGeneratorEnabled = false
-local generatorLoopConn
+local generatorLoop
 
-local function findGenerators()
-    local mapFolder = Workspace:FindFirstChild("Map") and Workspace.Map:FindFirstChild("Ingame") and Workspace.Map.Ingame:FindFirstChild("Map")
-    if not mapFolder then return {} end
-    local gens = {}
-    for _, v in ipairs(mapFolder:GetChildren()) do
-        if v.Name == "Generator" then
-            table.insert(gens, v)
-        end
-    end
-    return gens
-end
-
-local function tryInteractGenerator(gen)
-    if not gen then return end
-    local remotes = gen:FindFirstChild("Remotes")
-    if remotes and remotes:FindFirstChild("RE") and remotes.RE.FireServer then
-        pcall(function() remotes.RE:FireServer() end)
-    end
-end
-
-local function runAutoGeneratorLoop()
-    if generatorLoopConn then generatorLoopConn:Disconnect() generatorLoopConn = nil end
-    if not autoGeneratorEnabled then return end
-    local last = 0
-    generatorLoopConn = RunService.Heartbeat:Connect(function(dt)
-        last = last + dt
-        if last < generatorCooldown then return end
-        last = 0
-        local gens = findGenerators()
-        for _, g in ipairs(gens) do
-            local prog = g:FindFirstChild("Progress")
-            if prog and prog.Value < 100 then
-                -- pcall each to avoid stall from one generator
-                pcall(tryInteractGenerator, g)
-            end
-        end
-    end)
+local function GeneratorOnce()
+	local IngameMapFolder = Workspace:FindFirstChild("Map") and Workspace.Map:FindFirstChild("Ingame")
+	local SubMapFolder = IngameMapFolder and IngameMapFolder:FindFirstChild("Map")
+	if SubMapFolder then
+		for _, g in ipairs(SubMapFolder:GetChildren()) do
+			if g.Name == "Generator" and g:FindFirstChild("Progress") and g.Progress.Value < 100 then
+				task.wait(0.5)
+				local remotes = g:FindFirstChild("Remotes")
+				if remotes and remotes:FindFirstChild("RE") then
+					pcall(function()
+						remotes.RE:FireServer()
+					end)
+				end
+			end
+		end
+	end
 end
 
 GeneratorTab:CreateToggle({
-    Name = "Auto Generator",
-    CurrentValue = false,
-    Flag = "AutoGenerator",
-    Callback = function(enabled)
-        autoGeneratorEnabled = enabled
-        runAutoGeneratorLoop()
-    end
+	Name = "Auto Generator",
+	CurrentValue = false,
+	Callback = function(enabled)
+		if generatorLoop then generatorLoop:Disconnect() generatorLoop = nil end
+		if enabled then
+			local timer = 0
+			generatorLoop = RunService.Heartbeat:Connect(function(dt)
+				timer += dt
+				if timer >= generatorCooldown then
+					timer = 0
+					GeneratorOnce()
+				end
+			end)
+		end
+	end
 })
 
 GeneratorTab:CreateSlider({
-    Name = "Auto Generator Delay",
-    Range = {1, 5},
-    Increment = 0.1,
-    Suffix = "s",
-    CurrentValue = generatorCooldown,
-    Callback = function(val)
-        generatorCooldown = val
-    end
+	Name = "Auto Generator Delay",
+	Range = {1.5, 6},
+	Increment = 0.1,
+	Suffix = "s",
+	CurrentValue = generatorCooldown,
+	Callback = function(val)
+		generatorCooldown = val
+	end
 })
 
--- ======= ESP =======
-local espState = {
-    killers = false,
-    survivors = false,
-    items = false,
-    generators = false,
-}
+--================= ESP =================
+local espKillers = false
+local espSurvivors = false
+local espItems = false
+local espGenerators = false
 
--- caches for created adornments so we can clean up quickly
-local espCache = {
-    killers = {},
-    survivors = {},
-    items = {},
-    generators = {},
-}
-
-local function makeHighlight(target, color, fillTrans, outlineTrans)
-    if not target or not target:IsA("Instance") then return end
-    -- avoid duplicates
-    if target:FindFirstChild("ESP_Highlight") then return target:FindFirstChild("ESP_Highlight") end
-    local h = Instance.new("Highlight")
-    h.Name = "ESP_Highlight"
-    h.Adornee = target
-    h.FillColor = color
-    h.OutlineColor = Color3.new(0,0,0)
-    h.FillTransparency = fillTrans or 0.5
-    h.OutlineTransparency = outlineTrans or 0.3
-    h.Parent = target
-    return h
+-- Utility: create or reuse highlight
+local function getOrCreateHighlight(obj, color, fillTrans, outlineTrans)
+	if not obj then return end
+	local h = obj:FindFirstChild("ESP_Highlight")
+	if not h then
+		h = Instance.new("Highlight")
+		h.Name = "ESP_Highlight"
+		h.Adornee = obj
+		h.Parent = obj
+	end
+	h.FillColor = color
+	h.OutlineColor = Color3.new(0, 0, 0)
+	h.FillTransparency = fillTrans
+	h.OutlineTransparency = outlineTrans
+	return h
 end
 
-local function makeItemBillboard(item, color)
-    if not item or not item:IsA("Instance") then return end
-    if item:FindFirstChild("ESP_Billboard") then return item:FindFirstChild("ESP_Billboard") end
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "ESP_Billboard"
-    billboard.Size = UDim2.new(0,100,0,30)
-    billboard.StudsOffset = Vector3.new(0,3,0)
-    billboard.AlwaysOnTop = true
-    billboard.Adornee = item
-
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(1,0,1,0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.TextColor3 = color
-    textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.TextSize = 14
-    textLabel.Text = item.Name
-    textLabel.Parent = billboard
-
-    billboard.Parent = item
-    return billboard
+-- Utility: clear highlight
+local function clearESP(obj)
+	if not obj then return end
+	local h = obj:FindFirstChild("ESP_Highlight")
+	if h then h:Destroy() end
+	local b = obj:FindFirstChild("ESP_Billboard")
+	if b then b:Destroy() end
 end
 
-local function clearAdornment(inst)
-    if not inst then return end
-    local h = inst:FindFirstChild("ESP_Highlight")
-    if h then pcall(function() h:Destroy() end) end
-    local b = inst:FindFirstChild("ESP_Billboard")
-    if b then pcall(function() b:Destroy() end) end
+-- Apply Item ESP
+local function applyItemESP(obj)
+	getOrCreateHighlight(obj, Color3.fromRGB(0,0,139), 0.6, 0.6)
+	if not obj:FindFirstChild("ESP_Billboard") then
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "ESP_Billboard"
+		billboard.Size = UDim2.new(0,100,0,30)
+		billboard.StudsOffset = Vector3.new(0,3,0)
+		billboard.AlwaysOnTop = true
+		billboard.Adornee = obj
+
+		local textLabel = Instance.new("TextLabel")
+		textLabel.Size = UDim2.new(1,0,1,0)
+		textLabel.BackgroundTransparency = 1
+		textLabel.TextColor3 = Color3.fromRGB(0,0,139)
+		textLabel.Font = Enum.Font.SourceSansBold
+		textLabel.TextSize = 14
+		textLabel.Text = obj.Name
+		textLabel.Parent = billboard
+
+		billboard.Parent = obj
+	end
 end
 
--- Helpers to add / remove from cache safely
-local function cacheAdd(tbl, key, value)
-    tbl[key] = value
-end
+-- ESP Loop (restored original logic)
+task.spawn(function()
+	while true do
+		local mapFolder = Workspace:FindFirstChild("Map")
+			and Workspace.Map:FindFirstChild("Ingame")
+			and Workspace.Map.Ingame:FindFirstChild("Map")
 
-local function cacheRemove(tbl, key)
-    if tbl[key] then
-        tbl[key] = nil
-    end
-end
+		-- Killers ESP (constant loop refresh)
+		if espKillers then
+			local killers = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
+			if killers then
+				for _, k in ipairs(killers:GetChildren()) do
+					getOrCreateHighlight(k, Color3.fromRGB(255,0,0), 0.5, 0.3)
+				end
+			end
+		else
+			local killers = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
+			if killers then
+				for _, k in ipairs(killers:GetChildren()) do clearESP(k) end
+			end
+		end
 
--- Apply current ESP toggles to existing world state
-local function refreshAllESP()
-    -- Killers
-    if espState.killers then
-        local killers = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
-        if killers then
-            for _, k in ipairs(killers:GetChildren()) do
-                if not k:FindFirstChild("ESP_Highlight") then
-                    makeHighlight(k, Color3.fromRGB(255,0,0), 0.5, 0.3)
-                    cacheAdd(espCache.killers, k, true)
-                end
-            end
-        end
-    else
-        for k,_ in pairs(espCache.killers) do
-            clearAdornment(k)
-        end
-        espCache.killers = {}
-    end
+		-- Survivors ESP
+		if espSurvivors then
+			local survivors = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Survivors")
+			if survivors then
+				for _, s in ipairs(survivors:GetChildren()) do
+					getOrCreateHighlight(s, Color3.fromRGB(255,255,255), 0.5, 0.3)
+				end
+			end
+		else
+			local survivors = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Survivors")
+			if survivors then
+				for _, s in ipairs(survivors:GetChildren()) do clearESP(s) end
+			end
+		end
 
-    -- Survivors
-    if espState.survivors then
-        local survivors = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Survivors")
-        if survivors then
-            for _, s in ipairs(survivors:GetChildren()) do
-                if not s:FindFirstChild("ESP_Highlight") then
-                    makeHighlight(s, Color3.fromRGB(255,255,255), 0.5, 0.3)
-                    cacheAdd(espCache.survivors, s, true)
-                end
-            end
-        end
-    else
-        for s,_ in pairs(espCache.survivors) do
-            clearAdornment(s)
-        end
-        espCache.survivors = {}
-    end
+		-- Items & Generators ESP
+		if mapFolder then
+			for _, obj in ipairs(mapFolder:GetChildren()) do
+				if espItems and (obj.Name == "Medkit" or obj.Name == "BloxyCola") then
+					applyItemESP(obj)
+				elseif not espItems and (obj.Name == "Medkit" or obj.Name == "BloxyCola") then
+					clearESP(obj)
+				end
 
-    -- Items & Generators
-    local mapFolder = Workspace:FindFirstChild("Map") and Workspace.Map:FindFirstChild("Ingame") and Workspace.Map.Ingame:FindFirstChild("Map")
-    if mapFolder then
-        for _, obj in ipairs(mapFolder:GetChildren()) do
-            if espState.items and (obj.Name == "Medkit" or obj.Name == "BloxyCola") then
-                if not obj:FindFirstChild("ESP_Highlight") then
-                    makeHighlight(obj, Color3.fromRGB(0,0,139), 0.6, 0.6)
-                    makeItemBillboard(obj, Color3.fromRGB(0,0,139))
-                    cacheAdd(espCache.items, obj, true)
-                end
-            elseif not espState.items and (obj.Name == "Medkit" or obj.Name == "BloxyCola") then
-                clearAdornment(obj)
-                cacheRemove(espCache.items, obj)
-            end
+				if espGenerators and obj.Name == "Generator" then
+					local progressVal = obj:FindFirstChild("Progress")
+					if progressVal and progressVal.Value < 100 then
+						getOrCreateHighlight(obj, Color3.fromRGB(255,255,0), 0.5, 0.3)
+					else
+						clearESP(obj)
+					end
+				elseif not espGenerators and obj.Name == "Generator" then
+					clearESP(obj)
+				end
+			end
+		end
 
-            if obj.Name == "Generator" then
-                local prog = obj:FindFirstChild("Progress")
-                if espState.generators then
-                    if prog and prog.Value < 100 then
-                        if not obj:FindFirstChild("ESP_Highlight") then
-                            makeHighlight(obj, Color3.fromRGB(255,255,0), 0.5, 0.3)
-                            cacheAdd(espCache.generators, obj, true)
-                        end
-                    else
-                        -- generator finished, remove highlight
-                        clearAdornment(obj)
-                        cacheRemove(espCache.generators, obj)
-                    end
-                else
-                    clearAdornment(obj)
-                    cacheRemove(espCache.generators, obj)
-                end
-            end
-        end
-    end
-end
+		task.wait(1)
+	end
+end)
 
--- Efficient world listeners to update ESPs when things change
-local worldListeners = {}
-
-local function connectWorldListeners()
-    -- avoid double connect
-    if worldListeners.connected then return end
-    worldListeners.connected = true
-
-    -- Players.Players folder children changed for killers/survivors
-    local playersFolder = Workspace:FindFirstChild("Players")
-    if playersFolder then
-        -- killers
-        local killersFolder = playersFolder:FindFirstChild("Killers")
-        if killersFolder then
-            worldListeners.killersAdded = killersFolder.ChildAdded:Connect(function(child)
-                if espState.killers then
-                    makeHighlight(child, Color3.fromRGB(255,0,0), 0.5, 0.3)
-                    cacheAdd(espCache.killers, child, true)
-                end
-            end)
-            worldListeners.killersRemoved = killersFolder.ChildRemoved:Connect(function(child)
-                clearAdornment(child)
-                cacheRemove(espCache.killers, child)
-            end)
-        end
-
-        -- survivors
-        local survivorsFolder = playersFolder:FindFirstChild("Survivors")
-        if survivorsFolder then
-            worldListeners.survAdded = survivorsFolder.ChildAdded:Connect(function(child)
-                if espState.survivors then
-                    makeHighlight(child, Color3.fromRGB(255,255,255), 0.5, 0.3)
-                    cacheAdd(espCache.survivors, child, true)
-                end
-            end)
-            worldListeners.survRemoved = survivorsFolder.ChildRemoved:Connect(function(child)
-                clearAdornment(child)
-                cacheRemove(espCache.survivors, child)
-            end)
-        end
-    end
-
-    -- Map items and generators
-    local function mapDescendantAdded(desc)
-        -- quick checks
-        local parent = desc.Parent
-        if not parent then return end
-        local mapFolder = Workspace:FindFirstChild("Map") and Workspace.Map:FindFirstChild("Ingame") and Workspace.Map.Ingame:FindFirstChild("Map")
-        if not mapFolder then return end
-
-        -- item created
-        if (desc.Name == "Medkit" or desc.Name == "BloxyCola") then
-            if espState.items then
-                makeHighlight(desc, Color3.fromRGB(0,0,139), 0.6, 0.6)
-                makeItemBillboard(desc, Color3.fromRGB(0,0,139))
-                cacheAdd(espCache.items, desc, true)
-            end
-            return
-        end
-
-        -- generator created
-        if desc.Name == "Generator" then
-            local prog = desc:FindFirstChild("Progress")
-            if espState.generators and prog and prog.Value < 100 then
-                makeHighlight(desc, Color3.fromRGB(255,255,0), 0.5, 0.3)
-                cacheAdd(espCache.generators, desc, true)
-            end
-            -- if generator progress changes, watch for completion
-            if prog then
-                local conn
-                conn = prog.Changed:Connect(function()
-                    if prog.Value >= 100 then
-                        clearAdornment(desc)
-                        cacheRemove(espCache.generators, desc)
-                        if conn and conn.Connected then conn:Disconnect() end
-                    end
-                end)
-            end
-            return
-        end
-    end
-
-    -- watch the entire game for new items/generators in map
-    worldListeners.descAdded = Workspace.DescendantAdded:Connect(function(desc)
-        -- only handle when map exists and relevant objects spawned
-        pcall(mapDescendantAdded, desc)
-    end)
-
-    -- also listen for map folder being added later then refresh once
-    worldListeners.mapWatch = Workspace.ChildAdded:Connect(function(child)
-        if child.Name == "Map" then
-            task.delay(0.25, refreshAllESP)
-        end
-    end)
-end
-
--- Disconnect world listeners on cleanup if needed
-local function disconnectWorldListeners()
-    for k, v in pairs(worldListeners) do
-        if type(v) == "table" and v.Disconnect then
-            pcall(function() v:Disconnect() end)
-        elseif type(v) == "userdata" and v.Disconnect then
-            pcall(function() v:Disconnect() end)
-        end
-        worldListeners[k] = nil
-    end
-end
-
--- ESP Toggle callbacks
+-- ESP Toggles
 ESPTab:CreateToggle({
-    Name = "Killers ESP",
-    CurrentValue = false,
-    Callback = function(val)
-        espState.killers = val
-        if val then
-            connectWorldListeners()
-        end
-        refreshAllESP()
-    end
+	Name = "Killers ESP",
+	CurrentValue = false,
+	Callback = function(val)
+		espKillers = val
+	end
 })
 
 ESPTab:CreateToggle({
-    Name = "Survivors ESP",
-    CurrentValue = false,
-    Callback = function(val)
-        espState.survivors = val
-        if val then
-            connectWorldListeners()
-        end
-        refreshAllESP()
-    end
+	Name = "Survivors ESP",
+	CurrentValue = false,
+	Callback = function(val)
+		espSurvivors = val
+	end
 })
 
 ESPTab:CreateToggle({
-    Name = "Items ESP",
-    CurrentValue = false,
-    Callback = function(val)
-        espState.items = val
-        if val then
-            connectWorldListeners()
-        end
-        refreshAllESP()
-    end
+	Name = "Items ESP",
+	CurrentValue = false,
+	Callback = function(val)
+		espItems = val
+	end
 })
 
 ESPTab:CreateToggle({
-    Name = "Generators ESP",
-    CurrentValue = false,
-    Callback = function(val)
-        espState.generators = val
-        if val then
-            connectWorldListeners()
-        end
-        refreshAllESP()
-    end
+	Name = "Generators ESP",
+	CurrentValue = false,
+	Callback = function(val)
+		espGenerators = val
+	end
 })
 
--- Load saved Rayfield config
+--================= CONFIG =================
 Rayfield:LoadConfiguration()
 
--- Final friendly note
-print("[Lead Hub] Generator and ESP modules loaded cleanly.")
+print("[Lead Hub] Optimized ESP + Generators loaded.")
