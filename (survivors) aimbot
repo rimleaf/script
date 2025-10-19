@@ -12,7 +12,7 @@ local playerGui = lp:WaitForChild("PlayerGui")
 
 -- Config
 local MaxZoomValue = 100
-local LERP_SPEED = 0.1 -- faster movement to reduce lag time
+local LERP_SPEED = 0.03 -- faster movement to reduce lag time
 local BEHIND_DISTANCE = 3
 local RANGE_DEFAULT = 6
 
