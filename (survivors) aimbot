@@ -263,6 +263,39 @@ local function easeInOutSine(t)
 	return -(math.cos(math.pi * t) - 1) / 2
 end
 
+local function ExtendHitbox(studs)
+	game:GetService("RunService").Heartbeat:Wait()
+
+	-- character and humanoidrootpart exists check
+	while not (
+		game:GetService("Players").LocalPlayer.Character
+		and game:GetService("Players").LocalPlayer.Character.Parent
+		and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		and game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Parent
+	) do
+		game:GetService("RunService").Heartbeat:Wait()
+	end
+
+	-- save
+	local hrp = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart
+	local velocity = hrp.AssemblyLinearVelocity
+	local lookvec = hrp.CFrame.LookVector
+
+	-- start extending
+	hrp.AssemblyLinearVelocity = (lookvec * studs)
+	game:GetService("RunService").RenderStepped:Wait()
+	-- stop and restore origin of velocity
+	if (
+		game:GetService("Players").LocalPlayer.Character
+		and game:GetService("Players").LocalPlayer.Character.Parent
+		and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		and game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Parent
+	) then
+		game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = velocity
+	end
+end
+
+
 --// Main dagger + movement logic
 RunService.Heartbeat:Connect(function()
 	if not enabled or not isDaggerReady() then return end
@@ -300,6 +333,7 @@ RunService.Heartbeat:Connect(function()
 						humanoid.WalkSpeed = oldSpeed
 						return
 					end
+					ExtendHitbox(-5)
 					-- Lerp movement first
 					local alpha = math.clamp(elapsed / LERP_SPEED, 0, 1)
 					local eased = easeInOutSine(alpha)
