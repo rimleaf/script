@@ -314,6 +314,7 @@ RunService.Heartbeat:Connect(function()
 			local kHRP = killer.HumanoidRootPart
 
 			if isBehindTarget(hrp, kHRP) then
+				humanoid.AutoRotate = false
 				humanoid.WalkSpeed = 0 -- lock movement
 				local start = tick()
 				local connection
@@ -323,6 +324,7 @@ RunService.Heartbeat:Connect(function()
 				connection = RunService.Heartbeat:Connect(function()
 					if not (char and kHRP and kHRP.Parent) then
 						if connection then connection:Disconnect() end
+						humanoid.AutoRotate = true
 						humanoid.WalkSpeed = oldSpeed
 						return
 					end
@@ -330,6 +332,7 @@ RunService.Heartbeat:Connect(function()
 					local elapsed = tick() - start
 					if elapsed >= 0.4 then
 						if connection then connection:Disconnect() end
+						humanoid.AutoRotate = true
 						humanoid.WalkSpeed = oldSpeed
 						return
 					end
