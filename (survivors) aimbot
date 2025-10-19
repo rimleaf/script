@@ -12,7 +12,7 @@ local playerGui = lp:WaitForChild("PlayerGui")
 
 -- Config
 local MaxZoomValue = 100
-local LERP_SPEED = 0.03 -- faster movement to reduce lag time
+local LERP_SPEED = 0 -- faster movement to reduce lag time
 local BEHIND_DISTANCE = 3
 local RANGE_DEFAULT = 6
 
@@ -252,7 +252,7 @@ RunService.Heartbeat:Connect(function(dt)
 		hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased * dt * 20) -- smoother, FPS-scaled motion
 
 		-- Fire dagger mid-way
-		if not stabTriggered and elapsed >= 0.3 then
+		if not stabTriggered and elapsed >= 0 then
 			stabTriggered = true
 			task.spawn(fireDagger)
 		end
