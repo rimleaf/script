@@ -256,7 +256,7 @@ lp.CharacterAdded:Connect(function() task.delay(0.5, refreshUIRefs) end)
 ---------------------------------------------------------
 --// Settings
 --// Settings
-local LERP_SPEED = 0.2           -- how smoothly it moves behind the killer
+local LERP_SPEED = 0.25           -- how smoothly it moves behind the killer
 local BEHIND_DISTANCE = 2       -- how far behind the killer to position
 
 local function easeInOutSine(t)
@@ -289,7 +289,6 @@ RunService.Heartbeat:Connect(function()
 				connection = RunService.Heartbeat:Connect(function()
 					if not (char and kHRP and kHRP.Parent) then
 						if connection then connection:Disconnect() end
-						humanoid.AutoRotate = true
 						humanoid.WalkSpeed = oldSpeed
 						return
 					end
@@ -297,12 +296,9 @@ RunService.Heartbeat:Connect(function()
 					local elapsed = tick() - start
 					if elapsed >= 0.55 then
 						if connection then connection:Disconnect() end
-						humanoid.AutoRotate = true
 						humanoid.WalkSpeed = oldSpeed
 						return
 					end
-
-					hrp.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + kHRP.CFrame.LookVector)
 					-- Lerp movement first
 					local alpha = math.clamp(elapsed / LERP_SPEED, 0, 1)
 					local eased = easeInOutSine(alpha)
