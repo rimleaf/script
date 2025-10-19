@@ -257,7 +257,7 @@ lp.CharacterAdded:Connect(function() task.delay(0.5, refreshUIRefs) end)
 --// Settings
 --// Settings
 local LERP_SPEED = 0.2           -- how smoothly it moves behind the killer
-local BEHIND_DISTANCE = 1.7       -- how far behind the killer to position
+local BEHIND_DISTANCE = 2       -- how far behind the killer to position
 
 local function easeInOutSine(t)
 	return -(math.cos(math.pi * t) - 1) / 2
@@ -303,17 +303,8 @@ RunService.Heartbeat:Connect(function()
 					local alpha = math.clamp(elapsed / LERP_SPEED, 0, 1)
 					local eased = easeInOutSine(alpha)
 
-					-- Offset: starts at -1.5, blends to -3
-					local offset
-					if elapsed <= 0.15 then
-						offset = 1.5
-					else
-						local t = math.clamp((elapsed - 0.25) / 0.55, 0, 1)
-						offset = 1.5 + (3 - 1.5) * t
-					end
-
 					-- Target position directly behind killer
-					local targetPos = kHRP.Position - (kHRP.CFrame.LookVector * offset)
+					local targetPos = kHRP.Position - (kHRP.CFrame.LookVector * BEHIND_DISTANCE)
 					local targetCF = CFrame.new(targetPos)
 
 					-- Smoothly move with Lerp
