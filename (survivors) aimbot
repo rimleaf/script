@@ -205,8 +205,15 @@ end)
 ---------------------------------------------------------
 -- Smooth Backstab Movement
 ---------------------------------------------------------
+---------------------------------------------------------
+-- Optimized Smooth Backstab
+---------------------------------------------------------
+
+local isBackstabbing = false
+
 RunService.Heartbeat:Connect(function()
-	if not enabled or not isDaggerReady() then return end
+	if not enabled or isBackstabbing or not isDaggerReady() then return end
+
 	local char = lp.Character
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
@@ -218,36 +225,53 @@ RunService.Heartbeat:Connect(function()
 		if not kHRP then continue end
 
 		if isBehindTarget(hrp, kHRP) then
+			isBackstabbing = true
 			local oldSpeed = humanoid.WalkSpeed
 			humanoid.WalkSpeed = 0
+			humanoid.AutoRotate = false
 
 			local start = tick()
-			local stabbed = false -- prevent multiple stabs
+			local stabbed = false
+			local duration = 0.5
+			local connection
 
-			while tick() - start < 0.5 do
-				humanoid.AutoRotate = false
+			connection = RunService:BindToRenderStep("SmoothBackstab", Enum.RenderPriority.Camera.Value + 1, function()
 				local elapsed = tick() - start
-				local eased = easeInOutSine(math.clamp(elapsed / LERP_SPEED, 0, 1))
+				local t = math.clamp(elapsed / duration, 0, 1)
+				local eased = easeInOutSine(t)
+
+				if not (kHRP and hrp) then
+					RunService:UnbindFromRenderStep("SmoothBackstab")
+					return
+				end
+
 				local kCFrame = kHRP.CFrame
 				local behindPos = kCFrame.Position - (kCFrame.LookVector * BEHIND_DISTANCE)
 				local targetCF = CFrame.new(Vector3.new(behindPos.X, kCFrame.Position.Y, behindPos.Z), behindPos + kCFrame.LookVector)
 				hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased)
 
-				-- Stab mid-way through the lerp (after 0.25s)
+				-- Stab mid-way (around 0.15s)
 				if not stabbed and elapsed >= 0.15 then
 					stabbed = true
-					if isDaggerReady() then
-						task.spawn(fireDagger)
-					end
+					task.spawn(function()
+						if isDaggerReady() then
+							fireDagger()
+						end
+					end)
 				end
 
-				RunService.RenderStepped:Wait()
-			end
+				-- End smoothly
+				if elapsed >= duration then
+					RunService:UnbindFromRenderStep("SmoothBackstab")
+					humanoid.WalkSpeed = oldSpeed
+					humanoid.AutoRotate = true
+					isBackstabbing = false
+				end
+			end)
 
-			humanoid.AutoRotate = true
-			humanoid.WalkSpeed = oldSpeed
 			break
 		end
 	end
 end)
+
 
