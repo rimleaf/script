@@ -257,7 +257,7 @@ lp.CharacterAdded:Connect(function() task.delay(0.5, refreshUIRefs) end)
 --// Settings
 --// Settings
 local LERP_SPEED = 0.6           -- how smoothly it moves behind the killer
-local BEHIND_DISTANCE = 3       -- how far behind the killer to position
+local BEHIND_DISTANCE = 2.5       -- how far behind the killer to position
 
 local function easeInOutSine(t)
 	return -(math.cos(math.pi * t) - 1) / 2
@@ -334,16 +334,23 @@ RunService.Heartbeat:Connect(function()
 						return
 					end
 					-- Lerp movement first
-					local alpha = math.clamp(elapsed / LERP_SPEED, 0, 1)
-					local eased = easeInOutSine(alpha)
+					--local alpha = math.clamp(elapsed / LERP_SPEED, 0, 1)
+					--local eased = easeInOutSine(alpha)
 
 					-- Target position directly behind killer
-                    local targetCF = CFrame.new(
-                        kHRP.Position - (kHRP.CFrame.LookVector * BEHIND_DISTANCE),
-                        kHRP.Position
-                    )
+                    --local targetCF = CFrame.new(kHRP.Position - (kHRP.CFrame.LookVector * BEHIND_DISTANCE), kHRP.Position)
 
-                    hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased)
+                    --hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased)
+					local offset
+					if elapsed <= 0.15 then
+						offset = 1.5
+					else
+						local t = math.clamp((elapsed - 0.25) / 0.55, 0, 1)
+						offset = 1.5 + (3 - 1.5) * t
+					end
+					local behindPos = kHRP.Position - (kHRP.CFrame.LookVector * offset)
+					local lookDir = kHRP.CFrame.LookVector
+					hrp.CFrame = CFrame.new(behindPos, behindPos + lookDir)
 				end)
 				wait(0.15)
 				if isDaggerReady() then
