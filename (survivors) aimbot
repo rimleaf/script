@@ -15,7 +15,7 @@ local playerGui = lp:WaitForChild("PlayerGui")
 local MaxZoomValue = 100
 local LERP_SPEED = 0.8
 local BEHIND_DISTANCE = 2.4
-local RANGE_DEFAULT = 4
+local RANGE_DEFAULT = 3
 
 ---------------------------------------------------------
 -- Camera Zoom Enforcement
@@ -288,7 +288,7 @@ RunService.Heartbeat:Connect(function()
 				hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased)
 			end)
 
-			task.wait(0.2)
+			task.wait(0.25)
 			if isDaggerReady() then fireGuiDagger() end
 			break
 		end
