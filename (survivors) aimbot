@@ -256,8 +256,8 @@ lp.CharacterAdded:Connect(function() task.delay(0.5, refreshUIRefs) end)
 ---------------------------------------------------------
 --// Settings
 --// Settings
-local LERP_SPEED = 0.25           -- how smoothly it moves behind the killer
-local BEHIND_DISTANCE = 2.5       -- how far behind the killer to position
+local LERP_SPEED = 0.6           -- how smoothly it moves behind the killer
+local BEHIND_DISTANCE = 3       -- how far behind the killer to position
 
 local function easeInOutSine(t)
 	return -(math.cos(math.pi * t) - 1) / 2
@@ -345,7 +345,7 @@ RunService.Heartbeat:Connect(function()
 
                     hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased)
 				end)
-				wait(0.12)
+				wait(0.15)
 				if isDaggerReady() then
 					fireGuiDagger()
 				end
