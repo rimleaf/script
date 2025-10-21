@@ -239,25 +239,23 @@ RunService.Heartbeat:Connect(function(dt)
 	local duration = 0.6
 
 	while tick() - startTime < duration do
-		if not targetKiller.Parent then break end -- stop if killer disappears
+		if not targetKiller.Parent then break end
 
 		local elapsed = tick() - startTime
 		local eased = easeInOutSine(math.clamp(elapsed / LERP_SPEED, 0, 1))
 
-		-- Continuously track killer’s current position and orientation
 		local kCFrame = targetKiller.CFrame
 		local behindPos = kCFrame.Position - (kCFrame.LookVector * BEHIND_DISTANCE)
 
-		-- Face the same direction as killer
-		local facingDirection = CFrame.lookAt(hrp.Position, hrp.Position + kCFrame.LookVector)
+		-- Build a target CFrame that positions you behind and faces same direction
+		local targetCF = CFrame.new(behindPos, behindPos + kCFrame.LookVector)
 
-		-- Smoothly move behind and face the same direction
-		local targetCF = CFrame.new(Vector3.new(behindPos.X, kCFrame.Position.Y, behindPos.Z)) * CFrame.Angles(0, kCFrame.Orientation.Y * math.pi/180, 0)
-		hrp.CFrame = hrp.CFrame:Lerp(targetCF, eased * dt * 20)
-		hrp.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + kCFrame.LookVector)
+		-- Lerp smoothly toward target CFrame
+		local lerpAlpha = math.clamp(eased * (dt * 20), 0, 1)
+		hrp.CFrame = hrp.CFrame:Lerp(targetCF, lerpAlpha)
 
-		-- Fire dagger midway
-		if not stabTriggered and elapsed >= 0.05 then
+		-- Fire dagger mid-way
+		if not stabTriggered and elapsed >= duration * 0.4 then
 			stabTriggered = true
 			task.spawn(fireDagger)
 		end
@@ -267,4 +265,3 @@ RunService.Heartbeat:Connect(function(dt)
 
 	humanoid.WalkSpeed = oldSpeed
 end)
-
