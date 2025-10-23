@@ -251,7 +251,7 @@ RunService.Heartbeat:Connect(function(dt)
 		local targetCF = CFrame.new(behindPos, behindPos + kCFrame.LookVector)
 
 		-- Lerp smoothly toward target CFrame
-		local lerpAlpha = math.clamp(eased * (dt * 20), 0, 1)
+		local lerpAlpha = math.clamp(eased * (dt * 10), 0, 1)
 		hrp.CFrame = hrp.CFrame:Lerp(targetCF, lerpAlpha)
 
 		-- Fire dagger mid-way
