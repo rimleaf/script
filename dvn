@@ -62,11 +62,11 @@ local function modifyWeapon(w)
             tag.Parent = w
         end
         local base = w:FindFirstChild("_OriginalFirerate") and w._OriginalFirerate.Value or w:GetAttribute("Firerate")
-        local increased = base * 1.2
+        local increased = base * 1.4
         pcall(function() w:SetAttribute("Firerate", increased) end)
         if not w:FindFirstChild("_FirerateListener") then
             w:GetAttributeChangedSignal("Firerate"):Connect(function()
-                pcall(function() w:SetAttribute("Firerate", base * 1.2) end)
+                pcall(function() w:SetAttribute("Firerate", base * 1.4) end)
             end)
             local listenerTag = Instance.new("BoolValue")
             listenerTag.Name = "_FirerateListener"
@@ -76,6 +76,12 @@ local function modifyWeapon(w)
 
     if w:GetAttribute("BulletSpeed") then pcall(function() w:SetAttribute("BulletSpeed", 9999) end) end
     if w:GetAttribute("Spread") then pcall(function() w:SetAttribute("Spread", 0) end) end
+    if w:GetAttribute("HeavySpread") then pcall(function() w:SetAttribute("HeavySpread", 0) end) end
+    if w:GetAttribute("FullChargeTime") then pcall(function() w:SetAttribute("FullChargeTime", 0) end) end
+    if w:GetAttribute("MangledReviveTime") then pcall(function() w:SetAttribute("MangledReviveTime", 0) end) end
+    if w:GetAttribute("RegularReviveTime") then pcall(function() w:SetAttribute("RegularReviveTime", 0) end) end
+    if w:GetAttribute("Duration") then pcall(function() w:SetAttribute("Duration", 0) end) end
+    if w:GetAttribute("BurstFirerate") then pcall(function() w:SetAttribute("BurstFirerate", 999) end) end
 end
 
 local function setupCharacter(char)
