@@ -159,11 +159,12 @@ task.spawn(function()
 end)
 
 ----------------------------------------------------
---// Aimbot Section (Hold Left Shift) + FOV follows mouse + improved wall checks
+--// Aimbot Section (Hold Left Shift) + FOV follows mouse + 1.5 Stud Prediction
 ----------------------------------------------------
 local aimbotActive = false
 local lockedTarget = nil
 local MAX_AIM_FOV = 50
+local PREDICTION_STUDS = 1.5 -- Added Prediction
 
 -- FOV Circle
 local fovCircle = nil
@@ -185,43 +186,20 @@ local function updateFOVCircle()
     fovCircle.Position = Vector2.new(mousePos.X, mousePos.Y)
 end
 
--- Improved aim logic helpers with robust LOS
 local function getAimPart(model)
     if not model then return nil end
     if Players:FindFirstChild(model.Name) then return nil end
-    if model:FindFirstChild("Head") and model.Head:IsA("BasePart") then return model.Head end
-    if model:FindFirstChild("HumanoidRootPart") and model.HumanoidRootPart:IsA("BasePart") then return model.HumanoidRootPart end
-    for _, v in ipairs(model:GetDescendants()) do
-        if v:IsA("BasePart") then
-            return v
-        end
-    end
+    if model:FindFirstChild("Head") then return model.Head end
+    if model:FindFirstChild("HumanoidRootPart") then return model.HumanoidRootPart end
     return nil
 end
 
--- Raycast-based LOS that checks multiple aim points (head, hrp) and accepts hits on the target model
 local function hasLineOfSightToModel(model)
     if not model then return false end
     local points = {}
 
-    if model:FindFirstChild("Head") and model.Head:IsA("BasePart") then
-        table.insert(points, model.Head.Position)
-    end
-    if model:FindFirstChild("HumanoidRootPart") and model.HumanoidRootPart:IsA("BasePart") then
-        table.insert(points, model.HumanoidRootPart.Position)
-    end
-
-    -- fallback: use first BasePart if neither exists
-    if #points == 0 then
-        for _, v in ipairs(model:GetDescendants()) do
-            if v:IsA("BasePart") then
-                table.insert(points, v.Position)
-                break
-            end
-        end
-    end
-
-    if #points == 0 then return false end
+    if model:FindFirstChild("Head") then table.insert(points, model.Head.Position) end
+    if model:FindFirstChild("HumanoidRootPart") then table.insert(points, model.HumanoidRootPart.Position) end
 
     local origin = cam.CFrame.Position
     local params = RaycastParams.new()
@@ -231,22 +209,11 @@ local function hasLineOfSightToModel(model)
 
     for _, p in ipairs(points) do
         local dir = (p - origin)
-        if dir.Magnitude <= 0 then
-            -- weird case, skip this point
-            continue
-        end
         local result = workspace:Raycast(origin, dir, params)
-        if not result then
-            -- nothing blocking to this aim point -> good
-            return true
-        end
-        -- if the ray hit something, accept if the hit part belongs to the target model
-        if result.Instance and result.Instance:IsDescendantOf(model) then
+        if not result or (result.Instance and result.Instance:IsDescendantOf(model)) then
             return true
         end
     end
-
-    -- all points blocked
     return false
 end
 
@@ -257,7 +224,7 @@ local function getClosestTargetWithinFOV()
         if not model:IsA("Model") then continue end
         local hum = model:FindFirstChild("Humanoid")
         if not hum or hum.Health <= 0 then continue end
-        if Players:FindFirstChild(model.Name) then continue end -- skip players
+        if Players:FindFirstChild(model.Name) then continue end
 
         local aimPart = getAimPart(model)
         if not aimPart then continue end
@@ -267,8 +234,6 @@ local function getClosestTargetWithinFOV()
 
         local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
         if dist > MAX_AIM_FOV then continue end
-
-        -- require line of sight to model (checks head/hrp)
         if not hasLineOfSightToModel(model) then continue end
 
         if dist < bestDist then
@@ -285,14 +250,9 @@ local function moveMouseTo(targetScreenPos)
     local dx, dy = targetScreenPos.X - mousePos.X, targetScreenPos.Y - mousePos.Y
     if mousemoverel then
         pcall(function() mousemoverel(dx, dy) end)
-    elseif moveabs then
-        pcall(function() moveabs(math.floor(targetScreenPos.X), math.floor(targetScreenPos.Y)) end)
-    elseif mousemoveabs then
-        pcall(function() mousemoveabs(math.floor(targetScreenPos.X), math.floor(targetScreenPos.Y)) end)
     end
 end
 
--- Keybind: hold Left Shift
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.KeyCode == Enum.KeyCode.LeftShift then
@@ -308,7 +268,6 @@ UserInputService.InputEnded:Connect(function(input, gp)
     end
 end)
 
--- Main loop
 RunService.RenderStepped:Connect(function()
     updateFOVCircle()
     if not aimbotActive then return end
@@ -320,7 +279,15 @@ RunService.RenderStepped:Connect(function()
     if lockedTarget then
         local part = getAimPart(lockedTarget)
         if part then
-            local screenPos, onScreen = cam:WorldToViewportPoint(part.Position)
+            local predictedPos = part.Position
+
+            -- Added Prediction
+            local vel = part.Velocity
+            if vel.Magnitude > 1 then
+                predictedPos = part.Position + (vel.Unit * PREDICTION_STUDS)
+            end
+
+            local screenPos, onScreen = cam:WorldToViewportPoint(predictedPos)
             if onScreen and screenPos.Z > 0 and hasLineOfSightToModel(lockedTarget) then
                 moveMouseTo(Vector2.new(screenPos.X, screenPos.Y))
             end
