@@ -62,11 +62,11 @@ local function modifyWeapon(w)
             tag.Parent = w
         end
         local base = w:FindFirstChild("_OriginalFirerate") and w._OriginalFirerate.Value or w:GetAttribute("Firerate")
-        local increased = base * 1.4
+        local increased = base * 1.2
         pcall(function() w:SetAttribute("Firerate", increased) end)
         if not w:FindFirstChild("_FirerateListener") then
             w:GetAttributeChangedSignal("Firerate"):Connect(function()
-                pcall(function() w:SetAttribute("Firerate", base * 1.4) end)
+                pcall(function() w:SetAttribute("Firerate", base * 1.2) end)
             end)
             local listenerTag = Instance.new("BoolValue")
             listenerTag.Name = "_FirerateListener"
@@ -164,7 +164,7 @@ end)
 local aimbotActive = false
 local lockedTarget = nil
 local MAX_AIM_FOV = 50
-local PREDICTION_STUDS = 1.5 -- Added Prediction
+local PREDICTION_STUDS = 2.5 -- Added Prediction
 
 -- FOV Circle
 local fovCircle = nil
