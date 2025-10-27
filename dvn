@@ -1,0 +1,325 @@
+--// Infinite Yield Loader
+loadstring(game:HttpGet('https://raw.githubusercontent.com/DarkNetworks/Infinite-Yield/main/latest.lua'))()
+wait(0.1)
+
+--[[ 
+    WARNING: This script modifies weapon attributes locally.
+    Use responsibly.
+]]
+
+----------------------------------------------------
+--// Services & Locals
+----------------------------------------------------
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local lp = player
+local cam = workspace.CurrentCamera
+
+----------------------------------------------------
+--// Weapon Modifier Section
+----------------------------------------------------
+local WeaponList = { 
+    "Aidkit", "Akimbo", "Barrier kit", "BombCharge", "Burst Rifle", "DMR", "Defibrillator", 
+    "ExplosiveBag","FAST","FuelCan","Grenade Launcher","Grenade Shell","Jetpack","Keycard","LMG","Machete",
+    "Mastermind's Rifle","Motion Hider","PDC kit","RPG","Rifle","SMG","Shotgun","Shovel",
+    "Tablet","Aerorig","Armour Peeler","Bolter","Combat Toolkit","Gift of Fire","Governor kit","Gunslingers",
+    "Hallsweeper","Hallucinator kit","Handaxes","Harpoon Gun","Intraplanar Device","Lifeline","Loose Trigger",
+    "MADS kit","Mercy Kill","Overcharger","PROXY","Pacemaker","Parabolic Hydra","Rallying Cry","Recurve",
+    "Resuscitator","Rocket Stormer","Runner's Heat","Shockwave Device","Sprinter's Streak","Steelforge",
+    "Stonehedge kit","Stonewall","Striker","Terminal Velocity","Torqueblade","Twinface","Voltaic Impact"
+}
+
+local function modifyWeapon(w)
+    if not table.find(WeaponList, w.Name) then return end
+
+    if w:GetAttribute("Ammo") then
+        w:SetAttribute("Ammo", 999)
+        if not w:FindFirstChild("_AmmoListener") then
+            w:GetAttributeChangedSignal("Ammo"):Connect(function()
+                if w:GetAttribute("Ammo") < 999 then
+                    w:SetAttribute("Ammo", 999)
+                end
+            end)
+            local tag = Instance.new("BoolValue")
+            tag.Name = "_AmmoListener"
+            tag.Parent = w
+        end
+    end
+
+    -- Increase firerate by 20% without compounding
+    if w:GetAttribute("Firerate") then
+        local origTag = w:FindFirstChild("_OriginalFirerate")
+        if not origTag then
+            local origVal = w:GetAttribute("Firerate")
+            local tag = Instance.new("NumberValue")
+            tag.Name = "_OriginalFirerate"
+            tag.Value = (type(origVal) == "number" and origVal) or tonumber(origVal) or 0
+            tag.Parent = w
+        end
+        local base = w:FindFirstChild("_OriginalFirerate") and w._OriginalFirerate.Value or w:GetAttribute("Firerate")
+        local increased = base * 1.2
+        pcall(function() w:SetAttribute("Firerate", increased) end)
+        if not w:FindFirstChild("_FirerateListener") then
+            w:GetAttributeChangedSignal("Firerate"):Connect(function()
+                pcall(function() w:SetAttribute("Firerate", base * 1.2) end)
+            end)
+            local listenerTag = Instance.new("BoolValue")
+            listenerTag.Name = "_FirerateListener"
+            listenerTag.Parent = w
+        end
+    end
+
+    if w:GetAttribute("BulletSpeed") then pcall(function() w:SetAttribute("BulletSpeed", 9999) end) end
+    if w:GetAttribute("Spread") then pcall(function() w:SetAttribute("Spread", 0) end) end
+end
+
+local function setupCharacter(char)
+    if not char then return end
+    for _, child in ipairs(char:GetChildren()) do
+        pcall(function() modifyWeapon(child) end)
+    end
+    char.ChildAdded:Connect(function(child)
+        task.wait(0.1)
+        pcall(function() modifyWeapon(child) end)
+    end)
+end
+
+if lp.Character then
+    setupCharacter(lp.Character)
+end
+lp.CharacterAdded:Connect(function(char)
+    setupCharacter(char)
+end)
+
+task.spawn(function()
+    while true do
+        if lp.Character then
+            for _, child in ipairs(lp.Character:GetChildren()) do
+                pcall(function() modifyWeapon(child) end)
+            end
+        end
+        task.wait(0.5)
+    end
+end)
+
+----------------------------------------------------
+--// ESP System Section
+----------------------------------------------------
+if _G.ESP_HighlightLoop then return end
+_G.ESP_HighlightLoop = true
+
+local function addESP(model)
+    if model:FindFirstChild("ESP_Highlight") then return end
+    local hl = Instance.new("Highlight")
+    hl.Name = "ESP_Highlight"
+    hl.FillColor = Color3.fromRGB(0, 255, 0)
+    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+    hl.FillTransparency = 0.5
+    hl.OutlineTransparency = 0
+    hl.Adornee = model
+    hl.Parent = model
+end
+
+local function cleanESP()
+    for _, m in ipairs(workspace:GetChildren()) do
+        if m:IsA("Model") and m:FindFirstChild("ESP_Highlight") then
+            local hum = m:FindFirstChild("Humanoid")
+            local isPlayer = game.Players:FindFirstChild(m.Name)
+            if not hum or isPlayer then
+                m.ESP_Highlight:Destroy()
+            end
+        end
+    end
+end
+
+task.spawn(function()
+    while _G.ESP_HighlightLoop do
+        for _, model in ipairs(workspace:GetChildren()) do
+            if model:IsA("Model") and model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") then
+                local isPlayer = game.Players:FindFirstChild(model.Name)
+                if not isPlayer then
+                    addESP(model)
+                end
+            end
+        end
+        cleanESP()
+        task.wait(0.5)
+    end
+end)
+
+----------------------------------------------------
+--// Aimbot Section (Hold Left Shift) + FOV follows mouse + improved wall checks
+----------------------------------------------------
+local aimbotActive = false
+local lockedTarget = nil
+local MAX_AIM_FOV = 50
+
+-- FOV Circle
+local fovCircle = nil
+pcall(function()
+    if Drawing then
+        fovCircle = Drawing.new("Circle")
+        fovCircle.Radius = MAX_AIM_FOV
+        fovCircle.Filled = false
+        fovCircle.Thickness = 2
+        fovCircle.Transparency = 1
+        fovCircle.Color = Color3.fromRGB(255, 255, 255)
+        fovCircle.Visible = true
+    end
+end)
+
+local function updateFOVCircle()
+    if not fovCircle then return end
+    local mousePos = UserInputService:GetMouseLocation()
+    fovCircle.Position = Vector2.new(mousePos.X, mousePos.Y)
+end
+
+-- Improved aim logic helpers with robust LOS
+local function getAimPart(model)
+    if not model then return nil end
+    if Players:FindFirstChild(model.Name) then return nil end
+    if model:FindFirstChild("Head") and model.Head:IsA("BasePart") then return model.Head end
+    if model:FindFirstChild("HumanoidRootPart") and model.HumanoidRootPart:IsA("BasePart") then return model.HumanoidRootPart end
+    for _, v in ipairs(model:GetDescendants()) do
+        if v:IsA("BasePart") then
+            return v
+        end
+    end
+    return nil
+end
+
+-- Raycast-based LOS that checks multiple aim points (head, hrp) and accepts hits on the target model
+local function hasLineOfSightToModel(model)
+    if not model then return false end
+    local points = {}
+
+    if model:FindFirstChild("Head") and model.Head:IsA("BasePart") then
+        table.insert(points, model.Head.Position)
+    end
+    if model:FindFirstChild("HumanoidRootPart") and model.HumanoidRootPart:IsA("BasePart") then
+        table.insert(points, model.HumanoidRootPart.Position)
+    end
+
+    -- fallback: use first BasePart if neither exists
+    if #points == 0 then
+        for _, v in ipairs(model:GetDescendants()) do
+            if v:IsA("BasePart") then
+                table.insert(points, v.Position)
+                break
+            end
+        end
+    end
+
+    if #points == 0 then return false end
+
+    local origin = cam.CFrame.Position
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Blacklist
+    params.FilterDescendantsInstances = {lp.Character}
+    params.IgnoreWater = true
+
+    for _, p in ipairs(points) do
+        local dir = (p - origin)
+        if dir.Magnitude <= 0 then
+            -- weird case, skip this point
+            continue
+        end
+        local result = workspace:Raycast(origin, dir, params)
+        if not result then
+            -- nothing blocking to this aim point -> good
+            return true
+        end
+        -- if the ray hit something, accept if the hit part belongs to the target model
+        if result.Instance and result.Instance:IsDescendantOf(model) then
+            return true
+        end
+    end
+
+    -- all points blocked
+    return false
+end
+
+local function getClosestTargetWithinFOV()
+    local mousePos = UserInputService:GetMouseLocation()
+    local bestModel, bestDist = nil, math.huge
+    for _, model in ipairs(workspace:GetChildren()) do
+        if not model:IsA("Model") then continue end
+        local hum = model:FindFirstChild("Humanoid")
+        if not hum or hum.Health <= 0 then continue end
+        if Players:FindFirstChild(model.Name) then continue end -- skip players
+
+        local aimPart = getAimPart(model)
+        if not aimPart then continue end
+
+        local screenPos, onScreen = cam:WorldToViewportPoint(aimPart.Position)
+        if not onScreen or screenPos.Z <= 0 then continue end
+
+        local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+        if dist > MAX_AIM_FOV then continue end
+
+        -- require line of sight to model (checks head/hrp)
+        if not hasLineOfSightToModel(model) then continue end
+
+        if dist < bestDist then
+            bestDist = dist
+            bestModel = model
+        end
+    end
+    return bestModel
+end
+
+local function moveMouseTo(targetScreenPos)
+    if not targetScreenPos then return end
+    local mousePos = UserInputService:GetMouseLocation()
+    local dx, dy = targetScreenPos.X - mousePos.X, targetScreenPos.Y - mousePos.Y
+    if mousemoverel then
+        pcall(function() mousemoverel(dx, dy) end)
+    elseif moveabs then
+        pcall(function() moveabs(math.floor(targetScreenPos.X), math.floor(targetScreenPos.Y)) end)
+    elseif mousemoveabs then
+        pcall(function() mousemoveabs(math.floor(targetScreenPos.X), math.floor(targetScreenPos.Y)) end)
+    end
+end
+
+-- Keybind: hold Left Shift
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.LeftShift then
+        aimbotActive = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.LeftShift then
+        aimbotActive = false
+        lockedTarget = nil
+    end
+end)
+
+-- Main loop
+RunService.RenderStepped:Connect(function()
+    updateFOVCircle()
+    if not aimbotActive then return end
+
+    if not lockedTarget or not lockedTarget.Parent then
+        lockedTarget = getClosestTargetWithinFOV()
+    end
+
+    if lockedTarget then
+        local part = getAimPart(lockedTarget)
+        if part then
+            local screenPos, onScreen = cam:WorldToViewportPoint(part.Position)
+            if onScreen and screenPos.Z > 0 and hasLineOfSightToModel(lockedTarget) then
+                moveMouseTo(Vector2.new(screenPos.X, screenPos.Y))
+            end
+        else
+            lockedTarget = getClosestTargetWithinFOV()
+        end
+    end
+end)
