@@ -51,7 +51,6 @@ local function modifyWeapon(w)
         end
     end
 
-    -- Increase firerate by 20% without compounding
     if w:GetAttribute("Firerate") then
         local origTag = w:FindFirstChild("_OriginalFirerate")
         if not origTag then
@@ -62,11 +61,11 @@ local function modifyWeapon(w)
             tag.Parent = w
         end
         local base = w:FindFirstChild("_OriginalFirerate") and w._OriginalFirerate.Value or w:GetAttribute("Firerate")
-        local increased = base * 1.2
+        local increased = base * 1.25
         pcall(function() w:SetAttribute("Firerate", increased) end)
         if not w:FindFirstChild("_FirerateListener") then
             w:GetAttributeChangedSignal("Firerate"):Connect(function()
-                pcall(function() w:SetAttribute("Firerate", base * 1.2) end)
+                pcall(function() w:SetAttribute("Firerate", base * 1.25) end)
             end)
             local listenerTag = Instance.new("BoolValue")
             listenerTag.Name = "_FirerateListener"
@@ -159,12 +158,12 @@ task.spawn(function()
 end)
 
 ----------------------------------------------------
---// Aimbot Section (Hold Left Shift) + FOV follows mouse + 1.5 Stud Prediction
+--// Aimbot Section (Hold Right Click) + FOV follows mouse + Wall Check + 1.5 Stud Prediction (Torso)
 ----------------------------------------------------
 local aimbotActive = false
 local lockedTarget = nil
 local MAX_AIM_FOV = 50
-local PREDICTION_STUDS = 2.5 -- Added Prediction
+local PREDICTION_STUDS = 1.5
 
 -- FOV Circle
 local fovCircle = nil
@@ -189,32 +188,23 @@ end
 local function getAimPart(model)
     if not model then return nil end
     if Players:FindFirstChild(model.Name) then return nil end
-    if model:FindFirstChild("Head") then return model.Head end
-    if model:FindFirstChild("HumanoidRootPart") then return model.HumanoidRootPart end
-    return nil
+    return model:FindFirstChild("Torso") or model:FindFirstChild("HumanoidRootPart")
 end
 
 local function hasLineOfSightToModel(model)
     if not model then return false end
-    local points = {}
-
-    if model:FindFirstChild("Head") then table.insert(points, model.Head.Position) end
-    if model:FindFirstChild("HumanoidRootPart") then table.insert(points, model.HumanoidRootPart.Position) end
+    local aimPart = getAimPart(model)
+    if not aimPart then return false end
 
     local origin = cam.CFrame.Position
+    local dir = (aimPart.Position - origin)
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Blacklist
     params.FilterDescendantsInstances = {lp.Character}
     params.IgnoreWater = true
 
-    for _, p in ipairs(points) do
-        local dir = (p - origin)
-        local result = workspace:Raycast(origin, dir, params)
-        if not result or (result.Instance and result.Instance:IsDescendantOf(model)) then
-            return true
-        end
-    end
-    return false
+    local result = workspace:Raycast(origin, dir, params)
+    return (not result) or (result.Instance and result.Instance:IsDescendantOf(model))
 end
 
 local function getClosestTargetWithinFOV()
@@ -255,14 +245,14 @@ end
 
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
-    if input.KeyCode == Enum.KeyCode.LeftShift then
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
         aimbotActive = true
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input, gp)
     if gp then return end
-    if input.KeyCode == Enum.KeyCode.LeftShift then
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
         aimbotActive = false
         lockedTarget = nil
     end
@@ -280,11 +270,9 @@ RunService.RenderStepped:Connect(function()
         local part = getAimPart(lockedTarget)
         if part then
             local predictedPos = part.Position
-
-            -- Added Prediction
             local vel = part.Velocity
             if vel.Magnitude > 1 then
-                predictedPos = part.Position + (vel.Unit * PREDICTION_STUDS)
+                predictedPos += vel.Unit * PREDICTION_STUDS
             end
 
             local screenPos, onScreen = cam:WorldToViewportPoint(predictedPos)
