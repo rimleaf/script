@@ -61,11 +61,11 @@ local function modifyWeapon(w)
             tag.Parent = w
         end
         local base = w:FindFirstChild("_OriginalFirerate") and w._OriginalFirerate.Value or w:GetAttribute("Firerate")
-        local increased = base * 1.25
+        local increased = base * 500
         pcall(function() w:SetAttribute("Firerate", increased) end)
         if not w:FindFirstChild("_FirerateListener") then
             w:GetAttributeChangedSignal("Firerate"):Connect(function()
-                pcall(function() w:SetAttribute("Firerate", base * 1.25) end)
+                pcall(function() w:SetAttribute("Firerate", base * 500) end)
             end)
             local listenerTag = Instance.new("BoolValue")
             listenerTag.Name = "_FirerateListener"
@@ -73,7 +73,13 @@ local function modifyWeapon(w)
         end
     end
 
-    if w:GetAttribute("BulletSpeed") then pcall(function() w:SetAttribute("BulletSpeed", 9999) end) end
+    if w:GetAttribute("RefillRate") then pcall(function() w:SetAttribute("RefillRate", 9999) end) end
+    if w:GetAttribute("HealthOnHit") then pcall(function() w:SetAttribute("HealthOnHit", 20) end) end
+    if w:GetAttribute("HealthOnKill") then pcall(function() w:SetAttribute("HealthOnKill", 20) end) end
+    if w:GetAttribute("ChainLimit") then pcall(function() w:SetAttribute("ChainLimit", 20) end) end
+    if w:GetAttribute("CallDuration") then pcall(function() w:SetAttribute("ChainLimit", 9999) end) end
+    if w:GetAttribute("ChainRadius") then pcall(function() w:SetAttribute("ChainRadius", 200) end) end
+    if w:GetAttribute("ThrustSpeed") then pcall(function() w:SetAttribute("ThrustSpeed", 220) end) end
     if w:GetAttribute("Spread") then pcall(function() w:SetAttribute("Spread", 0) end) end
     if w:GetAttribute("HeavySpread") then pcall(function() w:SetAttribute("HeavySpread", 0) end) end
     if w:GetAttribute("FullChargeTime") then pcall(function() w:SetAttribute("FullChargeTime", 0) end) end
@@ -81,6 +87,7 @@ local function modifyWeapon(w)
     if w:GetAttribute("RegularReviveTime") then pcall(function() w:SetAttribute("RegularReviveTime", 0) end) end
     if w:GetAttribute("Duration") then pcall(function() w:SetAttribute("Duration", 0) end) end
     if w:GetAttribute("BurstFirerate") then pcall(function() w:SetAttribute("BurstFirerate", 999) end) end
+    if w:GetAttribute("BulletSpeed") then pcall(function() w:SetAttribute("BulletSpeed", 99999999999) end) end
 end
 
 local function setupCharacter(char)
@@ -162,8 +169,8 @@ end)
 ----------------------------------------------------
 local aimbotActive = false
 local lockedTarget = nil
-local MAX_AIM_FOV = 50
-local PREDICTION_STUDS = 1.5
+local MAX_AIM_FOV = 25
+local PREDICTION_STUDS = 1.7
 
 -- FOV Circle
 local fovCircle = nil
@@ -175,7 +182,7 @@ pcall(function()
         fovCircle.Thickness = 2
         fovCircle.Transparency = 1
         fovCircle.Color = Color3.fromRGB(255, 255, 255)
-        fovCircle.Visible = true
+        fovCircle.Visible = false
     end
 end)
 
