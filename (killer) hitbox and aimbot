@@ -61,7 +61,7 @@ local function getPredictedPosition(hrp, hum)
 
 	local moveDir = hum.MoveDirection
 	local velocity = hrp.Velocity
-	local predictionTime = 0.45
+	local predictionTime = 0.2
 
 	if moveDir.Magnitude < 1 and velocity.Magnitude < 1 then
 		return hrp.Position
