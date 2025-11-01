@@ -1,5 +1,4 @@
 -- External dependencies
---loadstring(game:HttpGet("https://raw.githubusercontent.com/skibidi399/Chance-aimbot/refs/heads/main/Chance%20aimbot%20v2"))()
 loadstring(game:HttpGet("https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/duhsekah"))()
 
 -- Services
@@ -12,8 +11,6 @@ local playerGui = lp:WaitForChild("PlayerGui")
 
 -- Config
 local MaxZoomValue = 100
-local LERP_SPEED = 0 -- faster movement to reduce lag time
-local BEHIND_DISTANCE = 3
 local RANGE_DEFAULT = 6
 
 ---------------------------------------------------------
@@ -109,7 +106,7 @@ local function update(input)
 	miniFrame.Position = UDim2.new(startPos.X.Scale,newX,startPos.Y.Scale,newY)
 end
 miniButton.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
 		dragging = true
 		dragStart = input.Position
 		startPos = miniFrame.Position
@@ -123,7 +120,7 @@ miniButton.InputBegan:Connect(function(input)
 	end
 end)
 miniButton.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+	if input.UserInputType == Enum.UserInputType.MouseMovement then
 		dragInput = input
 	end
 end)
@@ -144,7 +141,6 @@ end)
 -- Logic
 ---------------------------------------------------------
 local enabled, range, mode = false, RANGE_DEFAULT, "Behind"
-local killerNames = { "Slasher", "c00lkidd", "JohnDoe", "1x1x1x1", "Noli" }
 local killersFolder = workspace:WaitForChild("Players"):WaitForChild("Killers")
 
 local daggerBtn, cooldownText
@@ -181,9 +177,6 @@ local function isBehindTarget(hrp, targetHRP)
 	if mode == "Around" then return true end
 	return (hrp.Position - targetHRP.Position):Dot(-targetHRP.CFrame.LookVector) > 0.3
 end
-local function easeInOutSine(t)
-	return -(math.cos(math.pi * t) - 1) / 2
-end
 
 ---------------------------------------------------------
 -- UI Buttons
@@ -203,18 +196,12 @@ modeButton.MouseButton1Click:Connect(function()
 end)
 
 ---------------------------------------------------------
--- Optimized Smooth Dynamic Backstab Movement
+-- Backstab Logic
 ---------------------------------------------------------
 local lastStab = 0
 local STAB_COOLDOWN = 0.25
 
----------------------------------------------------------
--- Fixed and Stable Backstab Movement
----------------------------------------------------------
-local lastStab = 0
-local STAB_COOLDOWN = 0.25
-
-RunService.Heartbeat:Connect(function(dt)
+RunService.Heartbeat:Connect(function()
 	if not enabled or not isDaggerReady() then return end
 
 	local char = lp.Character
@@ -222,12 +209,12 @@ RunService.Heartbeat:Connect(function(dt)
 	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
 	if not (hrp and humanoid) then return end
 
-	-- Find valid killer once per frame
+	-- Automatically detect killers
 	local targetKiller
-	for _, name in ipairs(killerNames) do
-		local killer = killersFolder:FindFirstChild(name)
-		local kHRP = killer and killer:FindFirstChild("HumanoidRootPart")
-		if kHRP and isBehindTarget(hrp, kHRP) then
+	for _, killer in ipairs(killersFolder:GetChildren()) do
+		local kHRP = killer:FindFirstChild("HumanoidRootPart")
+		local kHumanoid = killer:FindFirstChildOfClass("Humanoid")
+		if kHRP and kHumanoid and kHumanoid.Health > 0 and isBehindTarget(hrp, kHRP) then
 			targetKiller = kHRP
 			break
 		end
@@ -246,13 +233,12 @@ RunService.Heartbeat:Connect(function(dt)
 	local duration = 0.4
 
 	while tick() - startTime < duration do
-		if not targetKiller or not targetKiller.Parent then break end -- safety check
+		if not targetKiller or not targetKiller.Parent then break end
 
 		local elapsed = tick() - startTime
 		local behindPos = targetKiller.Position - (targetKiller.CFrame.LookVector * 2)
 		hrp.CFrame = CFrame.new(behindPos, behindPos + targetKiller.CFrame.LookVector)
 
-		-- Fire dagger mid-way
 		if not stabTriggered and elapsed >= 0.1 then
 			stabTriggered = true
 			task.spawn(fireDagger)
@@ -264,4 +250,3 @@ RunService.Heartbeat:Connect(function(dt)
 
 	humanoid.WalkSpeed = oldSpeed
 end)
-
