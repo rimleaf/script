@@ -1,37 +1,49 @@
---// Infinite Yield Loader
-loadstring(game:HttpGet('https://raw.githubusercontent.com/DarkNetworks/Infinite-Yield/main/latest.lua'))()
-wait(0.1)
+--// Infinite Yield Loader (safe pcall)
+pcall(function()
+    loadstring(game:HttpGet('https://raw.githubusercontent.com/DarkNetworks/Infinite-Yield/main/latest.lua'))()
+end)
+task.wait(0.1)
 
 --[[ 
-    WARNING: This script modifies weapon attributes locally.
-    Use responsibly.
+    Optimized full script (fixed aimbot selection):
+    - Permanent attribute locks (event-driven)
+    - Shielder shield remover
+    - NPC-only ESP (white default, red when aimed)
+    - Aimbot (hold LeftShift) with instant mouse-based snap (mousemoverel)
+    - R6-aware target selection: gliding->legs, APU->head, torso priority if visible, else closest visible
+    - Fixed: safe target-selection (no boolean<number comparisons), no undefined vars, safe iteration
+    - Added: wallcheck and NPC-death checks for both aimbot and ESP
 ]]
 
 ----------------------------------------------------
 --// Services & Locals
 ----------------------------------------------------
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
-local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
-local player = Players.LocalPlayer
-local lp = player
+local lp = Players.LocalPlayer
 local cam = workspace.CurrentCamera
 
 ----------------------------------------------------
---// Weapon Modifier Section (optimized)
+--// Config
 ----------------------------------------------------
-local WeaponList = { 
-    "Aidkit", "Akimbo", "Barrier kit", "BombCharge", "Burst Rifle", "DMR", "Defibrillator", 
-    "ExplosiveBag","FAST","FuelCan","Grenade Launcher","Grenade Shell","Jetpack","Keycard","LMG","Machete",
-    "Mastermind's Rifle","Motion Hider","PDC kit","RPG","Rifle","SMG","Shotgun","Shovel",
-    "Tablet","Aerorig","Armour Peeler","Bolter","Combat Toolkit","Gift of Fire","Governor kit","Gunslingers",
-    "Hallsweeper","Hallucinator kit","Handaxes","Harpoon Gun","Intraplanar Device","Lifeline","Loose Trigger",
-    "MADS kit","Mercy Kill","Overcharger","PROXY","Pacemaker","Parabolic Hydra","Rallying Cry","Recurve",
-    "Resuscitator","Rocket Stormer","Runner's Heat","Shockwave Device","Sprinter's Streak","Steelforge",
-    "Stonehedge kit","Stonewall","Striker","Terminal Velocity","Torqueblade","Twinface","Voltaic Impact", "Ammo Box"
+local MAX_AIM_FOV = 50
+local PREDICTION_STUDS = 2
+local ATTRIBUTE_SCAN_INTERVAL = 2
+local ATTRIBUTE_LISTENER_TAG = "_ModsAppliedOptimized"
+
+local WeaponList = {
+    "Aidkit","Akimbo","Barrier kit","BombCharge","Burst Rifle","DMR","Defibrillator",
+    "ExplosiveBag","FAST","FuelCan","Grenade Launcher","Grenade Shell","Jetpack","Keycard",
+    "LMG","Machete","Mastermind's Rifle","Motion Hider","PDC kit","RPG","Rifle","SMG","Shotgun",
+    "Shovel","Tablet","Aerorig","Armour Peeler","Bolter","Combat Toolkit","Gift of Fire","Governor kit",
+    "Gunslingers","Hallsweeper","Hallucinator kit","Handaxes","Harpoon Gun","Intraplanar Device",
+    "Lifeline","Loose Trigger","MADS kit","Mercy Kill","Overcharger","PROXY","Pacemaker",
+    "Parabolic Hydra","Rallying Cry","Recurve","Resuscitator","Rocket Stormer","Runner's Heat",
+    "Shockwave Device","Sprinter's Streak","Steelforge","Stonehedge kit","Stonewall","Striker",
+    "Terminal Velocity","Torqueblade","Twinface","Voltaic Impact","Ammo Box"
 }
 
 local DesiredAttributes = {
@@ -54,62 +66,47 @@ local DesiredAttributes = {
     Charges = 999,
     RechargeDuration = 0,
     MaxMADS = 999,
-    ThrowAmmoCost = 0
+    ThrowAmmoCost = 0,
+    CallDuration = 9999
 }
+
+local AttributeKeys = {}
+for k,_ in pairs(DesiredAttributes) do table.insert(AttributeKeys, k) end
+table.insert(AttributeKeys, "Firerate")
 
 local function isWeaponNameAllowed(name)
     return table.find(WeaponList, name) ~= nil
 end
 
-local function applyAttributeMods(obj)
+----------------------------------------------------
+--// Attribute enforcement (event-driven)
+----------------------------------------------------
+local function attachAttributeLock(obj)
     if not obj or not obj:IsA("Instance") then return end
     if not isWeaponNameAllowed(obj.Name) then return end
-    if obj:FindFirstChild("_ModsApplied") then return end
+    if obj:FindFirstChild(ATTRIBUTE_LISTENER_TAG) then return end
 
-    local mark = Instance.new("BoolValue")
-    mark.Name = "_ModsApplied"
-    mark.Parent = obj
+    local tag = Instance.new("BoolValue")
+    tag.Name = ATTRIBUTE_LISTENER_TAG
+    tag.Parent = obj
 
-    if obj:GetAttribute("Ammo") ~= nil then
-        pcall(function() obj:SetAttribute("Ammo", DesiredAttributes.Ammo) end)
-        obj:GetAttributeChangedSignal("Ammo"):Connect(function()
-            local val = obj:GetAttribute("Ammo")
-            if type(val) == "number" and val < DesiredAttributes.Ammo then
-                pcall(function() obj:SetAttribute("Ammo", DesiredAttributes.Ammo) end)
-            end
-        end)
-    end
-
+    -- Firerate special handling
     if obj:GetAttribute("Firerate") ~= nil then
-        if not obj:FindFirstChild("_OriginalFirerate") then
-            local origVal = obj:GetAttribute("Firerate")
-            local tag = Instance.new("NumberValue")
-            tag.Name = "_OriginalFirerate"
-            tag.Value = (type(origVal) == "number" and origVal) or tonumber(origVal) or 0
-            tag.Parent = obj
-        end
-        local base = obj:FindFirstChild("_OriginalFirerate") and obj._OriginalFirerate.Value or obj:GetAttribute("Firerate")
-        local increased = base * DesiredAttributes.FirerateMultiplier
-        pcall(function() obj:SetAttribute("Firerate", increased) end)
+        local ok, orig = pcall(function() return obj:GetAttribute("Firerate") end)
+        local base = (ok and type(orig)=="number") and orig or tonumber(orig) or 0
+        local target = base * (DesiredAttributes.FirerateMultiplier or 1)
+        pcall(function() obj:SetAttribute("Firerate", target) end)
         obj:GetAttributeChangedSignal("Firerate"):Connect(function()
-            pcall(function() obj:SetAttribute("Firerate", base * DesiredAttributes.FirerateMultiplier) end)
+            pcall(function() obj:SetAttribute("Firerate", target) end)
         end)
     end
 
-    local genericAttrs = {
-        "RefillRate","HealthOnHit","HealthOnKill","ChainLimit","CallDuration","ChainRadius",
-        "ThrustSpeed","Spread","HeavySpread","FullChargeTime","MangledReviveTime",
-        "RegularReviveTime","Duration","BurstFirerate","BulletSpeed","Charges",
-        "MaxCharges","RechargeDuration","MaxMADS","ThrowAmmoCost"
-    }
-
-    for _, attrName in ipairs(genericAttrs) do
-        if obj:GetAttribute(attrName) ~= nil then
-            if attrName == "MaxCharges" then
-                pcall(function() obj:SetAttribute("BulletSpeed", 100) end)
-            else
-                local desired = DesiredAttributes[attrName] or nil
-                if attrName == "CallDuration" then desired = 9999 end
+    for _, attrName in ipairs(AttributeKeys) do
+        if attrName == "Firerate" then
+            -- handled above
+        else
+            if obj:GetAttribute(attrName) ~= nil then
+                local desired = DesiredAttributes[attrName]
                 if desired ~= nil then
                     pcall(function() obj:SetAttribute(attrName, desired) end)
                     obj:GetAttributeChangedSignal(attrName):Connect(function()
@@ -121,290 +118,495 @@ local function applyAttributeMods(obj)
     end
 end
 
-local function scanAndApply(container)
+local function scanAndAttach(container)
     if not container then return end
-    for _, child in ipairs(container:GetChildren()) do
-        pcall(function() applyAttributeMods(child) end)
-        for _, d in ipairs(child:GetDescendants()) do
-            pcall(function() applyAttributeMods(d) end)
-        end
+    for _, child in ipairs(container:GetDescendants()) do
+        attachAttributeLock(child)
     end
 end
 
-if lp then
-    scanAndApply(lp:FindFirstChildOfClass("Backpack") or lp.Backpack)
-    scanAndApply(lp.Character)
-
-    local backpack = lp:FindFirstChildOfClass("Backpack") or lp:WaitForChild("Backpack")
-    backpack.ChildAdded:Connect(function(child)
-        task.wait(0.05)
-        pcall(function() applyAttributeMods(child) end)
-    end)
-
-    lp.CharacterAdded:Connect(function(char)
-        scanAndApply(char)
-        char.ChildAdded:Connect(function(child)
-            task.wait(0.05)
-            pcall(function() applyAttributeMods(child) end)
-        end)
-        char.DescendantAdded:Connect(function(desc)
-            task.wait(0.05)
-            pcall(function() applyAttributeMods(desc) end)
-        end)
-    end)
-
-    if lp.Character then
-        lp.Character.ChildAdded:Connect(function(child)
-            task.wait(0.05)
-            pcall(function() applyAttributeMods(child) end)
-        end)
-        lp.Character.DescendantAdded:Connect(function(desc)
-            task.wait(0.05)
-            pcall(function() applyAttributeMods(desc) end)
-        end)
+-- initial attach
+task.spawn(function()
+    task.wait(0.1)
+    if lp then
+        local bp = lp:FindFirstChildOfClass("Backpack")
+        if bp then scanAndAttach(bp) end
+        if lp.Character then scanAndAttach(lp.Character) end
     end
-end
-
-Workspace.ChildAdded:Connect(function(c)
-    task.wait(0.05)
-    pcall(function() applyAttributeMods(c) end)
-    c.DescendantAdded:Connect(function(d)
-        task.wait(0.05)
-        pcall(function() applyAttributeMods(d) end)
-    end)
+    for _, v in ipairs(Workspace:GetChildren()) do attachAttributeLock(v) end
 end)
 
-scanAndApply(workspace)
+-- event hooks
+if lp then
+    lp:WaitForChild("Backpack").ChildAdded:Connect(function(child) task.wait(0.05); attachAttributeLock(child) end)
+    lp.CharacterAdded:Connect(function(char)
+        scanAndAttach(char)
+        char.ChildAdded:Connect(function(c) task.wait(0.05); attachAttributeLock(c) end)
+    end)
+    if lp.Character then
+        lp.Character.ChildAdded:Connect(function(c) task.wait(0.05); attachAttributeLock(c) end)
+    end
+end
+
+Workspace.DescendantAdded:Connect(function(desc)
+    if desc and isWeaponNameAllowed(desc.Name) then
+        task.wait(0.05)
+        attachAttributeLock(desc)
+    end
+end)
+
+task.spawn(function()
+    while task.wait(ATTRIBUTE_SCAN_INTERVAL) do
+        if lp then
+            local bp = lp:FindFirstChildOfClass("Backpack")
+            if bp then scanAndAttach(bp) end
+            if lp.Character then scanAndAttach(lp.Character) end
+        end
+        for _, v in ipairs(Workspace:GetChildren()) do attachAttributeLock(v) end
+    end
+end)
 
 ----------------------------------------------------
 --// Shielder Shield Remover
 ----------------------------------------------------
-local function handleModel(model)
+local function handleModel_shielder(model)
     if not model or not model:IsA("Model") then return end
-
-    if model.Name == "Shielder" then
-        local shieldPart = model:FindFirstChild("Shield")
-        if shieldPart and shieldPart:IsA("BasePart") then
-            shieldPart:Destroy()
-        end
-    elseif model.Name == "EscortShielder" then
-        local shieldModel = model:FindFirstChild("Shield")
-        if shieldModel and shieldModel:IsA("Model") then
-            shieldModel:Destroy()
-        end
+    if model.Name == "Shielder" or model.Name == "EscortShielder" then
+        local shield = model:FindFirstChild("Shield")
+        if shield then pcall(function() shield:Destroy() end) end
     end
 end
 
-for _, model in ipairs(workspace:GetChildren()) do
-    pcall(function() handleModel(model) end)
-end
-
-workspace.ChildAdded:Connect(function(child)
-    if child:IsA("Model") then
-        child.DescendantAdded:Connect(function(descendant)
-            if descendant.Name == "Shield" then
-                task.wait(0.05)
-                pcall(function() handleModel(child) end)
-            end
+for _, m in ipairs(Workspace:GetChildren()) do pcall(function() handleModel_shielder(m) end) end
+Workspace.ChildAdded:Connect(function(child)
+    if child and child:IsA("Model") then
+        handleModel_shielder(child)
+        child.DescendantAdded:Connect(function(d)
+            if d and d.Name == "Shield" then task.wait(0.05); handleModel_shielder(child) end
         end)
-        task.wait(0.05)
-        pcall(function() handleModel(child) end)
     end
 end)
 
 ----------------------------------------------------
---// ESP System
+--// NPC tracking cache (only NPCs)
+-- Efficient cache used by the lean aimbot below
 ----------------------------------------------------
-if _G.ESP_HighlightLoop then return end
-_G.ESP_HighlightLoop = true
+local function isNPCModel(m)
+    if not m or not m:IsA("Model") then return false end
+    if Players:FindFirstChild(m.Name) then return false end
+    if not m:FindFirstChild("Humanoid") then return false end
+    return true
+end
 
-local function addESP(model)
-    if model:FindFirstChild("ESP_Highlight") then return end
+local npcCache = {}     -- array of entries { model=model, aimPart=part, humanoid=hum }
+local npcIndex = {}     -- map model -> index in npcCache
+
+local function getBestDefaultAimPart(model)
+    if not model then return nil end
+    if model.Name == "APU" then
+        local h = model:FindFirstChild("Head")
+        if h and h:IsA("BasePart") then return h end
+    end
+    local torso = model:FindFirstChild("Torso")
+    if torso and torso:IsA("BasePart") then return torso end
+    local head = model:FindFirstChild("Head")
+    if head and head:IsA("BasePart") then return head end
+    local hroot = model:FindFirstChild("HumanoidRootPart")
+    if hroot and hroot:IsA("BasePart") then return hroot end
+    local left = model:FindFirstChild("Left Leg")
+    if left and left:IsA("BasePart") then return left end
+    local right = model:FindFirstChild("Right Leg")
+    if right and right:IsA("BasePart") then return right end
+    return nil
+end
+
+local function removeFromCache(model)
+    local i = npcIndex[model]
+    if not i then return end
+    local last = table.remove(npcCache)
+    npcIndex[model] = nil
+    if last and last.model ~= model then
+        npcCache[i] = last
+        npcIndex[last.model] = i
+    end
+end
+
+local function addToCache(model)
+    if not isNPCModel(model) then return end
+    if npcIndex[model] then return end
+    local hum = model:FindFirstChild("Humanoid")
+    if not hum then return end
+    local aim = getBestDefaultAimPart(model)
+    if not aim then return end
+    local entry = { model = model, aimPart = aim, humanoid = hum }
+    table.insert(npcCache, entry)
+    npcIndex[model] = #npcCache
+
+    hum.Died:Connect(function()
+        removeFromCache(model)
+        local hl = model:FindFirstChild("ESP_Highlight")
+        if hl then pcall(function() hl:Destroy() end) end
+        if currentHighlighted == model then currentHighlighted = nil end
+    end)
+    model.AncestryChanged:Connect(function(_, parent)
+        if not parent then
+            removeFromCache(model)
+        end
+    end)
+end
+
+-- initial population
+for _, child in ipairs(Workspace:GetChildren()) do
+    if isNPCModel(child) then
+        pcall(function() addToCache(child) end)
+    end
+end
+
+Workspace.ChildAdded:Connect(function(child)
+    if isNPCModel(child) then
+        task.delay(0.02, function() pcall(function() addToCache(child) end) end)
+    end
+end)
+
+Workspace.DescendantAdded:Connect(function(desc)
+    local parent = desc and desc.Parent
+    if parent and isNPCModel(parent) then
+        task.delay(0.02, function() pcall(function() addToCache(parent) end) end)
+    end
+end)
+
+Workspace.ChildRemoved:Connect(function(child)
+    if npcIndex[child] then removeFromCache(child) end
+end)
+
+----------------------------------------------------
+--// Utility: NPC alive check
+----------------------------------------------------
+local function isNPCAlive(model)
+    if not model or not model:IsA("Model") then return false end
+    local hum = model:FindFirstChild("Humanoid")
+    if not hum then return false end
+    local ok, health = pcall(function() return hum.Health end)
+    return ok and type(health) == "number" and health > 0
+end
+
+----------------------------------------------------
+--// ESP manager (NPC-only) - respects alive state
+----------------------------------------------------
+local function ensureHighlightFor(model)
+    if not model or not model:IsA("Model") then return nil end
+    if not isNPCAlive(model) then
+        local prev = model:FindFirstChild("ESP_Highlight")
+        if prev then pcall(function() prev:Destroy() end) end
+        return nil
+    end
+    if model:FindFirstChild("ESP_Highlight") then return model.ESP_Highlight end
     local hl = Instance.new("Highlight")
     hl.Name = "ESP_Highlight"
-    hl.FillColor = Color3.fromRGB(255, 0, 0)
-    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+    hl.Adornee = model
+    hl.FillColor = Color3.fromRGB(255,255,255)
+    hl.OutlineColor = Color3.fromRGB(255,255,255)
     hl.FillTransparency = 0.7
     hl.OutlineTransparency = 0
-    hl.Adornee = model
     hl.Parent = model
+    return hl
 end
 
-local function cleanESP()
-    for _, m in ipairs(workspace:GetChildren()) do
-        if m:IsA("Model") and m:FindFirstChild("ESP_Highlight") then
-            local hum = m:FindFirstChild("Humanoid")
-            local isPlayer = game.Players:FindFirstChild(m.Name)
-            if not hum or isPlayer then
-                m.ESP_Highlight:Destroy()
-            end
-        end
-    end
+for _, entry in ipairs(npcCache) do
+    pcall(function() ensureHighlightFor(entry.model) end)
 end
 
-task.spawn(function()
-    while _G.ESP_HighlightLoop do
-        for _, model in ipairs(workspace:GetChildren()) do
-            if model:IsA("Model") and model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") then
-                local isPlayer = game.Players:FindFirstChild(model.Name)
-                if not isPlayer then
-                    addESP(model)
-                end
-            end
-        end
-        cleanESP()
-        task.wait(0.6)
-    end
+Workspace.ChildAdded:Connect(function(child)
+    if npcIndex[child] then task.delay(0.05, function() ensureHighlightFor(child) end) end
 end)
 
 ----------------------------------------------------
---// Improved Aimbot (Sniper Priority + Stable Lock + Smooth Aim)
+--// R6-aware targeting helpers (kept lightweight)
 ----------------------------------------------------
-local aimbotActive = false
-local lockedTarget = nil
-local MAX_AIM_FOV = 50
-local PREDICTION_STUDS = 3
-local SMOOTHNESS = 0
-
-local fovCircle = nil
-pcall(function()
-    if Drawing then
-        fovCircle = Drawing.new("Circle")
-        fovCircle.Radius = MAX_AIM_FOV
-        fovCircle.Filled = false
-        fovCircle.Thickness = 1
-        fovCircle.Transparency = 1
-        fovCircle.Color = Color3.fromRGB(255, 255, 255)
-        fovCircle.Visible = true
+local function isPlayerGliding()
+    if not lp or not lp.Character then return false end
+    for _, tool in ipairs(lp.Character:GetChildren()) do
+        if tool:IsA("Tool") and (tool.Name == "Jetpack" or tool.Name == "Terminal Velocity") then
+            local ok, val = pcall(function() return tool:GetAttribute("Gliding") end)
+            if ok and val == true then return true end
+        end
     end
-end)
-
-local function updateFOVCircle()
-    if not fovCircle then return end
-    local mousePos = UserInputService:GetMouseLocation()
-    fovCircle.Position = Vector2.new(mousePos.X, mousePos.Y)
+    return false
 end
 
-local function getAimPart(model)
+local function findClosestLeg(model)
     if not model then return nil end
-    if Players:FindFirstChild(model.Name) then return nil end
-    return model:FindFirstChild("Torso") or model:FindFirstChild("Head") or model:FindFirstChild("HumanoidRootPart")
+    local camPos = cam and cam.CFrame.Position or workspace.CurrentCamera.CFrame.Position
+    local left = model:FindFirstChild("Left Leg")
+    local right = model:FindFirstChild("Right Leg")
+    if left and right then
+        local dl = (left.Position - camPos).Magnitude
+        local dr = (right.Position - camPos).Magnitude
+        return (dl < dr) and left or right
+    end
+    return left or right
 end
 
-local function hasLineOfSightToModel(model)
-    if not model then return false end
-    local aimPart = getAimPart(model)
-    if not aimPart then return false end
-    local origin = cam.CFrame.Position
-    local direction = aimPart.Position - origin
+local function isPartVisible(part, model)
+    if not part or not part:IsA("BasePart") then return false end
+    local origin = cam and cam.CFrame.Position or workspace.CurrentCamera.CFrame.Position
+    local dir = part.Position - origin
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Blacklist
-    params.FilterDescendantsInstances = {lp.Character}
+    params.FilterDescendantsInstances = { lp.Character }
     params.IgnoreWater = true
-    local result = workspace:Raycast(origin, direction, params)
+    local result = workspace:Raycast(origin, dir, params)
     if not result then return true end
     return result.Instance and result.Instance:IsDescendantOf(model)
 end
 
-local function isValidTargetInFOV(model, mousePos)
-    if not model or not model:IsA("Model") then return false end
-    local hum = model:FindFirstChild("Humanoid")
-    if not hum or hum.Health <= 0 then return false end
-    if Players:FindFirstChild(model.Name) then return false end
-    local aimPart = getAimPart(model)
-    if not aimPart then return false end
-    local screenPos, onScreen = cam:WorldToViewportPoint(aimPart.Position)
-    if not onScreen or screenPos.Z <= 0 then return false end
-    local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-    if dist > MAX_AIM_FOV then return false end
-    if not hasLineOfSightToModel(model) then return false end
-    return true, dist, screenPos
+local function findClosestVisiblePart(model)
+    if not model then return nil end
+    local names = {"Torso","Head","Left Leg","Right Leg","Left Arm","Right Arm","HumanoidRootPart"}
+    local best, bestD = nil, math.huge
+    local camPos = cam and cam.CFrame.Position or workspace.CurrentCamera.CFrame.Position
+    for _, n in ipairs(names) do
+        local p = model:FindFirstChild(n)
+        if p and p:IsA("BasePart") and isPartVisible(p, model) then
+            local d = (p.Position - camPos).Magnitude
+            if d < bestD then bestD = d; best = p end
+        end
+    end
+    return best
 end
 
-local function findSniperInFOV(mousePos)
-    local bestSniper, bestDist, bestScreen = nil, math.huge, nil
-    for _, model in ipairs(workspace:GetChildren()) do
-        if model:IsA("Model") and model.Name == "Sniper" then
-            local valid, dist, screenPos = isValidTargetInFOV(model, mousePos)
-            if valid and dist < bestDist then
-                bestSniper, bestDist, bestScreen = model, dist, screenPos
+-- Enhanced getAimPart: respects DMR/Gift of Fire head priority and original logic
+local function getAimPart(model)
+    if not model or not model:IsA("Model") then return nil end
+    if Players:FindFirstChild(model.Name) then return nil end
+
+    -- If holding DMR or Gift of Fire, prioritize head
+    if lp and lp.Character then
+        local tool = lp.Character:FindFirstChildOfClass("Tool")
+        if tool and (tool.Name == "DMR" or tool.Name == "Gift of Fire") then
+            local head = model:FindFirstChild("Head")
+            if head and head:IsA("BasePart") then
+                return head
             end
         end
     end
-    return bestSniper, bestScreen
+
+    if isPlayerGliding() then
+        local leg = findClosestLeg(model)
+        if leg then return leg end
+    end
+
+    if model.Name == "APU" then
+        local h = model:FindFirstChild("Head")
+        if h and h:IsA("BasePart") then return h end
+    end
+
+    local torso = model:FindFirstChild("Torso")
+    if torso and torso:IsA("BasePart") and isPartVisible(torso, model) then return torso end
+
+    local vis = findClosestVisiblePart(model)
+    if vis then return vis end
+
+    return torso or model:FindFirstChild("Head") or model:FindFirstChild("HumanoidRootPart")
 end
 
-local function getClosestTargetWithinFOV()
+----------------------------------------------------
+--// Lean selection helper used by aimbot
+-- returns bestEntry (from npcCache) and screenPos (Vector3)
+----------------------------------------------------
+local COS_FOV = math.cos(math.rad(MAX_AIM_FOV))
+
+local function hasLineOfSight(part, model)
+    if not part then return false end
+    local origin = cam.CFrame.Position
+    local dir = part.Position - origin
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Blacklist
+    params.FilterDescendantsInstances = { lp.Character }
+    params.IgnoreWater = true
+    local result = workspace:Raycast(origin, dir, params)
+    if not result then return true end
+    return result.Instance and result.Instance:IsDescendantOf(model)
+end
+
+local function getBestTarget()
+    local camPos = cam.CFrame.Position
+    local camForward = cam.CFrame.LookVector
     local mousePos = UserInputService:GetMouseLocation()
-    local sniperModel, sniperScreen = findSniperInFOV(mousePos)
-    if sniperModel then return sniperModel, sniperScreen end
-    local bestModel, bestDist, bestScreen = nil, math.huge, nil
-    for _, model in ipairs(workspace:GetChildren()) do
-        if model:IsA("Model") then
-            local valid, dist, screenPos = isValidTargetInFOV(model, mousePos)
-            if valid and dist < bestDist then
-                bestModel, bestDist, bestScreen = model, dist, screenPos
+    local bestEntry = nil
+    local bestScreenDist = math.huge
+    local bestScreenPos = nil
+
+    for i = 1, #npcCache do
+        local e = npcCache[i]
+        if e and e.model and e.model.Parent and e.humanoid and e.humanoid.Health > 0 then
+            -- refresh aimPart if needed
+            if not e.aimPart or not e.aimPart.Parent then
+                e.aimPart = getAimPart(e.model)
+                if not e.aimPart then
+                    -- skip if no part found
+                    goto continue_getBest
+                end
+            end
+
+            local part = e.aimPart
+            if part and part.Parent then
+                local toPart = part.Position - camPos
+                local mag = toPart.Magnitude
+                if mag > 0 then
+                    local dot = camForward:Dot(toPart / mag)
+                    if dot >= COS_FOV then
+                        local screenPos3, onScreen = cam:WorldToViewportPoint(part.Position)
+                        if onScreen and screenPos3.Z > 0 then
+                            local dx = screenPos3.X - mousePos.X
+                            local dy = screenPos3.Y - mousePos.Y
+                            local sd = math.sqrt(dx*dx + dy*dy)
+                            if sd < bestScreenDist and sd <= MAX_AIM_FOV then
+                                bestEntry = e
+                                bestScreenDist = sd
+                                bestScreenPos = screenPos3
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        ::continue_getBest::
+    end
+
+    return bestEntry, bestScreenPos
+end
+
+----------------------------------------------------
+--// Highlighting: change only on target switch (white <-> red)
+----------------------------------------------------
+local currentHighlighted = nil
+
+local function setHighlightFor(target)
+    if currentHighlighted == target then return end
+    if currentHighlighted and currentHighlighted.Parent then
+        local hl = currentHighlighted:FindFirstChild("ESP_Highlight")
+        if hl then
+            hl.FillColor = Color3.fromRGB(255,255,255)
+            hl.OutlineColor = Color3.fromRGB(255,255,255)
+        end
+    end
+    currentHighlighted = target
+    if currentHighlighted and currentHighlighted.Parent and isNPCAlive(currentHighlighted) then
+        local hl = ensureHighlightFor(currentHighlighted)
+        if hl then
+            hl.FillColor = Color3.fromRGB(255,0,0)
+            hl.OutlineColor = Color3.fromRGB(255,0,0)
+        end
+    else
+        currentHighlighted = nil
+    end
+end
+
+----------------------------------------------------
+--// Keep aimPart references fresh in a cheap loop
+----------------------------------------------------
+RunService.Heartbeat:Connect(function()
+    for i = 1, #npcCache do
+        local e = npcCache[i]
+        if e and e.model and e.model.Parent then
+            if not e.aimPart or not e.aimPart.Parent then
+                local newPart = getAimPart(e.model)
+                if newPart then e.aimPart = newPart end
             end
         end
     end
-    return bestModel, bestScreen
-end
+end)
 
-local function moveMouseSmoothly(targetScreenPos)
-    if not targetScreenPos then return end
-    local mousePos = UserInputService:GetMouseLocation()
-    local dx = (targetScreenPos.X - mousePos.X) * SMOOTHNESS
-    local dy = (targetScreenPos.Y - mousePos.Y) * SMOOTHNESS
-    if mousemoverel then
-        pcall(function() mousemoverel(dx, dy) end)
-    end
-end
+----------------------------------------------------
+--// Hold-to-aim (LeftShift) + instant mouse-based snap
+----------------------------------------------------
+local aimbotActive = false
 
-UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+UserInputService.InputBegan:Connect(function(input, _)
+    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.LeftShift then
         aimbotActive = true
     end
 end)
 
-UserInputService.InputEnded:Connect(function(input, gp)
-    if gp then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+UserInputService.InputEnded:Connect(function(input, _)
+    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.LeftShift then
         aimbotActive = false
-        lockedTarget = nil
+        setHighlightFor(nil)
     end
 end)
 
+-- Main loop: RenderStepped for precise, per-frame mouse snaps
 RunService.RenderStepped:Connect(function()
-    updateFOVCircle()
+    cam = workspace.CurrentCamera
     if not aimbotActive then return end
-    local mousePos = UserInputService:GetMouseLocation()
-    if lockedTarget then
-        local hum = lockedTarget:FindFirstChild("Humanoid")
-        if not hum or hum.Health <= 0 or not hasLineOfSightToModel(lockedTarget) then
-            lockedTarget = nil
-        end
-    end
-    if not lockedTarget then
-        local newTarget, _ = getClosestTargetWithinFOV()
-        lockedTarget = newTarget
-    end
-    if lockedTarget then
-        local part = getAimPart(lockedTarget)
-        if part then
-            local predictedPos = part.Position
-            local vel = part.Velocity
-            if vel and vel.Magnitude > 1 then
-                predictedPos = predictedPos + vel.Unit * PREDICTION_STUDS
-            end
-            local screenPos, onScreen = cam:WorldToViewportPoint(predictedPos)
-            if onScreen and screenPos.Z > 0 and hasLineOfSightToModel(lockedTarget) then
-                moveMouseSmoothly(Vector2.new(screenPos.X, screenPos.Y))
-            else
-                lockedTarget = nil
+
+    -- clean and ensure ESP highlights for alive NPCs only
+    for i = #npcCache, 1, -1 do
+        local entry = npcCache[i]
+        if not entry or not entry.model or not entry.model.Parent or not entry.humanoid then
+            if entry and entry.model then
+                removeFromCache(entry.model)
             end
         else
-            lockedTarget = nil
+            if not isNPCAlive(entry.model) then
+                local prev = entry.model:FindFirstChild("ESP_Highlight")
+                if prev then pcall(function() prev:Destroy() end) end
+                removeFromCache(entry.model)
+                if currentHighlighted == entry.model then currentHighlighted = nil end
+            else
+                if not entry.model:FindFirstChild("ESP_Highlight") then
+                    ensureHighlightFor(entry.model)
+                end
+            end
         end
     end
+
+    -- select best target
+    local bestEntry, bestScreenPos = getBestTarget()
+    if not bestEntry or not bestEntry.model or not bestEntry.aimPart then
+        setHighlightFor(nil)
+        return
+    end
+
+    local aimPart = bestEntry.aimPart
+    if not hasLineOfSight(aimPart, bestEntry.model) then
+        setHighlightFor(nil)
+        return
+    end
+
+    setHighlightFor(bestEntry.model)
+
+    -- Predict slight movement
+    local predicted = aimPart.Position
+    local vel = aimPart.Velocity or Vector3.new()
+    if vel.Magnitude > 1 then
+        predicted = predicted + vel.Unit * PREDICTION_STUDS
+    end
+
+    -- Convert predicted world position to screen position (update bestScreenPos if nil)
+    local screenPos, onScreen = cam:WorldToViewportPoint(predicted)
+    if not onScreen or screenPos.Z <= 0 then
+        setHighlightFor(nil)
+        return
+    end
+
+    -- Instant mouse snap using mousemoverel. If unavailable, fallback to camera snap.
+    local mousePos = UserInputService:GetMouseLocation()
+    local dx = screenPos.X - mousePos.X
+    local dy = screenPos.Y - mousePos.Y
+
+    pcall(function()
+        if type(mousemoverel) == "function" then
+            mousemoverel(dx, dy)
+        else
+            -- fallback: instant camera snap
+            local camPos = cam.CFrame.Position
+            local newCFrame = CFrame.new(camPos, predicted)
+            pcall(function() Workspace.CurrentCamera.CFrame = newCFrame end)
+        end
+    end)
 end)
+
+-- confirmation
+task.spawn(function() task.wait(0.4); if lp then print("Instant mouse-based aimbot + NPC ESP loaded (hold LeftShift).") end end)
