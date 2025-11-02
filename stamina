@@ -24,8 +24,8 @@ RunService.RenderStepped:Connect(function()
 			Module.SprintSpeed = 29
 		else
 			Module.MaxStamina = 100
-			Module.StaminaGain = 25
-			Module.SprintSpeed = 27.5
+			Module.StaminaGain = 22
+			Module.SprintSpeed = 27
 		end
 
 		-- check stamina value and stop loss at 3 or less idk im so fucked up rn
