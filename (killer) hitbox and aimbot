@@ -70,11 +70,12 @@ local function getPredictedPosition(hrp, hum)
     return hrp.Position + offset
 end
 
--- Death handling: allow targeting a model for 0.5s after death, then ignore until respawn
+-- Death handling: allow targeting a model for 0.2s after death, then ignore until respawn
+local DEATH_WINDOW = 0.2
 local deathTimestamps = {} -- [model] = tick() when first observed dead
 local ignoredModels = setmetatable({}, { __mode = "k" }) -- weak keys so GC can collect models
 
--- Get nearest Survivor (now respects death window and ignores after 0.5s)
+-- Get nearest Survivor (now respects death window and ignores after DEATH_WINDOW)
 local function getClosestSurvivor()
     local folder = workspace.Players:FindFirstChild("Survivors")
     if not folder then return nil end
@@ -88,7 +89,6 @@ local function getClosestSurvivor()
                 ignoredModels[model] = nil
                 deathTimestamps[model] = nil
             else
-                -- still ignored
                 goto continue
             end
         end
@@ -105,12 +105,12 @@ local function getClosestSurvivor()
                     deathTimestamps[model] = tick()
                 end
                 local elapsed = tick() - deathTimestamps[model]
-                if elapsed > 0.5 then
+                if elapsed > DEATH_WINDOW then
                     -- mark ignored and skip
                     ignoredModels[model] = true
                     goto continue
                 end
-                -- else allow targeting during the 0.5s window
+                -- else allow targeting during the DEATH_WINDOW
             end
 
             local d = (hrp.Position - root.Position).Magnitude
@@ -144,7 +144,6 @@ local function ExtendHitbox(studs)
     local velocity = hrp.AssemblyLinearVelocity
     local lookvec = hrp.CFrame.LookVector
     -- start extending
-    -- note: original used += which is not standard Lua; keep the original intent but do a safe set
     hrp.AssemblyLinearVelocity = hrp.AssemblyLinearVelocity + (lookvec * studs)
     game:GetService("RunService").RenderStepped:Wait()
     -- stop and restore origin of velocity
