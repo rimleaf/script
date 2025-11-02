@@ -79,67 +79,55 @@ local espSurvivors = false
 local espItems = false
 local espGenerators = false
 
-local function getOrCreateHighlight(obj, color, fillTrans, outlineTrans)
-	if not obj then return end
+local activeHighlights = {}
 
-	-- Find first BasePart descendant if the model has none directly
-	local adornee = obj:IsA("Model") and obj or nil
-	if obj:IsA("Model") then
-		local hasBasePart = false
-		for _, part in ipairs(obj:GetChildren()) do
-			if part:IsA("BasePart") then
-				hasBasePart = true
-				break
-			end
-		end
-		if not hasBasePart then
-			local firstPart = obj:FindFirstChildWhichIsA("BasePart", true)
-			if firstPart then
-				adornee = firstPart
-			end
-		end
-	elseif obj:IsA("BasePart") then
-		adornee = obj
-	end
+local function findFirstBasePart(obj)
+	if not obj or not obj:IsDescendantOf(Workspace) then return nil end
+	if obj:IsA("BasePart") then return obj end
+	return obj:FindFirstChildWhichIsA("BasePart", true)
+end
 
-	if not adornee then return end
+local function addHighlight(obj, color, fillTrans, outlineTrans)
+	if activeHighlights[obj] then return end
+	local part = findFirstBasePart(obj)
+	if not part then return end -- skip if model has no BasePart yet
 
-	local h = adornee:FindFirstChild("ESP_Highlight") or obj:FindFirstChild("ESP_Highlight")
-	if not h then
-		h = Instance.new("Highlight")
-		h.Name = "ESP_Highlight"
-		h.Adornee = adornee
-		h.Parent = Workspace  -- parent to workspace for safety
-	end
-
+	local h = Instance.new("Highlight")
+	h.Name = "ESP_Highlight"
+	h.Adornee = obj
 	h.FillColor = color
 	h.OutlineColor = Color3.new(0, 0, 0)
 	h.FillTransparency = fillTrans
 	h.OutlineTransparency = outlineTrans
-	return h
+	h.Parent = Workspace
+
+	activeHighlights[obj] = h
 end
 
-local function clearESP(obj)
-	if not obj then return end
-	for _, h in ipairs(Workspace:GetChildren()) do
-		if h:IsA("Highlight") and h.Name == "ESP_Highlight" and h.Adornee and h.Adornee:IsDescendantOf(obj) then
-			h:Destroy()
-		end
+local function removeHighlight(obj)
+	local h = activeHighlights[obj]
+	if h then
+		h:Destroy()
+		activeHighlights[obj] = nil
 	end
 	local billboard = obj:FindFirstChild("ESP_Billboard")
 	if billboard then billboard:Destroy() end
 end
 
-
 local function applyItemESP(obj)
-	getOrCreateHighlight(obj, Color3.fromRGB(0,0,139), 0.6, 0.6)
+	if activeHighlights[obj] then return end
+	local part = findFirstBasePart(obj)
+	if not part then return end
+
+	addHighlight(obj, Color3.fromRGB(0,0,139), 0.6, 0.6)
+
 	if not obj:FindFirstChild("ESP_Billboard") then
 		local billboard = Instance.new("BillboardGui")
 		billboard.Name = "ESP_Billboard"
 		billboard.Size = UDim2.new(0,100,0,30)
 		billboard.StudsOffset = Vector3.new(0,3,0)
 		billboard.AlwaysOnTop = true
-		billboard.Adornee = obj
+		billboard.Adornee = part
 
 		local textLabel = Instance.new("TextLabel")
 		textLabel.Size = UDim2.new(1,0,1,0)
@@ -154,74 +142,62 @@ local function applyItemESP(obj)
 	end
 end
 
--- Exclude local player's character
-local function isLocalCharacter(model)
-	return model == lp.Character
+local function refreshESP()
+	local mapFolder = Workspace:FindFirstChild("Map") and Workspace.Map:FindFirstChild("Ingame") and Workspace.Map.Ingame:FindFirstChild("Map")
+
+	-- Killers
+	local killersFolder = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
+	if killersFolder then
+		for _, k in ipairs(killersFolder:GetChildren()) do
+			if espKillers and k ~= Players.LocalPlayer.Character and findFirstBasePart(k) then
+				addHighlight(k, Color3.fromRGB(255,0,0), 0.5, 0.3)
+			else
+				removeHighlight(k)
+			end
+		end
+	end
+
+	-- Survivors
+	local survivorsFolder = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Survivors")
+	if survivorsFolder then
+		for _, s in ipairs(survivorsFolder:GetChildren()) do
+			if espSurvivors and s ~= Players.LocalPlayer.Character and findFirstBasePart(s) then
+				addHighlight(s, Color3.fromRGB(255,255,255), 0.5, 0.3)
+			else
+				removeHighlight(s)
+			end
+		end
+	end
+
+	-- Items and Generators
+	if mapFolder then
+		for _, obj in ipairs(mapFolder:GetChildren()) do
+			if espItems and (obj.Name == "Medkit" or obj.Name == "BloxyCola") and findFirstBasePart(obj) then
+				applyItemESP(obj)
+			else
+				if (obj.Name == "Medkit" or obj.Name == "BloxyCola") then removeHighlight(obj) end
+			end
+
+			if espGenerators and obj.Name == "Generator" and findFirstBasePart(obj) then
+				local progress = obj:FindFirstChild("Progress")
+				if progress and progress.Value < 100 then
+					addHighlight(obj, Color3.fromRGB(255,255,0), 0.5, 0.3)
+				else
+					removeHighlight(obj)
+				end
+			elseif obj.Name == "Generator" then
+				removeHighlight(obj)
+			end
+		end
+	end
 end
 
+-- Background loop (every 2s instead of per-frame)
 task.spawn(function()
-	while true do
-		local mapFolder = Workspace:FindFirstChild("Map")
-			and Workspace.Map:FindFirstChild("Ingame")
-			and Workspace.Map.Ingame:FindFirstChild("Map")
-
-		-- Killers ESP (exclude self)
-		if espKillers then
-			local killers = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
-			if killers then
-				for _, k in ipairs(killers:GetChildren()) do
-					if not isLocalCharacter(k) then
-						getOrCreateHighlight(k, Color3.fromRGB(255,0,0), 0.5, 0.3)
-					end
-				end
-			end
-		else
-			local killers = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
-			if killers then
-				for _, k in ipairs(killers:GetChildren()) do clearESP(k) end
-			end
+	while task.wait(2) do
+		if espKillers or espSurvivors or espItems or espGenerators then
+			refreshESP()
 		end
-
-		-- Survivors ESP (exclude self)
-		if espSurvivors then
-			local survivors = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Survivors")
-			if survivors then
-				for _, s in ipairs(survivors:GetChildren()) do
-					if not isLocalCharacter(s) then
-						getOrCreateHighlight(s, Color3.fromRGB(255,255,255), 0.5, 0.3)
-					end
-				end
-			end
-		else
-			local survivors = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Survivors")
-			if survivors then
-				for _, s in ipairs(survivors:GetChildren()) do clearESP(s) end
-			end
-		end
-
-		-- Items & Generators ESP
-		if mapFolder then
-			for _, obj in ipairs(mapFolder:GetChildren()) do
-				if espItems and (obj.Name == "Medkit" or obj.Name == "BloxyCola") then
-					applyItemESP(obj)
-				elseif not espItems and (obj.Name == "Medkit" or obj.Name == "BloxyCola") then
-					clearESP(obj)
-				end
-
-				if espGenerators and obj.Name == "Generator" then
-					local progressVal = obj:FindFirstChild("Progress")
-					if progressVal and progressVal.Value < 100 then
-						getOrCreateHighlight(obj, Color3.fromRGB(255,255,0), 0.5, 0.3)
-					else
-						clearESP(obj)
-					end
-				elseif not espGenerators and obj.Name == "Generator" then
-					clearESP(obj)
-				end
-			end
-		end
-
-		task.wait(1)
 	end
 end)
 
