@@ -178,7 +178,7 @@ srvRun.Heartbeat:Connect(function()
 				local fromPos = root.Position
 				local dir = predicted - fromPos
 				if dir.Magnitude > 1e-3 then
-					root.CFrame = CFrame.lookAt(fromPos, fromPos + dir)
+					--root.CFrame = CFrame.lookAt(fromPos, fromPos + dir)
 				end
 			end
 		end
