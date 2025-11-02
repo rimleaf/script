@@ -81,13 +81,37 @@ local espGenerators = false
 
 local function getOrCreateHighlight(obj, color, fillTrans, outlineTrans)
 	if not obj then return end
-	local h = obj:FindFirstChild("ESP_Highlight")
+
+	-- Find first BasePart descendant if the model has none directly
+	local adornee = obj:IsA("Model") and obj or nil
+	if obj:IsA("Model") then
+		local hasBasePart = false
+		for _, part in ipairs(obj:GetChildren()) do
+			if part:IsA("BasePart") then
+				hasBasePart = true
+				break
+			end
+		end
+		if not hasBasePart then
+			local firstPart = obj:FindFirstChildWhichIsA("BasePart", true)
+			if firstPart then
+				adornee = firstPart
+			end
+		end
+	elseif obj:IsA("BasePart") then
+		adornee = obj
+	end
+
+	if not adornee then return end
+
+	local h = adornee:FindFirstChild("ESP_Highlight") or obj:FindFirstChild("ESP_Highlight")
 	if not h then
 		h = Instance.new("Highlight")
 		h.Name = "ESP_Highlight"
-		h.Adornee = obj
-		h.Parent = obj
+		h.Adornee = adornee
+		h.Parent = Workspace  -- parent to workspace for safety
 	end
+
 	h.FillColor = color
 	h.OutlineColor = Color3.new(0, 0, 0)
 	h.FillTransparency = fillTrans
@@ -97,11 +121,15 @@ end
 
 local function clearESP(obj)
 	if not obj then return end
-	local h = obj:FindFirstChild("ESP_Highlight")
-	if h then h:Destroy() end
-	local b = obj:FindFirstChild("ESP_Billboard")
-	if b then b:Destroy() end
+	for _, h in ipairs(Workspace:GetChildren()) do
+		if h:IsA("Highlight") and h.Name == "ESP_Highlight" and h.Adornee and h.Adornee:IsDescendantOf(obj) then
+			h:Destroy()
+		end
+	end
+	local billboard = obj:FindFirstChild("ESP_Billboard")
+	if billboard then billboard:Destroy() end
 end
+
 
 local function applyItemESP(obj)
 	getOrCreateHighlight(obj, Color3.fromRGB(0,0,139), 0.6, 0.6)
