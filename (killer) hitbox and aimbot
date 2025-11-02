@@ -100,7 +100,7 @@ local function getClosestSurvivor()
 	-- keep targeting the last one for 0.2s even if they die
 	if closest then
 		task.delay(0.2, function()
-			if closest and closest:FindFirstChild("Humanoid") and closest.Humanoid.Health <= 0 then
+			if closest and closest:FindFirstChild("Humanoid") and closest.Humanoid.Health <= 1 then
 				closest = nil
 			end
 		end)
