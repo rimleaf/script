@@ -11,93 +11,116 @@ local animator = humanoid:WaitForChild("Animator")
 local root = char:WaitForChild("HumanoidRootPart")
 
 client.CharacterAdded:Connect(function(newChar)
-	char = newChar
-	humanoid = char:WaitForChild("Humanoid")
-	animator = humanoid:WaitForChild("Animator")
-	root = char:WaitForChild("HumanoidRootPart")
+    char = newChar
+    humanoid = char:WaitForChild("Humanoid")
+    animator = humanoid:WaitForChild("Animator")
+    root = char:WaitForChild("HumanoidRootPart")
 end)
 
 -- Raw IDs (any format) -> we'll normalize to digits only
 local attackIdsRaw = {
-	["rbxassetid://83829782357897"] = true,
-	["rbxassetid://126830014841198"] = true,
-	["rbxassetid://126355327951215"] = true,
-	["rbxassetid://105458270463374"] = true,
-	["rbxassetid://18885909645"] = true,
-	["rbxassetid://94162446513587"] = true,
-	["rbxassetid://93069721274110"] = true,
-	["rbxassetid://97433060861952"] = true,
-	["rbxassetid://121293883585738"] = true,
-	["rbxassetid://92173139187970"] = true,
-	["rbxassetid://125403313786645"] = true,
-	["rbxassetid://81639435858902"] = true,
-	["rbxassetid://120112897026015"] = true,
-	["rbxassetid://82113744478546"] = true,
-	["rbxassetid://118298475669935"] = true,
-	["rbxassetid://126681776859538"] = true,
-	["rbxassetid://109667959938617"] = true,
-	["rbxassetid://74707328554358"] = true,
-	["rbxassetid://133336594357903"] = true,
-	["rbxassetid://70371667919898"] = true,
-	["rbxassetid://131543461321709"] = true,
-	["rbxassetid://136323728355613"] = true,
-	["rbxassetid://109230267448394"] = true,
-
-	-- Added new ones from autoBlockTriggerAnims
-	["rbxassetid://121086746534252"] = true,
-	["rbxassetid://98456918873918"] = true,
-	["rbxassetid://99135633258223"] = true,
-	["rbxassetid://97167027849946"] = true,
-	["rbxassetid://139835501033932"] = true,
-	["rbxassetid://126896426760253"] = true,
-	["rbxassetid://129976080405072"] = true,
-	["rbxassetid://137314737492715"] = true
+    ["rbxassetid://83829782357897"] = true,
+    ["rbxassetid://126830014841198"] = true,
+    ["rbxassetid://126355327951215"] = true,
+    ["rbxassetid://105458270463374"] = true,
+    ["rbxassetid://18885909645"] = true,
+    ["rbxassetid://94162446513587"] = true,
+    ["rbxassetid://93069721274110"] = true,
+    ["rbxassetid://97433060861952"] = true,
+    ["rbxassetid://121293883585738"] = true,
+    ["rbxassetid://92173139187970"] = true,
+    ["rbxassetid://125403313786645"] = true,
+    ["rbxassetid://81639435858902"] = true,
+    ["rbxassetid://120112897026015"] = true,
+    ["rbxassetid://82113744478546"] = true,
+    ["rbxassetid://118298475669935"] = true,
+    ["rbxassetid://126681776859538"] = true,
+    ["rbxassetid://109667959938617"] = true,
+    ["rbxassetid://74707328554358"] = true,
+    ["rbxassetid://133336594357903"] = true,
+    ["rbxassetid://70371667919898"] = true,
+    ["rbxassetid://131543461321709"] = true,
+    ["rbxassetid://136323728355613"] = true,
+    ["rbxassetid://109230267448394"] = true,
+    -- Added new ones from autoBlockTriggerAnims
+    ["rbxassetid://121086746534252"] = true,
+    ["rbxassetid://98456918873918"] = true,
+    ["rbxassetid://99135633258223"] = true,
+    ["rbxassetid://97167027849946"] = true,
+    ["rbxassetid://139835501033932"] = true,
+    ["rbxassetid://126896426760253"] = true,
+    ["rbxassetid://129976080405072"] = true,
+    ["rbxassetid://137314737492715"] = true
 }
-
 
 -- Prediction function
 local function getPredictedPosition(hrp, hum)
-	if not hrp or not hum then return hrp and hrp.Position or nil end
-
-	local moveDir = hum.MoveDirection
-	local velocity = hrp.Velocity
-	local predictionTime = 0.2
-
-	if moveDir.Magnitude < 1 and velocity.Magnitude < 1 then
-		return hrp.Position
-	end
-
-	local offset
-	if moveDir.Magnitude > 0.1 then
-		offset = moveDir.Unit * hum.WalkSpeed * predictionTime
-	else
-		offset = velocity * predictionTime
-	end
-
-	if offset.Magnitude > 6 then
-		offset = offset.Unit * 6
-	end
-
-	return hrp.Position + offset
+    if not hrp or not hum then return hrp and hrp.Position or nil end
+    local moveDir = hum.MoveDirection
+    local velocity = hrp.Velocity
+    local predictionTime = 0.2
+    if moveDir.Magnitude < 1 and velocity.Magnitude < 1 then return hrp.Position end
+    local offset
+    if moveDir.Magnitude > 0.1 then
+        offset = moveDir.Unit * hum.WalkSpeed * predictionTime
+    else
+        offset = velocity * predictionTime
+    end
+    if offset.Magnitude > 6 then offset = offset.Unit * 6 end
+    return hrp.Position + offset
 end
 
--- Get nearest Survivor
-local function getClosestSurvivor()
-	local folder = workspace.Players:FindFirstChild("Survivors")
-	if not folder then return nil end
+-- Death handling: allow targeting a model for 0.5s after death, then ignore until respawn
+local deathTimestamps = {} -- [model] = tick() when first observed dead
+local ignoredModels = setmetatable({}, { __mode = "k" }) -- weak keys so GC can collect models
 
-	local closest, dist = nil, math.huge
-	for _, model in ipairs(folder:GetChildren()) do
-		local hrp = model:FindFirstChild("HumanoidRootPart")
-		local hum = model:FindFirstChild("Humanoid")
-		if hrp and hum and hum.Health > 0 then
-			local d = (hrp.Position - root.Position).Magnitude
-			if d < dist then
-				closest, dist = model, d
-			end
-		end
-	end
-	return closest
+-- Get nearest Survivor (now respects death window and ignores after 0.5s)
+local function getClosestSurvivor()
+    local folder = workspace.Players:FindFirstChild("Survivors")
+    if not folder then return nil end
+    local closest, dist = nil, math.huge
+    for _, model in ipairs(folder:GetChildren()) do
+        -- skip if explicitly ignored
+        if ignoredModels[model] then
+            -- but if they respawn (health > 0) we'll clear below
+            local humCheck = model:FindFirstChild("Humanoid")
+            if humCheck and humCheck.Health > 0 then
+                ignoredModels[model] = nil
+                deathTimestamps[model] = nil
+            else
+                -- still ignored
+                goto continue
+            end
+        end
+
+        local hrp = model:FindFirstChild("HumanoidRootPart")
+        local hum = model:FindFirstChild("Humanoid")
+        if hrp and hum then
+            if hum.Health > 0 then
+                -- alive, ensure we clear any old death timestamp
+                deathTimestamps[model] = nil
+            else
+                -- dead or dying
+                if not deathTimestamps[model] then
+                    deathTimestamps[model] = tick()
+                end
+                local elapsed = tick() - deathTimestamps[model]
+                if elapsed > 0.5 then
+                    -- mark ignored and skip
+                    ignoredModels[model] = true
+                    goto continue
+                end
+                -- else allow targeting during the 0.5s window
+            end
+
+            local d = (hrp.Position - root.Position).Magnitude
+            if d < dist then
+                closest, dist = model, d
+            end
+        end
+        ::continue::
+    end
+    return closest
 end
 
 -- Active aimbot state
@@ -106,81 +129,76 @@ local aimbotEnd = 0
 
 -- Keeps your behavior intact
 local function ExtendHitbox(studs)
-	game:GetService("RunService").Heartbeat:Wait()
-
-	-- character and humanoidrootpart exists check
-	while not (
-		game:GetService("Players").LocalPlayer.Character
-		and game:GetService("Players").LocalPlayer.Character.Parent
-		and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-		and game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Parent
-	) do
-		game:GetService("RunService").Heartbeat:Wait()
-	end
-
-	-- save
-	local hrp = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart
-	local velocity = hrp.AssemblyLinearVelocity
-	local lookvec = hrp.CFrame.LookVector
-
-	-- start extending
-	hrp.AssemblyLinearVelocity += (lookvec * studs)
-	game:GetService("RunService").RenderStepped:Wait()
-	-- stop and restore origin of velocity
-	if (
-		game:GetService("Players").LocalPlayer.Character
-		and game:GetService("Players").LocalPlayer.Character.Parent
-		and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-		and game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Parent
-	) then
-		game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = velocity
-	end
+    game:GetService("RunService").Heartbeat:Wait()
+    -- character and humanoidrootpart exists check
+    while not (
+        game:GetService("Players").LocalPlayer.Character
+        and game:GetService("Players").LocalPlayer.Character.Parent
+        and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        and game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Parent
+    ) do
+        game:GetService("RunService").Heartbeat:Wait()
+    end
+    -- save
+    local hrp = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart
+    local velocity = hrp.AssemblyLinearVelocity
+    local lookvec = hrp.CFrame.LookVector
+    -- start extending
+    -- note: original used += which is not standard Lua; keep the original intent but do a safe set
+    hrp.AssemblyLinearVelocity = hrp.AssemblyLinearVelocity + (lookvec * studs)
+    game:GetService("RunService").RenderStepped:Wait()
+    -- stop and restore origin of velocity
+    if (
+        game:GetService("Players").LocalPlayer.Character
+        and game:GetService("Players").LocalPlayer.Character.Parent
+        and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        and game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Parent
+    ) then
+        game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = velocity
+    end
 end
 
-local aimbotEnd = 0
-
 local function normalizeId(id)
-	if not id then return nil end
-	-- Extract only digits
-	local digits = string.match(id, "%d+")
-	return digits
+    if not id then return nil end
+    -- Extract only digits
+    local digits = string.match(id, "%d+")
+    return digits
 end
 
 srvRun.Heartbeat:Connect(function()
-	if not root or not humanoid then return end
+    if not root or not humanoid then return end
 
-	-- Check if an attack animation is currently playing
-	local isAttacking = false
-	for _, track in humanoid:GetPlayingAnimationTracks() do
-		local animId = track.Animation and track.Animation.AnimationId
-		local normId = normalizeId(animId)
-		if normId and attackIdsRaw["rbxassetid://" .. normId] and (track.TimePosition / track.Length < 0.75) then
-			isAttacking = true
-			break
-		end
-	end
+    -- Check if an attack animation is currently playing
+    local isAttacking = false
+    for _, track in humanoid:GetPlayingAnimationTracks() do
+        local animId = track.Animation and track.Animation.AnimationId
+        local normId = normalizeId(animId)
+        if normId and attackIdsRaw["rbxassetid://" .. normId] and (track.TimePosition / track.Length < 0.75) then
+            isAttacking = true
+            break
+        end
+    end
 
-	-- If attack detected, extend timer
-	if isAttacking then
-		aimbotEnd = tick() + 0.1
-		ExtendHitbox(30)
-	end
+    -- If attack detected, extend timer
+    if isAttacking then
+        aimbotEnd = tick() + 0.1
+        ExtendHitbox(20)
+    end
 
-	-- Only run while timer is active
-	if tick() <= aimbotEnd then
-
-		local target = getClosestSurvivor()
-		if target then
-			local thrp = target:FindFirstChild("HumanoidRootPart")
-			local thum = target:FindFirstChild("Humanoid")
-			if thrp and thum then
-				local predicted = getPredictedPosition(thrp, thum) or thrp.Position
-				local fromPos = root.Position
-				local dir = predicted - fromPos
-				if dir.Magnitude > 1e-3 then
-					--root.CFrame = CFrame.lookAt(fromPos, fromPos + dir)
-				end
-			end
-		end
-	end
+    -- Only run while timer is active
+    if tick() <= aimbotEnd then
+        local target = getClosestSurvivor()
+        if target then
+            local thrp = target:FindFirstChild("HumanoidRootPart")
+            local thum = target:FindFirstChild("Humanoid")
+            if thrp and thum then
+                local predicted = getPredictedPosition(thrp, thum) or thrp.Position
+                local fromPos = root.Position
+                local dir = predicted - fromPos
+                if dir.Magnitude > 1e-3 then
+                    root.CFrame = CFrame.lookAt(fromPos, fromPos + dir)
+                end
+            end
+        end
+    end
 end)
