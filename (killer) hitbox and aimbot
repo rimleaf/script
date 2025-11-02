@@ -54,14 +54,13 @@ local attackIdsRaw = {
 	["rbxassetid://137314737492715"] = true
 }
 
-
 -- Prediction function
 local function getPredictedPosition(hrp, hum)
 	if not hrp or not hum then return hrp and hrp.Position or nil end
 
 	local moveDir = hum.MoveDirection
 	local velocity = hrp.Velocity
-	local predictionTime = 0.2
+	local predictionTime = 0.45
 
 	if moveDir.Magnitude < 1 and velocity.Magnitude < 1 then
 		return hrp.Position
@@ -90,25 +89,15 @@ local function getClosestSurvivor()
 	for _, model in ipairs(folder:GetChildren()) do
 		local hrp = model:FindFirstChild("HumanoidRootPart")
 		local hum = model:FindFirstChild("Humanoid")
-
-		if hrp and hum then
+		if hrp and hum and hum.Health > 0 then
 			local d = (hrp.Position - root.Position).Magnitude
 			if d < dist then
 				closest, dist = model, d
 			end
 		end
 	end
-
-	if closest then
-		local hum = closest:FindFirstChild("Humanoid")
-		if hum and hum.Health <= 0 then
-			task.wait(0.2) -- keep targeting briefly even if they just died
-		end
-	end
-
 	return closest
 end
-
 
 -- Active aimbot state
 local aimbotTrack = nil
@@ -134,7 +123,7 @@ local function ExtendHitbox(studs)
 	local lookvec = hrp.CFrame.LookVector
 
 	-- start extending
-	hrp.AssemblyLinearVelocity = (lookvec * studs)
+	hrp.AssemblyLinearVelocity += (lookvec * studs)
 	game:GetService("RunService").RenderStepped:Wait()
 	-- stop and restore origin of velocity
 	if (
