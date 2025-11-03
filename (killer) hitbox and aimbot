@@ -41,17 +41,7 @@ local attackIdsRaw = {
 	["rbxassetid://70371667919898"] = true,
 	["rbxassetid://131543461321709"] = true,
 	["rbxassetid://136323728355613"] = true,
-	["rbxassetid://109230267448394"] = true,
-
-	-- Added new ones from autoBlockTriggerAnims
-	["rbxassetid://121086746534252"] = true,
-	["rbxassetid://98456918873918"] = true,
-	["rbxassetid://99135633258223"] = true,
-	["rbxassetid://97167027849946"] = true,
-	["rbxassetid://139835501033932"] = true,
-	["rbxassetid://126896426760253"] = true,
-	["rbxassetid://129976080405072"] = true,
-	["rbxassetid://137314737492715"] = true
+	["rbxassetid://109230267448394"] = true
 }
 
 -- Prediction function
