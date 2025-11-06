@@ -15,10 +15,10 @@ Player.CharacterAdded:Connect(function(NewCharacter)
     HumanoidRootPart = Character:WaitForChild("HumanoidRootPart");
 end);
 
-local WallCheck = getgenv().WallCheck or true;
-local FaceCheck = getgenv().FaceCheck or true;
-local TeamCheck = getgenv().TeamCheck or true;
-local FaceCheckValue = getgenv().FaceCheckValue or 0;
+local WallCheck = true;
+local FaceCheck = true;
+local TeamCheck = true;
+local FaceCheckValue = 0;
 
 local AttackAnimations = {
 	'rbxassetid://131430497821198',
@@ -207,7 +207,7 @@ while true do
 
     local Playing = false;
     for _,v in Humanoid:GetPlayingAnimationTracks() do
-        if table.find(AttackAnimations, v.Animation.AnimationId) and (v.TimePosition / v.Length < 0.75) then
+        if table.find(AttackAnimations, v.Animation.AnimationId) and (v.TimePosition / v.Length < 0.5) then
             Playing = true;
         end
     end
@@ -217,7 +217,7 @@ while true do
     end
 
     local Target;
-    local NearestDist = getgenv().Range or 14;
+    local NearestDist = 15;
 
     local function Loop(T)
         for _,v in T do
