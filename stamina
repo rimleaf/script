@@ -22,11 +22,11 @@ RunService.RenderStepped:Connect(function()
 	if humanoid then
 		if humanoid.Health >= 200 then
 			Module.MaxStamina = 110
-			Module.StaminaGain = 25
+			Module.StaminaGain = 22
 			Module.SprintSpeed = 29.5
 		else
 			Module.MaxStamina = 100
-			Module.StaminaGain = 25
+			Module.StaminaGain = 21
 			Module.SprintSpeed = 27
 		end
 
