@@ -225,7 +225,7 @@ srvRun.Heartbeat:Connect(function()
 	for _, track in humanoid:GetPlayingAnimationTracks() do
 		local animId = track.Animation and track.Animation.AnimationId
 		local normId = normalizeId(animId)
-		if normId and attackIdsRaw["rbxassetid://" .. normId] and (track.TimePosition / track.Length < 0.75) then
+		if normId and attackIdsRaw["rbxassetid://" .. normId] and (track.TimePosition / track.Length < 0.5) then
 			isAttacking = true
 			break
 		end
