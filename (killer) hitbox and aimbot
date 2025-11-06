@@ -1,3 +1,7 @@
+-- fetch and execute the script
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/hitbox"))()
+wait(0.1)
+
 -- Services
 local srvPlayers = game:GetService("Players")
 local srvRun = game:GetService("RunService")
