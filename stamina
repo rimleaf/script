@@ -1,5 +1,5 @@
---loadstring(game:HttpGet("https://pastebin.com/raw/MzKS5uvm"))()
---wait(0.1)
+loadstring(game:HttpGet("https://pastebin.com/raw/MzKS5uvm"))()
+wait(0.1)
 loadstring(game:HttpGet("https://pastebin.com/raw/Sg7YR1pp"))()
 
 -- [ Services ]
