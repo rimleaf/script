@@ -20,7 +20,7 @@ client.CharacterAdded:Connect(function(newChar)
 end)
 
 -- Raw IDs (any format) -> we'll normalize to digits only
-local AttackAnimations = {
+local attackIdsRaw = {
     ["rbxassetid://131430497821198"] = true,
     ["rbxassetid://83829782357897"] = true,
     ["rbxassetid://126830014841198"] = true,
