@@ -20,30 +20,97 @@ client.CharacterAdded:Connect(function(newChar)
 end)
 
 -- Raw IDs (any format) -> we'll normalize to digits only
-local attackIdsRaw = {
-	["rbxassetid://83829782357897"] = true,
-	["rbxassetid://126830014841198"] = true,
-	["rbxassetid://126355327951215"] = true,
-	["rbxassetid://105458270463374"] = true,
-	["rbxassetid://18885909645"] = true,
-	["rbxassetid://94162446513587"] = true,
-	["rbxassetid://93069721274110"] = true,
-	["rbxassetid://97433060861952"] = true,
-	["rbxassetid://121293883585738"] = true,
-	["rbxassetid://92173139187970"] = true,
-	["rbxassetid://125403313786645"] = true,
-	["rbxassetid://81639435858902"] = true,
-	["rbxassetid://120112897026015"] = true,
-	["rbxassetid://82113744478546"] = true,
-	["rbxassetid://118298475669935"] = true,
-	["rbxassetid://126681776859538"] = true,
-	["rbxassetid://109667959938617"] = true,
-	["rbxassetid://74707328554358"] = true,
-	["rbxassetid://133336594357903"] = true,
-	["rbxassetid://70371667919898"] = true,
-	["rbxassetid://131543461321709"] = true,
-	["rbxassetid://136323728355613"] = true,
-	["rbxassetid://109230267448394"] = true
+local AttackAnimations = {
+    ["rbxassetid://131430497821198"] = true,
+    ["rbxassetid://83829782357897"] = true,
+    ["rbxassetid://126830014841198"] = true,
+    ["rbxassetid://126355327951215"] = true,
+    ["rbxassetid://121086746534252"] = true,
+    ["rbxassetid://105458270463374"] = true,
+    ["rbxassetid://127172483138092"] = true,
+    ["rbxassetid://18885919947"] = true,
+    ["rbxassetid://18885909645"] = true,
+    ["rbxassetid://87259391926321"] = true,
+    ["rbxassetid://106014898528300"] = true,
+    ["rbxassetid://87259391926321"] = true,
+    ["rbxassetid://86545133269813"] = true,
+    ["rbxassetid://89448354637442"] = true,
+    ["rbxassetid://90499469533503"] = true,
+    ["rbxassetid://116618003477002"] = true,
+    ["rbxassetid://106086955212611"] = true,
+    ["rbxassetid://107640065977686"] = true,
+    ["rbxassetid://77124578197357"] = true,
+    ["rbxassetid://101771617803133"] = true,
+    ["rbxassetid://134958187822107"] = true,
+    ["rbxassetid://111313169447787"] = true,
+    ["rbxassetid://71685573690338"] = true,
+    ["rbxassetid://71685573690338"] = true,
+    ["rbxassetid://129843313690921"] = true,
+    ["rbxassetid://97623143664485"] = true,
+    ["rbxassetid://129843313690921"] = true,
+    ["rbxassetid://136007065400978"] = true,
+    ["rbxassetid://136007065400978"] = true,
+    ["rbxassetid://86096387000557"] = true,
+    ["rbxassetid://86096387000557"] = true,
+    ["rbxassetid://108807732150251"] = true,
+    ["rbxassetid://138040001965654"] = true,
+    ["rbxassetid://73502073176819"] = true,
+    ["rbxassetid://129843313690921"] = true,
+    ["rbxassetid://97623143664485"] = true,
+    ["rbxassetid://129843313690921"] = true,
+    ["rbxassetid://97623143664485"] = true,
+    ["rbxassetid://97623143664485"] = true,
+    ["rbxassetid://97623143664485"] = true,
+    ["rbxassetid://86709774283672"] = true,
+    ["rbxassetid://106014898528300"] = true,
+    ["rbxassetid://87259391926321"] = true,
+    ["rbxassetid://140703210927645"] = true,
+    ["rbxassetid://96173857867228"] = true,
+    ["rbxassetid://121255898612475"] = true,
+    ["rbxassetid://98031287364865"] = true,
+    ["rbxassetid://119462383658044"] = true,
+    ["rbxassetid://77448521277146"] = true,
+    ["rbxassetid://77448521277146"] = true,
+    ["rbxassetid://103741352379819"] = true,
+    ["rbxassetid://119462383658044"] = true,
+    ["rbxassetid://131696603025265"] = true,
+    ["rbxassetid://122503338277352"] = true,
+    ["rbxassetid://97648548303678"] = true,
+    ["rbxassetid://94162446513587"] = true,
+    ["rbxassetid://84426150435898"] = true,
+    ["rbxassetid://93069721274110"] = true,
+    ["rbxassetid://114620047310688"] = true,
+    ["rbxassetid://97433060861952"] = true,
+    ["rbxassetid://82183356141401"] = true,
+    ["rbxassetid://100592913030351"] = true,
+    ["rbxassetid://121293883585738"] = true,
+    ["rbxassetid://100592913030351"] = true,
+    ["rbxassetid://121293883585738"] = true,
+    ["rbxassetid://100592913030351"] = true,
+    ["rbxassetid://121293883585738"] = true,
+    ["rbxassetid://70447634862911"] = true,
+    ["rbxassetid://92173139187970"] = true,
+    ["rbxassetid://106847695270773"] = true,
+    ["rbxassetid://125403313786645"] = true,
+    ["rbxassetid://81639435858902"] = true,
+    ["rbxassetid://137314737492715"] = true,
+    ["rbxassetid://120112897026015"] = true,
+    ["rbxassetid://82113744478546"] = true,
+    ["rbxassetid://118298475669935"] = true,
+    ["rbxassetid://82113744478546"] = true,
+    ["rbxassetid://118298475669935"] = true,
+    ["rbxassetid://126681776859538"] = true,
+    ["rbxassetid://129976080405072"] = true,
+    ["rbxassetid://109667959938617"] = true,
+    ["rbxassetid://74707328554358"] = true,
+    ["rbxassetid://133336594357903"] = true,
+    ["rbxassetid://86204001129974"] = true,
+    ["rbxassetid://82113744478546"] = true,
+    ["rbxassetid://118298475669935"] = true,
+    ["rbxassetid://124243639579224"] = true,
+    ["rbxassetid://70371667919898"] = true,
+    ["rbxassetid://131543461321709"] = true,
+    ["rbxassetid://106538427162796"] = true
 }
 
 -- Prediction function
@@ -91,7 +158,7 @@ local function getClosestSurvivor()
 
 	-- keep targeting the last one for 0.2s even if they die
 	if closest then
-		task.delay(0.2, function()
+		task.delay(0.5, function()
 			if closest and closest:FindFirstChild("Humanoid") and closest.Humanoid.Health <= 1 then
 				closest = nil
 			end
@@ -180,7 +247,7 @@ srvRun.Heartbeat:Connect(function()
 				local fromPos = root.Position
 				local dir = predicted - fromPos
 				if dir.Magnitude > 1e-3 then
-					root.CFrame = CFrame.lookAt(fromPos, fromPos + dir)
+					--root.CFrame = CFrame.lookAt(fromPos, fromPos + dir)
 				end
 			end
 		end
