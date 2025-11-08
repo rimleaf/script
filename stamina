@@ -7,46 +7,178 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local toggled = false
 
--- [ Wait for Sprinting Module ]
+-- [ Modules ]
 local Sprinting = ReplicatedStorage.Systems.Character.Game.Sprinting
 local Veer = ReplicatedStorage.Assets.Survivors.Veeronica.Config
 local Module = require(Sprinting)
 local Vodule = require(Veer)
 
--- lol guys legitimate gameplay right here yall lalalala 
--- [ Stamina Script ]
-RunService.RenderStepped:Connect(function()
-	local humanoid = Character:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		if humanoid.Health >= 200 then
-			Module.MaxStamina = 110
-			Module.StaminaGain = 22
-			Module.SprintSpeed = 28.8
-		else
-			Module.MaxStamina = 100
-			Module.StaminaGain = 21
-			Module.SprintSpeed = 27
-			Vodule.Sk8Speed = 30
-			Vodule.Sk8TrickPower = 120
-			Vodule.Sk8TurnDuration = 0.05
-			Vodule.Sk8TrickGravity = 10
-			Vodule.Sk8TurnControl = 1
-		end
+-- command prefix
+local prefix = "!cmd"
 
-		-- check stamina value and stop loss at 3 or less idk im so fucked up rn
-		if Module.Stamina and Module.Stamina <= 1.5 then
-			Module.StaminaLoss = 0
-		else
-			Module.StaminaLoss = 9
+-- defaults
+local DEFAULT_Below200Sprint = 27
+local DEFAULT_Above200Sprint = 28.5
+
+local DEFAULT_Sk8Speed = 2
+local DEFAULT_Sk8TrickPower = 120
+local DEFAULT_Sk8TurnDuration = 0.05
+local DEFAULT_Sk8TurnControl = 3
+
+-- editable values
+local Below200Sprint = DEFAULT_Below200Sprint
+local Above200Sprint = DEFAULT_Above200Sprint
+
+local Sk8Speed = DEFAULT_Sk8Speed
+local Sk8TrickPower = DEFAULT_Sk8TrickPower
+local Sk8TurnDuration = DEFAULT_Sk8TurnDuration
+local Sk8TurnControl = DEFAULT_Sk8TurnControl
+
+local GradSpeedEnabled = false
+
+-- sprint lerp cache
+local currentSpeed = Above200Sprint
+local LerpRate = 0.15
+
+-- reset function
+local function ResetValues()
+	Below200Sprint = DEFAULT_Below200Sprint
+	Above200Sprint = DEFAULT_Above200Sprint
+
+	Sk8Speed = DEFAULT_Sk8Speed
+	Sk8TrickPower = DEFAULT_Sk8TrickPower
+	Sk8TurnDuration = DEFAULT_Sk8TurnDuration
+	Sk8TurnControl = DEFAULT_Sk8TurnControl
+
+	GradSpeedEnabled = false
+	currentSpeed = Above200Sprint
+end
+
+-- nearest player finder
+local function GetNearestPlayer()
+	local nearest = nil
+	local shortest = math.huge
+	local root = Character and Character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return nil
+	end
+
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+			local dist = (root.Position - plr.Character.HumanoidRootPart.Position).Magnitude
+			if dist < shortest then
+				shortest = dist
+				nearest = plr
+			end
 		end
+	end
+
+	return nearest, shortest
+end
+
+-- silent command system
+LocalPlayer.Chatted:Connect(function(msg)
+	if string.sub(msg,1,#prefix) ~= prefix then
+		return
+	end
+
+	local args = string.split(msg," ")
+	local command = args[2]
+	local valueRaw = args[3]
+	local value = tonumber(valueRaw)
+
+	if command == "reset" then
+		ResetValues()
+		return
+	end
+
+	if command == "gradspeed" then
+		if valueRaw == "true" then
+			GradSpeedEnabled = true
+		elseif valueRaw == "false" then
+			GradSpeedEnabled = false
+		end
+		return
+	end
+
+	if not value then
+		return
+	end
+
+	if command == "ssprint" then
+		Below200Sprint = value
+
+	elseif command == "ksprint" then
+		Above200Sprint = value
+
+	elseif command == "sk8speed" then
+		Sk8Speed = value
+
+	elseif command == "sk8power" then
+		Sk8TrickPower = value
+
+	elseif command == "sk8duration" then
+		Sk8TurnDuration = value
+
+	elseif command == "sk8control" then
+		Sk8TurnControl = value
 	end
 end)
 
--- [ Update Character reference if player respawns ]
+-- lerp helper
+local function lerp(a,b,t)
+	return a + (b - a) * t
+end
+
+-- main logic
+RunService.RenderStepped:Connect(function()
+	local humanoid = Character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+
+	if humanoid.Health >= 200 then
+		Module.MaxStamina = 110
+		Module.StaminaGain = 22
+
+		local targetSpeed = Above200Sprint
+
+		if GradSpeedEnabled then
+			local _, dist = GetNearestPlayer()
+			if dist then
+				if dist <= 15 then
+					targetSpeed = Above200Sprint
+				elseif dist >= 30 then
+					targetSpeed = Above200Sprint * 1.25
+				elseif dist >= 20 then
+					targetSpeed = Above200Sprint * 1.20
+				end
+			end
+		end
+
+		currentSpeed = lerp(currentSpeed, targetSpeed, LerpRate)
+		Module.SprintSpeed = currentSpeed
+
+	else
+		Module.MaxStamina = 100
+		Module.StaminaGain = 21
+		Module.SprintSpeed = Below200Sprint
+
+		Vodule.Sk8Speed = Sk8Speed
+		Vodule.Sk8TrickPower = Sk8TrickPower
+		Vodule.Sk8TurnDuration = Sk8TurnDuration
+		Vodule.Sk8TurnControl = Sk8TurnControl
+	end
+
+	if Module.Stamina and Module.Stamina <= 1.5 then
+		Module.StaminaLoss = 0
+	else
+		Module.StaminaLoss = 9
+	end
+end)
+
 LocalPlayer.CharacterAdded:Connect(function(char)
 	Character = char
 end)
