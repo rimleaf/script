@@ -6,16 +6,19 @@ loadstring(game:HttpGet("https://pastebin.com/raw/Sg7YR1pp"))()
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterGui = game:GetService("StarterGui")
+
 local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
 -- [ Modules ]
 local Sprinting = ReplicatedStorage.Systems.Character.Game.Sprinting
 local Veer = ReplicatedStorage.Assets.Survivors.Veeronica.Config
+
 local Module = require(Sprinting)
 local Vodule = require(Veer)
 
--- command prefix
+-- prefix
 local prefix = "!cmd"
 
 -- defaults
@@ -38,7 +41,7 @@ local Sk8TurnControl = DEFAULT_Sk8TurnControl
 
 local GradSpeedEnabled = false
 
--- sprint lerp cache
+-- sprint lerp
 local currentSpeed = Above200Sprint
 local LerpRate = 0.15
 
@@ -61,11 +64,9 @@ local function GetNearestPlayer()
 	local nearest = nil
 	local shortest = math.huge
 	local root = Character and Character:FindFirstChild("HumanoidRootPart")
-	if not root then
-		return nil
-	end
+	if not root then return nil end
 
-	for _, plr in ipairs(Players:GetPlayers()) do
+	for _,plr in ipairs(Players:GetPlayers()) do
 		if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
 			local dist = (root.Position - plr.Character.HumanoidRootPart.Position).Magnitude
 			if dist < shortest then
@@ -78,11 +79,29 @@ local function GetNearestPlayer()
 	return nearest, shortest
 end
 
--- silent command system
-LocalPlayer.Chatted:Connect(function(msg)
-	if string.sub(msg,1,#prefix) ~= prefix then
-		return
+--------------------------------------------------------------------
+-- CHAT BLOCKER (no commands appear in chat)
+--------------------------------------------------------------------
+local OldNamecall
+OldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+	local method = getnamecallmethod()
+	local args = {...}
+
+	if method == "FireServer"
+	and tostring(self) == "SayMessageRequest"
+	and typeof(args[1]) == "string"
+	and string.sub(args[1],1,#prefix) == prefix then
+		return nil
 	end
+
+	return OldNamecall(self, ...)
+end)
+
+--------------------------------------------------------------------
+-- COMMAND LISTENER (silent)
+--------------------------------------------------------------------
+LocalPlayer.Chatted:Connect(function(msg)
+	if string.sub(msg,1,#prefix) ~= prefix then return end
 
 	local args = string.split(msg," ")
 	local command = args[2]
@@ -103,9 +122,7 @@ LocalPlayer.Chatted:Connect(function(msg)
 		return
 	end
 
-	if not value then
-		return
-	end
+	if not value then return end
 
 	if command == "ssprint" then
 		Below200Sprint = value
@@ -127,17 +144,19 @@ LocalPlayer.Chatted:Connect(function(msg)
 	end
 end)
 
+--------------------------------------------------------------------
 -- lerp helper
+--------------------------------------------------------------------
 local function lerp(a,b,t)
 	return a + (b - a) * t
 end
 
--- main logic
+--------------------------------------------------------------------
+-- MAIN LOOP
+--------------------------------------------------------------------
 RunService.RenderStepped:Connect(function()
 	local humanoid = Character:FindFirstChildOfClass("Humanoid")
-	if not humanoid then
-		return
-	end
+	if not humanoid then return end
 
 	if humanoid.Health >= 200 then
 		Module.MaxStamina = 110
@@ -182,6 +201,7 @@ end)
 LocalPlayer.CharacterAdded:Connect(function(char)
 	Character = char
 end)
+
 
 
 -- Toggle state
