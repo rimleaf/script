@@ -13,7 +13,7 @@ local toggled = false
 
 -- [ Wait for Sprinting Module ]
 local Sprinting = ReplicatedStorage.Systems.Character.Game.Sprinting
-local Veer = ReplicatedStorage.Assets.Survivors.Veeronica.Behavior
+local Veer = ReplicatedStorage.Assets.Survivors.Veeronica.Config
 local Module = require(Sprinting)
 local Vodule = require(Veer)
 
@@ -31,7 +31,7 @@ RunService.RenderStepped:Connect(function()
 			Module.StaminaGain = 21
 			Module.SprintSpeed = 27
 			Vodule.Sk8Speed = 30
-			Vodule.Sk8TrickPower = 135
+			Vodule.Sk8TrickPower = 120
 			Vodule.Sk8TurnDuration = 0.05
 			Vodule.Sk8TrickGravity = 10
 			Vodule.Sk8TrickJump = 4
