@@ -19,7 +19,7 @@ local Vodule = require(Veer)
 local prefix = "!cmd"
 
 -- defaults
-local DEFAULT_Below200Sprint = 27
+local DEFAULT_Below200Sprint = 26.5
 local DEFAULT_Above200Sprint = 28.5
 
 local DEFAULT_Sk8Speed = 1.2
