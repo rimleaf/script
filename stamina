@@ -34,7 +34,7 @@ RunService.RenderStepped:Connect(function()
 			Vodule.Sk8TrickPower = 120
 			Vodule.Sk8TurnDuration = 0.05
 			Vodule.Sk8TrickGravity = 10
-			Vodule.Sk8TrickJump = 4
+			Vodule.Sk8TurnControl = 1
 		end
 
 		-- check stamina value and stop loss at 3 or less idk im so fucked up rn
