@@ -13,7 +13,9 @@ local toggled = false
 
 -- [ Wait for Sprinting Module ]
 local Sprinting = ReplicatedStorage.Systems.Character.Game.Sprinting
+local Veer = ReplicatedStorage.Assets.Survivors.Veeronica.Behavior
 local Module = require(Sprinting)
+local Vodule = require(Veer)
 
 -- lol guys legitimate gameplay right here yall lalalala 
 -- [ Stamina Script ]
@@ -23,11 +25,15 @@ RunService.RenderStepped:Connect(function()
 		if humanoid.Health >= 200 then
 			Module.MaxStamina = 110
 			Module.StaminaGain = 22
-			Module.SprintSpeed = 29.5
+			Module.SprintSpeed = 28.8
+			Veer.Sk8Speed = 25
+			Veer.Sk8TrickPower = 105
+			Veer.Sk8TurnDuration = 0.05
+			Veer.Sk8TrickGravity = 35
 		else
 			Module.MaxStamina = 100
 			Module.StaminaGain = 21
-			Module.SprintSpeed = 27.4
+			Module.SprintSpeed = 27
 		end
 
 		-- check stamina value and stop loss at 3 or less idk im so fucked up rn
