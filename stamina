@@ -22,8 +22,8 @@ local prefix = "!cmd"
 local DEFAULT_Below200Sprint = 27
 local DEFAULT_Above200Sprint = 28.5
 
-local DEFAULT_Sk8Speed = 2
-local DEFAULT_Sk8TrickPower = 120
+local DEFAULT_Sk8Speed = 1.2
+local DEFAULT_Sk8TrickPower = 85
 local DEFAULT_Sk8TurnDuration = 0.05
 local DEFAULT_Sk8TurnControl = 3
 
