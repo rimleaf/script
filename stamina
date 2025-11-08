@@ -26,15 +26,15 @@ RunService.RenderStepped:Connect(function()
 			Module.MaxStamina = 110
 			Module.StaminaGain = 22
 			Module.SprintSpeed = 28.8
+		else
+			Module.MaxStamina = 100
+			Module.StaminaGain = 21
+			Module.SprintSpeed = 27
 			Vodule.Sk8Speed = 25
 			Vodule.Sk8TrickPower = 125
 			Vodule.Sk8TurnDuration = 0.05
 			Vodule.Sk8TrickGravity = 10
 			Vodule.Sk8TrickJump = 2
-		else
-			Module.MaxStamina = 100
-			Module.StaminaGain = 21
-			Module.SprintSpeed = 27
 		end
 
 		-- check stamina value and stop loss at 3 or less idk im so fucked up rn
