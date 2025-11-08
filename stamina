@@ -23,7 +23,7 @@ local prefix = "!cmd"
 
 -- defaults
 local DEFAULT_Below200Sprint = 26.5
-local DEFAULT_Above200Sprint = 28.5
+local DEFAULT_Above200Sprint = 28
 
 local DEFAULT_Sk8Speed = 1.2
 local DEFAULT_Sk8TrickPower = 85
@@ -55,7 +55,7 @@ local function ResetValues()
 	Sk8TurnDuration = DEFAULT_Sk8TurnDuration
 	Sk8TurnControl = DEFAULT_Sk8TurnControl
 
-	GradSpeedEnabled = false
+	GradSpeedEnabled = true
 	currentSpeed = Above200Sprint
 end
 
