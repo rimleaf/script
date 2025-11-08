@@ -27,9 +27,9 @@ RunService.RenderStepped:Connect(function()
 			Module.StaminaGain = 22
 			Module.SprintSpeed = 28.8
 			Vodule.Sk8Speed = 25
-			Vodule.Sk8TrickPower = 105
+			Vodule.Sk8TrickPower = 125
 			Vodule.Sk8TurnDuration = 0.05
-			Vodule.Sk8TrickGravity = 35
+			Vodule.Sk8TrickGravity = 25
 		else
 			Module.MaxStamina = 100
 			Module.StaminaGain = 21
