@@ -1,4 +1,4 @@
--- Lead Hub (optimized + restored original Killer & Item ESP behavior)
+-- Lead Hub (optimized + restored original Killer & Item ESP behavior with forced Killer highlights)
 
 -- Services
 local Players = game:GetService("Players")
@@ -87,16 +87,32 @@ local function findFirstBasePart(obj)
 	return obj:FindFirstChildWhichIsA("BasePart", true)
 end
 
-local function addHighlight(obj, color, fillTrans, outlineTrans)
+-- FORCE HIGHLIGHT (no BasePart needed)
+local function forceHighlight(obj, color, fillTrans, outlineTrans)
 	if activeHighlights[obj] then return end
-	local part = findFirstBasePart(obj)
-	if not part then return end -- skip if model has no BasePart yet
 
 	local h = Instance.new("Highlight")
 	h.Name = "ESP_Highlight"
 	h.Adornee = obj
 	h.FillColor = color
-	h.OutlineColor = Color3.new(0, 0, 0)
+	h.OutlineColor = Color3.new(0,0,0)
+	h.FillTransparency = fillTrans
+	h.OutlineTransparency = outlineTrans
+	h.Parent = Workspace
+
+	activeHighlights[obj] = h
+end
+
+local function addHighlight(obj, color, fillTrans, outlineTrans)
+	if activeHighlights[obj] then return end
+	local part = findFirstBasePart(obj)
+	if not part then return end
+
+	local h = Instance.new("Highlight")
+	h.Name = "ESP_Highlight"
+	h.Adornee = obj
+	h.FillColor = color
+	h.OutlineColor = Color3.new(0,0,0)
 	h.FillTransparency = fillTrans
 	h.OutlineTransparency = outlineTrans
 	h.Parent = Workspace
@@ -145,12 +161,12 @@ end
 local function refreshESP()
 	local mapFolder = Workspace:FindFirstChild("Map") and Workspace.Map:FindFirstChild("Ingame") and Workspace.Map.Ingame:FindFirstChild("Map")
 
-	-- Killers
+	-- KILLERS ALWAYS HIGHLIGHT
 	local killersFolder = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
 	if killersFolder then
 		for _, k in ipairs(killersFolder:GetChildren()) do
-			if espKillers and k ~= Players.LocalPlayer.Character and findFirstBasePart(k) then
-				addHighlight(k, Color3.fromRGB(255,0,0), 0.5, 0.3)
+			if espKillers and k ~= Players.LocalPlayer.Character then
+				forceHighlight(k, Color3.fromRGB(255,0,0), 0.5, 0.3)
 			else
 				removeHighlight(k)
 			end
@@ -172,13 +188,13 @@ local function refreshESP()
 	-- Items and Generators
 	if mapFolder then
 		for _, obj in ipairs(mapFolder:GetChildren()) do
-			if espItems and (obj.Name == "Medkit" or obj.Name == "BloxyCola") and findFirstBasePart(obj) then
+			if espItems and (obj.Name == "Medkit" or obj.Name == "BloxyCola") then
 				applyItemESP(obj)
 			else
 				if (obj.Name == "Medkit" or obj.Name == "BloxyCola") then removeHighlight(obj) end
 			end
 
-			if espGenerators and obj.Name == "Generator" and findFirstBasePart(obj) then
+			if espGenerators and obj.Name == "Generator" then
 				local progress = obj:FindFirstChild("Progress")
 				if progress and progress.Value < 100 then
 					addHighlight(obj, Color3.fromRGB(255,255,0), 0.5, 0.3)
@@ -192,7 +208,7 @@ local function refreshESP()
 	end
 end
 
--- Background loop (every 2s instead of per-frame)
+-- Background loop (every 2s)
 task.spawn(function()
 	while task.wait(2) do
 		if espKillers or espSurvivors or espItems or espGenerators then
@@ -237,4 +253,4 @@ ESPTab:CreateToggle({
 --================= CONFIG =================
 Rayfield:LoadConfiguration()
 
-print("[Lead Hub] Optimized ESP + Generators loaded.")
+print("[Lead Hub] ESP updated. Killers now always have highlight.")
