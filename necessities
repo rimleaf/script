@@ -309,8 +309,8 @@ GeneratorTab:CreateToggle({
 
 GeneratorTab:CreateSlider({
 	Name = "Auto Generator Delay",
-	Range = {0, 1},
-	Increment = 0.05,
+	Range = {0, 0.2},
+	Increment = 0.01,
 	Suffix = "s",
 	CurrentValue = generatorCooldown,
 	Callback = function(val)
