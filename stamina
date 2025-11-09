@@ -1,22 +1,27 @@
---loadstring(game:HttpGet("https://pastebin.com/raw/MzKS5uvm"))()
---wait(0.1)
-loadstring(game:HttpGet("https://pastebin.com/raw/Sg7YR1pp"))()
+-- Merged script (all parts combined; removed plain wait() calls)
+-- Note: kept :Wait() and :WaitForChild() where necessary, removed any plain wait() usage.
 
--- [ Services ]
+-- load external paste (left as-is)
+pcall(function()
+    loadstring(game:HttpGet("https://pastebin.com/raw/Sg7YR1pp"))()
+end)
+
+-- Services (single declaration)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
+local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
--- [ Modules ]
-local Sprinting = ReplicatedStorage.Systems.Character.Game.Sprinting
-local Veer = ReplicatedStorage.Assets.Survivors.Veeronica.Config
+-- Modules (require once)
+local Sprinting = ReplicatedStorage:FindFirstChild("Systems") and ReplicatedStorage.Systems.Character.Game.Sprinting
+local Veer = ReplicatedStorage:FindFirstChild("Assets") and ReplicatedStorage.Assets.Survivors.Veeronica.Config
 
-local Module = require(Sprinting)
-local Vodule = require(Veer)
+local Module = Sprinting and require(Sprinting) or {}
+local Vodule = Veer and require(Veer) or {}
 
 -- prefix
 local prefix = "!cmd"
@@ -47,36 +52,36 @@ local LerpRate = 0.15
 
 -- reset function
 local function ResetValues()
-	Below200Sprint = DEFAULT_Below200Sprint
-	Above200Sprint = DEFAULT_Above200Sprint
+    Below200Sprint = DEFAULT_Below200Sprint
+    Above200Sprint = DEFAULT_Above200Sprint
 
-	Sk8Speed = DEFAULT_Sk8Speed
-	Sk8TrickPower = DEFAULT_Sk8TrickPower
-	Sk8TurnDuration = DEFAULT_Sk8TurnDuration
-	Sk8TurnControl = DEFAULT_Sk8TurnControl
+    Sk8Speed = DEFAULT_Sk8Speed
+    Sk8TrickPower = DEFAULT_Sk8TrickPower
+    Sk8TurnDuration = DEFAULT_Sk8TurnDuration
+    Sk8TurnControl = DEFAULT_Sk8TurnControl
 
-	GradSpeedEnabled = true
-	currentSpeed = Above200Sprint
+    GradSpeedEnabled = true
+    currentSpeed = Above200Sprint
 end
 
 -- nearest player finder
 local function GetNearestPlayer()
-	local nearest = nil
-	local shortest = math.huge
-	local root = Character and Character:FindFirstChild("HumanoidRootPart")
-	if not root then return nil end
+    local nearest = nil
+    local shortest = math.huge
+    local root = Character and Character:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
 
-	for _,plr in ipairs(Players:GetPlayers()) do
-		if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-			local dist = (root.Position - plr.Character.HumanoidRootPart.Position).Magnitude
-			if dist < shortest then
-				shortest = dist
-				nearest = plr
-			end
-		end
-	end
+    for _,plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local dist = (root.Position - plr.Character.HumanoidRootPart.Position).Magnitude
+            if dist < shortest then
+                shortest = dist
+                nearest = plr
+            end
+        end
+    end
 
-	return nearest, shortest
+    return nearest, shortest
 end
 
 --------------------------------------------------------------------
@@ -84,135 +89,143 @@ end
 --------------------------------------------------------------------
 local OldNamecall
 OldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-	local method = getnamecallmethod()
-	local args = {...}
+    local method = getnamecallmethod()
+    local args = {...}
 
-	if method == "FireServer"
-	and tostring(self) == "SayMessageRequest"
-	and typeof(args[1]) == "string"
-	and string.sub(args[1],1,#prefix) == prefix then
-		return nil
-	end
+    if method == "FireServer"
+    and tostring(self) == "SayMessageRequest"
+    and typeof(args[1]) == "string"
+    and string.sub(args[1],1,#prefix) == prefix then
+        return nil
+    end
 
-	return OldNamecall(self, ...)
+    return OldNamecall(self, ...)
 end)
 
 --------------------------------------------------------------------
 -- COMMAND LISTENER (silent)
 --------------------------------------------------------------------
 LocalPlayer.Chatted:Connect(function(msg)
-	if string.sub(msg,1,#prefix) ~= prefix then return end
+    if string.sub(msg,1,#prefix) ~= prefix then return end
 
-	local args = string.split(msg," ")
-	local command = args[2]
-	local valueRaw = args[3]
-	local value = tonumber(valueRaw)
+    local args = string.split(msg," ")
+    local command = args[2]
+    local valueRaw = args[3]
+    local value = tonumber(valueRaw)
 
-	if command == "reset" then
-		ResetValues()
-		return
-	end
+    if command == "reset" then
+        ResetValues()
+        return
+    end
 
-	if command == "gradspeed" then
-		if valueRaw == "true" then
-			GradSpeedEnabled = true
-		elseif valueRaw == "false" then
-			GradSpeedEnabled = false
-		end
-		return
-	end
+    if command == "gradspeed" then
+        if valueRaw == "true" then
+            GradSpeedEnabled = true
+        elseif valueRaw == "false" then
+            GradSpeedEnabled = false
+        end
+        return
+    end
 
-	if not value then return end
+    if not value then return end
 
-	if command == "ssprint" then
-		Below200Sprint = value
+    if command == "ssprint" then
+        Below200Sprint = value
 
-	elseif command == "ksprint" then
-		Above200Sprint = value
+    elseif command == "ksprint" then
+        Above200Sprint = value
 
-	elseif command == "sk8speed" then
-		Sk8Speed = value
+    elseif command == "sk8speed" then
+        Sk8Speed = value
 
-	elseif command == "sk8power" then
-		Sk8TrickPower = value
+    elseif command == "sk8power" then
+        Sk8TrickPower = value
 
-	elseif command == "sk8duration" then
-		Sk8TurnDuration = value
+    elseif command == "sk8duration" then
+        Sk8TurnDuration = value
 
-	elseif command == "sk8control" then
-		Sk8TurnControl = value
-	end
+    elseif command == "sk8control" then
+        Sk8TurnControl = value
+    end
 end)
 
 --------------------------------------------------------------------
 -- lerp helper
 --------------------------------------------------------------------
 local function lerp(a,b,t)
-	return a + (b - a) * t
+    return a + (b - a) * t
 end
 
 --------------------------------------------------------------------
--- MAIN LOOP
+-- MAIN SPRINT / SKATE / STAMINA LOOP (RenderStepped)
 --------------------------------------------------------------------
 RunService.RenderStepped:Connect(function()
-	local humanoid = Character:FindFirstChildOfClass("Humanoid")
-	if not humanoid then return end
+    -- keep Character reference up to date
+    Character = LocalPlayer.Character or Character
 
-	if humanoid.Health >= 200 then
-		Module.MaxStamina = 110
-		Module.StaminaGain = 22
+    local humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
 
-		local targetSpeed = Above200Sprint
+    if humanoid.Health >= 200 then
+        if Module then
+            Module.MaxStamina = 110
+            Module.StaminaGain = 22
+        end
 
-		if GradSpeedEnabled then
-			local _, dist = GetNearestPlayer()
-			if dist then
-				if dist <= 15 then
-					targetSpeed = Above200Sprint
-				elseif dist >= 30 then
-					targetSpeed = Above200Sprint * 1.25
-				elseif dist >= 20 then
-					targetSpeed = Above200Sprint * 1.20
-				end
-			end
-		end
+        local targetSpeed = Above200Sprint
 
-		currentSpeed = lerp(currentSpeed, targetSpeed, LerpRate)
-		Module.SprintSpeed = currentSpeed
+        if GradSpeedEnabled then
+            local _, dist = GetNearestPlayer()
+            if dist then
+                if dist <= 15 then
+                    targetSpeed = Above200Sprint
+                elseif dist >= 30 then
+                    targetSpeed = Above200Sprint * 1.25
+                elseif dist >= 20 then
+                    targetSpeed = Above200Sprint * 1.20
+                end
+            end
+        end
 
-	else
-		Module.MaxStamina = 100
-		Module.StaminaGain = 21
-		Module.SprintSpeed = Below200Sprint
+        currentSpeed = lerp(currentSpeed, targetSpeed, LerpRate)
+        if Module then Module.SprintSpeed = currentSpeed end
 
-		Vodule.Sk8Speed = Sk8Speed
-		Vodule.Sk8TrickPower = Sk8TrickPower
-		Vodule.Sk8TurnDuration = Sk8TurnDuration
-		Vodule.Sk8TurnControl = Sk8TurnControl
-	end
+    else
+        if Module then
+            Module.MaxStamina = 100
+            Module.StaminaGain = 21
+            Module.SprintSpeed = Below200Sprint
+        end
 
-	if Module.Stamina and Module.Stamina <= 1.5 then
-		Module.StaminaLoss = 0
-	else
-		Module.StaminaLoss = 9
-	end
+        if Vodule then
+            Vodule.Sk8Speed = Sk8Speed
+            Vodule.Sk8TrickPower = Sk8TrickPower
+            Vodule.Sk8TurnDuration = Sk8TurnDuration
+            Vodule.Sk8TurnControl = Sk8TurnControl
+        end
+    end
+
+    if Module and Module.Stamina and Module.Stamina <= 1.5 then
+        Module.StaminaLoss = 0
+    elseif Module then
+        Module.StaminaLoss = 9
+    end
 end)
 
+-- Keep Character reference updated
 LocalPlayer.CharacterAdded:Connect(function(char)
-	Character = char
+    Character = char
 end)
 
-
-
--- Toggle state
+--------------------------------------------------------------------
+-- Character setup for overrides (no plain wait calls)
+--------------------------------------------------------------------
 local toggled = false
 
--- Function to toggle
 local function setupCharacter(character)
     local Humanoid = character:WaitForChild("Humanoid")
     local HumanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
-    -- You can store them in globals used by your override logic
     _G.Humanoid = Humanoid
     _G.HumanoidRootPart = HumanoidRootPart
 end
@@ -221,28 +234,29 @@ if LocalPlayer.Character then
     setupCharacter(LocalPlayer.Character)
 end
 
+LocalPlayer.CharacterAdded:Connect(function(character)
+    setupCharacter(character)
+end)
 
--- The speed of the original Void Rush from your config
+--------------------------------------------------------------------
+-- Void Rush override (forces dashing movement while attribute present)
+--------------------------------------------------------------------
 local ORIGINAL_DASH_SPEED = 100
-
 local isOverrideActive = false
-local connection
+local overrideConnection
 
 local function startOverride()
-
-    
     if isOverrideActive then return end
     isOverrideActive = true
 
-    -- Connect a loop to force the character to move forward
-    connection = RunService.RenderStepped:Connect(function()
+    overrideConnection = RunService.RenderStepped:Connect(function()
         local humanoid = _G.Humanoid
         local rootPart = _G.HumanoidRootPart
         if not humanoid or not rootPart then return end
-    
+
         humanoid.WalkSpeed = ORIGINAL_DASH_SPEED
         humanoid.AutoRotate = false
-    
+
         local direction = rootPart.CFrame.LookVector
         local horizontal = Vector3.new(direction.X, 0, direction.Z)
         if horizontal.Magnitude > 0 then
@@ -252,30 +266,25 @@ local function startOverride()
 end
 
 local function stopOverride()
-    
     if not isOverrideActive then return end
     isOverrideActive = false
-    
+
     local humanoid = _G.Humanoid
-    local rootPart = _G.HumanoidRootPart
-    
-    -- Restore original settings
-    humanoid.WalkSpeed = 16 -- Or whatever your default walk speed is
-    humanoid.AutoRotate = true
-    humanoid:Move(Vector3.new(0, 0, 0)) -- Stop the character from moving
-    
-    if connection then
-        connection:Disconnect()
-        connection = nil
+    if humanoid then
+        humanoid.WalkSpeed = 16
+        humanoid.AutoRotate = true
+        humanoid:Move(Vector3.new(0, 0, 0))
+    end
+
+    if overrideConnection then
+        overrideConnection:Disconnect()
+        overrideConnection = nil
     end
 end
 
--- Main loop to detect when to activate and deactivate the override
 RunService.RenderStepped:Connect(function()
-    
     local char = _G.Humanoid and _G.Humanoid.Parent
-    local voidRushState = char and char:GetAttribute("VoidRushState")
-
+    local voidRushState = char and char:GetAttribute and char:GetAttribute("VoidRushState")
     if voidRushState == "Dashing" then
         startOverride()
     else
@@ -283,39 +292,45 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-LocalPlayer.CharacterAdded:Connect(function(character)
-    setupCharacter(character)
-end)
-wait(0.4)
---[[
-	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
-]]
+--------------------------------------------------------------------
+-- Spawn protection bypass block (single-run guard)
+--------------------------------------------------------------------
 if getgenv().SpawnistAreGay then
-    game.StarterGui:SetCore("SendNotification", {
+    StarterGui:SetCore("SendNotification", {
         Title = "u already executed what are you stupid?",
         Text = "lol",
         Duration = 10
     })
-    return
+else
+    getgenv().SpawnistAreGay = true
+
+    -- Attempt to bypass certain checks by hooking functions if they exist
+    pcall(function()
+        local Util = ReplicatedStorage:FindFirstChild("Modules") and require(ReplicatedStorage.Modules.Util)
+        local Behavior = ReplicatedStorage:FindFirstChild("Assets") and ReplicatedStorage.Assets.Survivors.Dusekkar and require(ReplicatedStorage.Assets.Survivors.Dusekkar.Behavior)
+
+        if Util and Util.IsOnScreen then
+            hookfunction(Util.IsOnScreen, function(...)
+                return true
+            end)
+        end
+
+        if Behavior then
+            local success, isCharWithinRadius = pcall(function()
+                return debug.getupvalue(Behavior.Created, 3)
+            end)
+
+            if success and type(isCharWithinRadius) == "function" then
+                hookfunction(isCharWithinRadius, function(...)
+                    return true, 0
+                end)
+            end
+        end
+    end)
+
+    StarterGui:SetCore("SendNotification", {
+        Title = "spawn protection bypass ez",
+        Text = "done",
+        Duration = 5
+    })
 end
-getgenv().SpawnistAreGay = true
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local Util = require(ReplicatedStorage.Modules.Util)
-local Behavior = require(ReplicatedStorage.Assets.Survivors.Dusekkar.Behavior)
-
-hookfunction(Util.IsOnScreen, function(...)
-    return true
-end)
-
-local isCharWithinRadius = debug.getupvalue(Behavior.Created, 3)
-hookfunction(isCharWithinRadius, function(...)
-    return true, 0
-end)
-
-game.StarterGui:SetCore("SendNotification", {
-    Title = "spawn protection bypass ez niggernigger",
-    Text = "smd nigger",
-    Duration = 5
-})
