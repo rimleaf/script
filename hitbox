@@ -64,7 +64,6 @@ end
 Remote.OnClientEvent:Connect(function(action, data)
     if action ~= "UseActorAbility" then return end
     if typeof(data) ~= "table" or not data[1] then return end
-    if humanoid.Health < 200 then return end
 
     local abilityName = cleanName(getAbilityName(data[1]))
 
