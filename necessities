@@ -23,7 +23,7 @@ local GeneratorTab = Window:CreateTab("Generators", 4483362458)
 local ESPTab = Window:CreateTab("ESP", 4483362458)
 
 --================= GENERATORS =================
-local generatorCooldown = 0.5
+local generatorCooldown = 0.12
 
 GeneratorTab:CreateToggle({
 	Name = "Auto Generator",
@@ -310,7 +310,7 @@ GeneratorTab:CreateToggle({
 GeneratorTab:CreateSlider({
 	Name = "Auto Generator Delay",
 	Range = {0, 2},
-	Increment = 0.1,
+	Increment = 0.01,
 	Suffix = "s",
 	CurrentValue = generatorCooldown,
 	Callback = function(val)
