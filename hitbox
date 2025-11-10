@@ -41,6 +41,20 @@ end
 -- Remote reference
 local Remote = Rep:WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent")
 
+-- SPRINT DETECTION MODULE
+local Sprinting = Rep:WaitForChild("Systems"):WaitForChild("Character"):WaitForChild("Game"):WaitForChild("Sprinting")
+local SprintModule = require(Sprinting)
+
+local prevStamina = nil
+local isSprinting = false
+
+-- Global sprint detection (checks if Stamina is going down every frame)
+RunService.Heartbeat:Connect(function()
+    local currStamina = SprintModule.Stamina
+    isSprinting = (prevStamina ~= nil and currStamina < prevStamina)
+    prevStamina = currStamina
+end)
+
 local function getAbilityName(v)
     if typeof(v) == "buffer" then
         return buffer.tostring(v)
@@ -170,7 +184,9 @@ Remote.OnClientEvent:Connect(function(action, data)
                 conn:Disconnect()
                 return
             end
-            ExtendHitbox(35)
+            if isSprinting then
+                ExtendHitbox(40)
+            end
         end)
         
         -- MELEE AIMBOT WITH DEAD TARGET GRACE + FIXED STUD PREDICTION
