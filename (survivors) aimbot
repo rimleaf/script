@@ -17,17 +17,6 @@ local BEHIND_DISTANCE = 5
 local RANGE_DEFAULT = 6
 
 ---------------------------------------------------------
--- Camera Zoom Enforcement
----------------------------------------------------------
-local function enforceZoom()
-	if lp.CameraMaxZoomDistance ~= MaxZoomValue then
-		lp.CameraMaxZoomDistance = MaxZoomValue
-	end
-end
-lp:GetPropertyChangedSignal("CameraMaxZoomDistance"):Connect(enforceZoom)
-enforceZoom()
-
----------------------------------------------------------
 -- UI Setup
 ---------------------------------------------------------
 local screenGui = Instance.new("ScreenGui", playerGui)
@@ -255,7 +244,7 @@ RunService.Heartbeat:Connect(function(dt)
 		hrp.CFrame = hrp.CFrame:Lerp(targetCF, lerpAlpha)
 
 		-- Fire dagger mid-way
-		if not stabTriggered and elapsed >= duration * 0.4 then
+		if not stabTriggered and elapsed >= 0.2 then
 			stabTriggered = true
 			task.spawn(fireDagger)
 		end
