@@ -1,8 +1,3 @@
--- ==============================================================
---  SHIFT-LOCK SMOOTH AIMBOT (Roblox Lua)
---  Paste this over your original script – everything else stays the same
--- ==============================================================
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Rep = game:GetService("ReplicatedStorage")
@@ -19,9 +14,7 @@ client.CharacterAdded:Connect(function(newChar)
     root = char:WaitForChild("HumanoidRootPart")
 end)
 
--- ==============================================================
---  ORIGINAL EXTEND HITBOX (unchanged)
--- ==============================================================
+-- Original Extend function (untouched)
 local function ExtendHitbox(studs)
     RunService.Heartbeat:Wait()
     while not (
@@ -45,66 +38,57 @@ local function ExtendHitbox(studs)
     end
 end
 
--- ==============================================================
---  REMOTE & SPRINT DETECTION (unchanged)
--- ==============================================================
+-- Remote reference
 local Remote = Rep:WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent")
-local Sprinting = Rep:WaitForChild("Systems"):WaitForChild("Character"):WaitForChild("Game"):WaitForChild("Sprinting")
-local SprintModule = require(Sprinting)
-local prevStamina = nil
-local isSprinting = false
-
-RunService.Heartbeat:Connect(function()
-    local currStamina = SprintModule.Stamina
-    isSprinting = (prevStamina ~= nil and currStamina < prevStamina)
-    prevStamina = currStamina
-end)
 
 local function getAbilityName(v)
-    if typeof(v) == "buffer" then return buffer.tostring(v) end
+    if typeof(v) == "buffer" then
+        return buffer.tostring(v)
+    end
     return v
 end
-local function cleanName(name) return tostring(name):gsub("\"", "") end
 
--- ==============================================================
---  AIMBOT SETTINGS
--- ==============================================================
+local function cleanName(name)
+    return tostring(name):gsub("\"", "")
+end
+
+-- Aimbot settings
 local Aimbot = {
-    enabled = true,
-    minHealth = 200,
-    range = 120,
-    preferBack = false,
-    meleeLockDuration = 0.45,
-    meleePredict = true,
-    meleePredictStuds = 3,          -- fixed studs ahead
-    deadTargetGrace = 0.5,
-    smoothFactor = 0.2,            -- 0 = instant, 1 = no movement (lerp alpha)
-    returnSmoothFactor = 0.25      -- how fast we snap back to shift-lock
+    enabled = true,              -- master switch
+    minHealth = 200,             -- only consider players with health above this
+    range = 120,                 -- search range in studs
+    preferBack = false,          -- true = aim at back, false = aim at front
+    meleeLockDuration = 0.65,     -- how long melee aimbot stays locked (seconds)
+    meleePredict = true,         -- enable fixed stud prediction
+    meleePredictStuds = 2,       -- FIXED studs ahead (3-6 works great)
+    deadTargetGrace = 0.5        -- target dead players for this many seconds
 }
 
--- ==============================================================
---  DEAD TARGET TRACKING (unchanged)
--- ==============================================================
+-- DEAD TARGET TRACKING
 local lockedTarget = nil
 local lockStartTime = 0
 
 local function findAimbotTarget()
     local closest, closestDist = nil, math.huge
-    local now = os.clock()
-
+    local currentTime = os.clock()
+    
+    -- PRIORITY 1: Keep locked target if within grace period (even if dead)
     if lockedTarget and lockedTarget.Parent then
-        if (now - lockStartTime) <= Aimbot.deadTargetGrace then
-            if lockedTarget.Character and lockedTarget.Character.Parent
-               and lockedTarget.Character:FindFirstChild("HumanoidRootPart") then
+        local graceExpired = (currentTime - lockStartTime) > Aimbot.deadTargetGrace
+        if not graceExpired then
+            -- Check if target still has character (even if dead)
+            if lockedTarget.Character and lockedTarget.Character.Parent and lockedTarget.Character:FindFirstChild("HumanoidRootPart") then
                 return lockedTarget
             end
         end
+        -- Grace expired or character gone → clear lock
         lockedTarget = nil
     end
-
+    
+    -- PRIORITY 2: Find new living target
     if not client.Character or not client.Character:FindFirstChild("HumanoidRootPart") then return nil end
     local myPos = client.Character.HumanoidRootPart.Position
-
+    
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= client and p.Character and p.Character.Parent then
             local h = p.Character:FindFirstChild("Humanoid")
@@ -112,127 +96,103 @@ local function findAimbotTarget()
             if h and hrp and h.Health and h.Health < Aimbot.minHealth then
                 local dist = (hrp.Position - myPos).Magnitude
                 if dist < closestDist and dist <= Aimbot.range then
-                    closest, closestDist = p, dist
+                    closest = p
+                    closestDist = dist
                 end
             end
         end
     end
-
+    
+    -- Lock onto new target
     if closest then
-        lockedTarget, lockStartTime = closest, now
+        lockedTarget = closest
+        lockStartTime = currentTime
     end
+    
     return closest
 end
 
--- ==============================================================
---  PREDICTION (unchanged)
--- ==============================================================
-local function getMeleePredictedPosition(targetHRP)
-    if not Aimbot.meleePredict then return targetHRP.Position end
-    local vel = targetHRP.AssemblyLinearVelocity
-    if vel.Magnitude < 0.1 then return targetHRP.Position end
-    return targetHRP.Position + vel.Unit * Aimbot.meleePredictStuds
+-- FIXED STUD PREDICTION (melee only) - works with dead targets too
+local function getMeleePredictedPosition(targetHRP, myPos)
+    if not Aimbot.meleePredict then
+        return targetHRP.Position
+    end
+
+    -- FIXED prediction: always add X studs in movement direction
+    local velocity = targetHRP.AssemblyLinearVelocity
+    local moveDir = velocity.Unit  -- Direction they're moving (normalized)
+    local predictDist = Aimbot.meleePredictStuds
+    
+    -- Only predict if they're actually moving fast enough (works for ragdolls too)
+    if velocity.Magnitude > 0.1 then
+        return targetHRP.Position + moveDir * predictDist
+    else
+        return targetHRP.Position
+    end
 end
 
--- ==============================================================
---  SMOOTH AIM FUNCTION
--- ==============================================================
-local shiftLockCFrame = nil          -- where shift-lock was pointing when we started
-local returning = false
-local returnStart = 0
-
-local function aimAtMeleeTargetSmooth(target)
+-- MELEE AIM FUNCTION (with fixed stud prediction + dead target support)
+local function aimAtMeleeTarget(target)
     if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then return end
-    local myHRP = client.Character.HumanoidRootPart
+    if not client.Character or not client.Character:FindFirstChild("HumanoidRootPart") then return end
+
     local targetHRP = target.Character.HumanoidRootPart
+    local myHRP     = client.Character.HumanoidRootPart
 
-    local predicted = getMeleePredictedPosition(targetHRP)
+    -- Get fixed-stud predicted position (works even if dead/ragdolling)
+    local predictedPos = getMeleePredictedPosition(targetHRP, myHRP.Position)
+
+    -- Look direction: back or front (uses target's last facing)
     local lookDir = Aimbot.preferBack and -targetHRP.CFrame.LookVector or targetHRP.CFrame.LookVector
-    local aimPoint = predicted + lookDir * 2
+    local aimPoint = predictedPos + lookDir * 2
 
-    -- Desired CFrame (look at the point, keep Y level)
-    local desired = CFrame.lookAt(myHRP.Position, aimPoint)
-
-    -- Lerp toward it
-    myHRP.CFrame = myHRP.CFrame:lerp(desired, Aimbot.smoothFactor)
+    -- Smooth CFrame.lookAt rotation
+    myHRP.CFrame = CFrame.lookAt(myHRP.Position, aimPoint)
 end
 
--- ==============================================================
---  SHIFT-LOCK DETECTION
--- ==============================================================
-local function isShiftLockEnabled()
-    -- Roblox's built-in flag (works for both core shift-lock and custom UI)
-    return client.DevEnableMouseLock or (client.PlayerGui:FindFirstChild("ShiftLock") and client.PlayerGui.ShiftLock.Enabled)
-end
-
--- ==============================================================
---  MAIN REMOTE HANDLER (enhanced)
--- ==============================================================
+-- MAIN REMOTE HANDLER
 Remote.OnClientEvent:Connect(function(action, data)
     if action ~= "UseActorAbility" then return end
     if typeof(data) ~= "table" or not data[1] then return end
-
+    
     local abilityName = cleanName(getAbilityName(data[1]))
-
-    -- ==== MELEE ABILITIES ====
-    if abilityName == "Carving Slash" or abilityName == "Slash"
-        or abilityName == "Stab" or abilityName == "Punch" then
-
-        -- ---- Hitbox extend (sprint) ----
-        local hbStart = os.clock()
-        local hbConn
-        hbConn = RunService.Heartbeat:Connect(function()
-            if os.clock() - hbStart >= 1.5 then hbConn:Disconnect() return end
-            if isSprinting then ExtendHitbox(40) end
+    
+    -- HITBOX EXTEND (melee abilities)
+    if (abilityName == "Carving Slash" or
+        abilityName == "Slash" or
+        abilityName == "Stab" or
+        abilityName == "Punch") then
+        
+        local start = os.clock()
+        local conn
+        conn = RunService.Heartbeat:Connect(function()
+            if os.clock() - start >= 1.5 then
+                conn:Disconnect()
+                return
+            end
+            ExtendHitbox(40)
         end)
-
-        -- ---- AIMBOT ----
-        if not Aimbot.enabled then return end
-
-        local aimStart = os.clock()
-        local aimConn
-
-        -- 1. Capture shift-lock orientation (if active)
-        if isShiftLockEnabled() then
-            shiftLockCFrame = root.CFrame
-            humanoid.AutoRotate = false
-        else
-            shiftLockCFrame = nil
-            humanoid.AutoRotate = false
-        end
-
-        returning = false
-
-        aimConn = RunService.Heartbeat:Connect(function()
-            local elapsed = os.clock() - aimStart
-
-            -- ---- AIM PHASE ----
-            if elapsed < Aimbot.meleeLockDuration then
+        
+        -- MELEE AIMBOT WITH DEAD TARGET GRACE + FIXED STUD PREDICTION
+        if Aimbot.enabled then
+            local startA = os.clock()
+            local connA
+            
+            if humanoid then humanoid.AutoRotate = false end
+            
+            connA = RunService.Heartbeat:Connect(function()
+                if os.clock() - startA >= Aimbot.meleeLockDuration then
+                    connA:Disconnect()
+                    if humanoid then humanoid.AutoRotate = true end
+                    lockedTarget = nil  -- Clear lock when aimbot ends
+                    return
+                end
+                
                 local target = findAimbotTarget()
                 if target then
-                    aimAtMeleeTargetSmooth(target)
+                    aimAtMeleeTarget(target)
                 end
-                return
-            end
-
-            -- ---- RETURN PHASE (smooth snap back) ----
-            if not returning then
-                returning = true
-                returnStart = os.clock()
-                aimConn:Disconnect()
-                humanoid.AutoRotate = true   -- let Roblox handle rotation again
-            end
-
-            local returnElapsed = os.clock() - returnStart
-            if returnElapsed > 0.4 then
-                -- done
-                shiftLockCFrame = nil
-                return
-            end
-
-            if shiftLockCFrame then
-                root.CFrame = root.CFrame:lerp(shiftLockCFrame, Aimbot.returnSmoothFactor)
-            end
-        end)
+            end)
+        end
     end
 end)
