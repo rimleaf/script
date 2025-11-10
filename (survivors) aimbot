@@ -217,15 +217,15 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 	if not targetKiller then return end
 
-	if tick() - lastStab < STAB_COOLDOWN then return end
-	lastStab = tick()
+	--if tick() - lastStab < STAB_COOLDOWN then return end
+	--lastStab = tick()
 
 	local oldSpeed = humanoid.WalkSpeed
 	humanoid.WalkSpeed = 0
 
 	local startTime = tick()
 	local stabTriggered = false
-	local duration = 0.6
+	local duration = 0.7
 
 	while tick() - startTime < duration do
 		if not targetKiller.Parent then break end
