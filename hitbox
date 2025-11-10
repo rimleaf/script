@@ -1,122 +1,139 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Rep = game:GetService("ReplicatedStorage")
-
 local client = Players.LocalPlayer
 
 repeat task.wait() until client and client.Character
-
 local char = client.Character
 local humanoid = char:WaitForChild("Humanoid")
 local root = char:WaitForChild("HumanoidRootPart")
 
 client.CharacterAdded:Connect(function(newChar)
-	char = newChar
-	humanoid = char:WaitForChild("Humanoid")
-	root = char:WaitForChild("HumanoidRootPart")
+    char = newChar
+    humanoid = char:WaitForChild("Humanoid")
+    root = char:WaitForChild("HumanoidRootPart")
 end)
 
 -- Original Extend function (untouched)
 local function ExtendHitbox(studs)
-	RunService.Heartbeat:Wait()
-
-	while not (
-		client.Character
-		and client.Character.Parent
-		and client.Character:FindFirstChild("HumanoidRootPart")
-		and client.Character.HumanoidRootPart.Parent
-	) do
-		RunService.Heartbeat:Wait()
-	end
-
-	local hrp = client.Character.HumanoidRootPart
-	local originalVel = hrp.AssemblyLinearVelocity
-	local look = hrp.CFrame.LookVector
-
-	hrp.AssemblyLinearVelocity += look * studs
-	RunService.RenderStepped:Wait()
-
-	if client.Character
-	and client.Character.Parent
-	and client.Character:FindFirstChild("HumanoidRootPart")
-	and client.Character.HumanoidRootPart.Parent then
-		client.Character.HumanoidRootPart.AssemblyLinearVelocity = originalVel
-	end
+    RunService.Heartbeat:Wait()
+    while not (
+        client.Character
+        and client.Character.Parent
+        and client.Character:FindFirstChild("HumanoidRootPart")
+        and client.Character.HumanoidRootPart.Parent
+    ) do
+        RunService.Heartbeat:Wait()
+    end
+    local hrp = client.Character.HumanoidRootPart
+    local originalVel = hrp.AssemblyLinearVelocity
+    local look = hrp.CFrame.LookVector
+    hrp.AssemblyLinearVelocity = look * studs
+    RunService.RenderStepped:Wait()
+    if client.Character
+    and client.Character.Parent
+    and client.Character:FindFirstChild("HumanoidRootPart")
+    and client.Character.HumanoidRootPart.Parent then
+        client.Character.HumanoidRootPart.AssemblyLinearVelocity = originalVel
+    end
 end
 
 -- Remote reference
 local Remote = Rep:WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent")
 
 local function getAbilityName(v)
-	if typeof(v) == "buffer" then
-		return buffer.tostring(v)
-	end
-	return v
+    if typeof(v) == "buffer" then
+        return buffer.tostring(v)
+    end
+    return v
 end
 
 local function cleanName(name)
     return tostring(name):gsub("\"", "")
 end
 
--- Aimbot settings (separate logic; safe to tweak)
+-- Aimbot settings
 local Aimbot = {
-	enabled = true,          -- master switch for the dagger aimbot
-	minHealth = 200,         -- only consider players with health above this
-	range = 120,             -- search range in studs
-	preferBack = false,       -- if true, aim toward the target's back; if false, match their facing direction
-	lockDuration = 1.2       -- how long to run the aimbot when dagger detected (seconds)
+    enabled = true,              -- master switch
+    minHealth = 200,             -- only consider players with health above this
+    range = 120,                 -- search range in studs
+    preferBack = false,          -- true = aim at back, false = aim at front
+    meleeLockDuration = 0.8,     -- how long melee aimbot stays locked (seconds)
+    meleePredict = true,         -- enable fixed stud prediction
+    meleePredictStuds = 4        -- FIXED studs ahead (3-6 works great)
 }
 
 local function findAimbotTarget()
-	local closest, closestDist = nil, math.huge
-	if not client.Character or not client.Character:FindFirstChild("HumanoidRootPart") then return nil end
-	local myPos = client.Character.HumanoidRootPart.Position
-
-	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= client and p.Character and p.Character.Parent then
-			local h = p.Character:FindFirstChild("Humanoid")
-			local hrp = p.Character:FindFirstChild("HumanoidRootPart")
-			if h and hrp and h.Health and h.Health > Aimbot.minHealth then
-				local dist = (hrp.Position - myPos).Magnitude
-				if dist < closestDist and dist <= Aimbot.range then
-					closest = p
-					closestDist = dist
-				end
-			end
-		end
-	end
-	return closest
+    local closest, closestDist = nil, math.huge
+    if not client.Character or not client.Character:FindFirstChild("HumanoidRootPart") then return nil end
+    local myPos = client.Character.HumanoidRootPart.Position
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= client and p.Character and p.Character.Parent then
+            local h = p.Character:FindFirstChild("Humanoid")
+            local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+            if h and hrp and h.Health and h.Health > Aimbot.minHealth then
+                local dist = (hrp.Position - myPos).Magnitude
+                if dist < closestDist and dist <= Aimbot.range then
+                    closest = p
+                    closestDist = dist
+                end
+            end
+        end
+    end
+    return closest
 end
 
--- Function to align local player's root to the target's facing/back direction
-local function aimAtTarget(target)
-	if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then return end
-	if not client.Character or not client.Character:FindFirstChild("HumanoidRootPart") then return end
+-- FIXED STUD PREDICTION (melee only)
+local function getMeleePredictedPosition(targetHRP, myPos)
+    if not Aimbot.meleePredict then
+        return targetHRP.Position
+    end
 
-	local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
-	local myHRP = client.Character:FindFirstChild("HumanoidRootPart")
-	if not targetHRP or not myHRP then return end
-
-	-- aim at a point 1.5 studs ahead of the target's facing direction
-	local aheadPoint = targetHRP.Position + targetHRP.CFrame.LookVector * 1.5
-
-	-- build a CFrame that keeps our position but rotates to look at the ahead point
-	local newCFrame = CFrame.new(myHRP.Position, aheadPoint)
-	-- apply directly; this will instantly rotate the player to face the direction
-	myHRP.CFrame = newCFrame
+    -- FIXED prediction: always add X studs in movement direction
+    local velocity = targetHRP.AssemblyLinearVelocity
+    local moveDir = velocity.Unit  -- Direction they're moving (normalized)
+    local predictDist = Aimbot.meleePredictStuds
+    
+    -- Only predict if they're actually moving fast enough
+    if velocity.Magnitude > 5 then  -- ~walk speed threshold
+        return targetHRP.Position + moveDir * predictDist
+    else
+        return targetHRP.Position  -- stationary = no prediction
+    end
 end
 
+-- MELEE AIM FUNCTION (with fixed stud prediction)
+local function aimAtMeleeTarget(target)
+    if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then return end
+    if not client.Character or not client.Character:FindFirstChild("HumanoidRootPart") then return end
+
+    local targetHRP = target.Character.HumanoidRootPart
+    local myHRP     = client.Character.HumanoidRootPart
+
+    -- Get fixed-stud predicted position
+    local predictedPos = getMeleePredictedPosition(targetHRP, myHRP.Position)
+
+    -- Look direction: back or front
+    local lookDir = Aimbot.preferBack and -targetHRP.CFrame.LookVector or targetHRP.CFrame.LookVector
+    local aimPoint = predictedPos + lookDir * 2
+
+    -- Smooth CFrame.lookAt rotation
+    myHRP.CFrame = CFrame.lookAt(myHRP.Position, aimPoint)
+end
+
+-- MAIN REMOTE HANDLER
 Remote.OnClientEvent:Connect(function(action, data)
     if action ~= "UseActorAbility" then return end
     if typeof(data) ~= "table" or not data[1] then return end
-
+    
     local abilityName = cleanName(getAbilityName(data[1]))
-
+    
+    -- HITBOX EXTEND (melee abilities)
     if (abilityName == "Carving Slash" or
         abilityName == "Slash" or
         abilityName == "Stab" or
         abilityName == "Punch") then
-
+        
         local start = os.clock()
         local conn
         conn = RunService.Heartbeat:Connect(function()
@@ -126,40 +143,24 @@ Remote.OnClientEvent:Connect(function(action, data)
             end
             ExtendHitbox(35)
         end)
-    end
-
-    if (abilityName == "Dagger") then
-
-        -- Existing Extend behavior (unchanged), runs for 1 second
-        local startE = os.clock()
-        local connE
-        connE = RunService.Heartbeat:Connect(function()
-            if os.clock() - startE >= 1 then
-                connE:Disconnect()
-                return
-            end
-            --ExtendHitbox(-5)
-        end)
-
-        -- Separate aimbot routine (runs independently)
+        
+        -- MELEE AIMBOT WITH FIXED STUD PREDICTION
         if Aimbot.enabled then
             local startA = os.clock()
             local connA
-			if humanoid then
-				humanoid.AutoRotate = false
-			end
+            
+            if humanoid then humanoid.AutoRotate = false end
+            
             connA = RunService.Heartbeat:Connect(function()
-                if os.clock() - startA >= Aimbot.lockDuration then
+                if os.clock() - startA >= Aimbot.meleeLockDuration then
                     connA:Disconnect()
-	                if humanoid then
-	                    humanoid.AutoRotate = true
-	                end
+                    if humanoid then humanoid.AutoRotate = true end
                     return
                 end
+                
                 local target = findAimbotTarget()
                 if target then
-                    -- align to their facing or their back depending on preferBack
-                    aimAtTarget(target)
+                    aimAtMeleeTarget(target)
                 end
             end)
         end
