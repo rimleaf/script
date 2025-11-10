@@ -63,7 +63,7 @@ local Aimbot = {
 	enabled = true,          -- master switch for the dagger aimbot
 	minHealth = 200,         -- only consider players with health above this
 	range = 120,             -- search range in studs
-	preferBack = true,       -- if true, aim toward the target's back; if false, match their facing direction
+	preferBack = false,       -- if true, aim toward the target's back; if false, match their facing direction
 	lockDuration = 1.2       -- how long to run the aimbot when dagger detected (seconds)
 }
 
