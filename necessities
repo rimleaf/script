@@ -4,312 +4,205 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local lp = Players.LocalPlayer
+
 -- Rayfield
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local Window = Rayfield:CreateWindow({
-	Name = "Lead Hub",
-	LoadingTitle = "Lead Hub",
-	LoadingSubtitle = "by Lead",
-	ConfigurationSaving = {Enabled = true, FolderName = "LeadHub", FileName = "Settings"},
-	Discord = {Enabled = false},
-	KeySystem = false
+    Name = "Lead Hub",
+    LoadingTitle = "Lead Hub",
+    LoadingSubtitle = "by Lead",
+    ConfigurationSaving = { Enabled = true, FolderName = "LeadHub", FileName = "Settings" },
+    Discord = { Enabled = false },
+    KeySystem = false
 })
+
 -- Tabs
 local GeneratorTab = Window:CreateTab("Generators", 4483362458)
 local ESPTab = Window:CreateTab("ESP", 4483362458)
+
 --================= GENERATORS =================
 local generatorCooldown = 0.12
+
 GeneratorTab:CreateToggle({
-	Name = "Auto Generator",
-	CurrentValue = false,
-	Callback = function(enabled)
-		local ReplicatedStorage = game:GetService("ReplicatedStorage")
-		local function getDirection(currentRow, currentCol, otherRow, otherCol)
-			if otherRow < currentRow then
-				return "up"
-			end
-			if otherRow > currentRow then
-				return "down"
-			end
-			if otherCol < currentCol then
-				return "left"
-			end
-			if otherCol > currentCol then
-				return "right"
-			end
-		end
-		local function getConnections(prev, curr, nextnode)
-			local connections = {}
-			if prev and curr then
-				local dir = getDirection(curr.row, curr.col, prev.row, prev.col)
-				if dir == "up" then
-					dir = "down"
-				elseif dir == "down" then
-					dir = "up"
-				elseif dir == "left" then
-					dir = "right"
-				elseif dir == "right" then
-					dir = "left"
-				end
-				if dir ~= "" and dir then
-					connections[dir] = true
-				end
-			end
-			if nextnode and curr then
-				local dir = getDirection(curr.row, curr.col, nextnode.row, nextnode.col)
-				if dir ~= "" and dir then
-					connections[dir] = true
-				end
-			end
-			return connections
-		end
-		local function isNeighbourLocal(r1, c1, r2, c2)
-			if r2 == r1 - 1 and c2 == c1 then
-				return "up"
-			end
-			if r2 == r1 + 1 and c2 == c1 then
-				return "down"
-			end
-			if r2 == r1 and c2 == c1 - 1 then
-				return "left"
-			end
-			if r2 == r1 and c2 == c1 + 1 then
-				return "right"
-			end
-			return false
-		end
-		local function coordKey(node)
-			return `{node.row}-{node.col}`
-		end
-		local function orderPathFromEndpoints(path, endpoints)
-			if not path or #path == 0 then
-				return path
-			end
-			local startEndpoint
-			for _, ep in endpoints or {} do
-				for _1, n in path do
-					if n.row == ep.row and n.col == ep.col then
-						startEndpoint = {
-							row = ep.row,
-							col = ep.col,
-						}
-						break
-					end
-				end
-				if startEndpoint then
-					break
-				end
-			end
-			if not startEndpoint then
-				local inPath = {}
-				for _, n in path do
-					local _arg0 = coordKey(n)
-					inPath[_arg0] = n
-				end
-				for _, n in path do
-					local neighbours = 0
-					local dirs = { { n.row - 1, n.col }, { n.row + 1, n.col }, { n.row, n.col - 1 }, { n.row, n.col + 1 } }
-					for _1, _binding in dirs do
-						local r = _binding[1]
-						local c = _binding[2]
-						local _arg0 = `{r}-{c}`
-						if inPath[_arg0] ~= nil then
-							neighbours += 1
-						end
-					end
-					if neighbours == 1 then
-						startEndpoint = {
-							row = n.row,
-							col = n.col,
-						}
-						break
-					end
-				end
-			end
-			if not startEndpoint then
-				startEndpoint = {
-					row = path[1].row,
-					col = path[1].col,
-				}
-			end
-			local remaining = {}
-			for _, n in path do
-				local _arg0 = coordKey(n)
-				local _arg1 = {
-					row = n.row,
-					col = n.col,
-				}
-				remaining[_arg0] = _arg1
-			end
-			local ordered = {}
-			local current = {
-				row = startEndpoint.row,
-				col = startEndpoint.col,
-			}
-			local _object = table.clone(current)
-			setmetatable(_object, nil)
-			table.insert(ordered, _object)
-			local _arg0 = coordKey(current)
-			remaining[_arg0] = nil
-			while true do
-				-- ▼ ReadonlyMap.size ▼
-				local _size = 0
-				for _ in remaining do
-					_size += 1
-				end
-				-- ▲ ReadonlyMap.size ▲
-				if not (_size > 0) then
-					break
-				end
-				local foundNext = false
-				for key, node in remaining do
-					local _value = isNeighbourLocal(current.row, current.col, node.row, node.col)
-					if _value ~= "" and _value then
-						local _object_1 = table.clone(node)
-						setmetatable(_object_1, nil)
-						table.insert(ordered, _object_1)
-						remaining[key] = nil
-						current = node
-						foundNext = true
-						break
-					end
-				end
-				if not foundNext then
-					return path
-				end
-			end
-			return ordered
-		end
-		local HintSystem = {}
-		do
-			local _container = HintSystem
-			local function DrawSolutionOneByOne(self, puzzle, delayTime)
-				if delayTime == nil then
-					delayTime = 0.05
-				end
-				if not puzzle or not puzzle.Solution then
-					return nil
-				end
-				local totalPaths = #puzzle.Solution
-				local indices = {}
-				do
-					local i = 1
-					local _shouldIncrement = false
-					while true do
-						if _shouldIncrement then
-							i += 1
-						else
-							_shouldIncrement = true
-						end
-						if not (i <= totalPaths) then
-							break
-						end
-						local _i = i
-						table.insert(indices, _i)
-					end
-				end
-				for i = #indices - 1, 2, -1 do
-					local j = math.random(1, i)
-					local temp = indices[i + 1]
-					indices[i + 1] = indices[j + 1]
-					indices[j + 1] = temp
-				end
-				for _, colorIndex in indices do
-					local path = puzzle.Solution[colorIndex]
-					local endpoints = puzzle.targetPairs[colorIndex]
-					local orderedPath = orderPathFromEndpoints(path, endpoints)
-					puzzle.paths[colorIndex] = {}
-					for i = 0, #orderedPath - 1 do
-						local node = orderedPath[i + 1]
-						local _exp = puzzle.paths[colorIndex]
-						local _arg0 = {
-							row = node.row,
-							col = node.col,
-						}
-						table.insert(_exp, _arg0)
-						local prev = orderedPath[i]
-						local nextNode = orderedPath[i + 2]
-						local conn = getConnections(prev, node, nextNode)
-						puzzle.gridConnections = puzzle.gridConnections or {}
-						puzzle.gridConnections[`{node.row}-{node.col}`] = conn
-						puzzle:updateGui()
-						task.wait(delayTime)
-					end
-					puzzle:checkForWin()
-				end
-				puzzle:checkForWin()
-			end
-			_container.DrawSolutionOneByOne = DrawSolutionOneByOne
-			local function DrawSolutionInstantly(self, puzzle, delayTime)
-				if delayTime == nil then
-					delayTime = 0.03
-				end
-				if not puzzle or not puzzle.Solution then
-					return nil
-				end
-				for colorIndex = 0, #puzzle.Solution - 1 do
-					puzzle.paths[colorIndex + 1] = {}
-				end
-				local finished = false
-				local step = 1
-				while not finished do
-					finished = true
-					for colorIndex = 0, #puzzle.Solution - 1 do
-						local path = puzzle.Solution[colorIndex + 1]
-						local endpoints = puzzle.targetPairs[colorIndex + 1]
-						local orderedPath = orderPathFromEndpoints(path, endpoints)
-						puzzle.paths[colorIndex + 1] = {}
-						for _, node in orderedPath do
-							local _exp = puzzle.paths[colorIndex + 1]
-							local _arg0 = {
-								row = node.row,
-								col = node.col,
-							}
-							table.insert(_exp, _arg0)
-						end
-					end
-					puzzle:updateGui()
-					task.wait(delayTime)
-					step += 1
-				end
-				puzzle:checkForWin()
-			end
-			_container.DrawSolutionInstantly = DrawSolutionInstantly
-		end
-		local _result = ReplicatedStorage:WaitForChild("Modules"):FindFirstChild("Misc")
-		if _result ~= nil then
-			_result = _result:FindFirstChild("FlowGameManager")
-			if _result ~= nil then
-				_result = _result:FindFirstChild("FlowGame")
-			end
-		end
-		local bb = _result
-		if bb then
-			local FlowGameModule = require(bb)
-			local old = FlowGameModule.new
-			FlowGameModule.new = function(...)
-				local args = { ... }
-				local output = { old(unpack(args)) }
-				local puzzle = output[1]
-				task.spawn(function()
-					HintSystem:DrawSolutionOneByOne(puzzle, generatorCooldown)
-				end)
-				return puzzle
-			end
-		end
-		return nil
-	end
+    Name = "Auto Generator",
+    CurrentValue = false,
+    Callback = function(enabled)
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local function getDirection(currentRow, currentCol, otherRow, otherCol)
+            if otherRow < currentRow then return "up" end
+            if otherRow > currentRow then return "down" end
+            if otherCol < currentCol then return "left" end
+            if otherCol > currentCol then return "right" end
+        end
+
+        local function getConnections(prev, curr, nextnode)
+            local connections = {}
+            if prev and curr then
+                local dir = getDirection(curr.row, curr.col, prev.row, prev.col)
+                if dir == "up" then dir = "down"
+                elseif dir == "down" then dir = "up"
+                elseif dir == "left" then dir = "right"
+                elseif dir == "right" then dir = "left" end
+                if dir then connections[dir] = true end
+            end
+            if nextnode and curr then
+                local dir = getDirection(curr.row, curr.col, nextnode.row, nextnode.col)
+                if dir then connections[dir] = true end
+            end
+            return connections
+        end
+
+        local function isNeighbourLocal(r1, c1, r2, c2)
+            if r2 == r1 - 1 and c2 == c1 then return "up" end
+            if r2 == r1 + 1 and c2 == c1 then return "down" end
+            if r2 == r1 and c2 == c1 - 1 then return "left" end
+            if r2 == r1 and c2 == c1 + 1 then return "right" end
+            return false
+        end
+
+        local function coordKey(node) return `{node.row}-{node.col}` end
+
+        local function orderPathFromEndpoints(path, endpoints)
+            if not path or #path == 0 then return path end
+            local startEndpoint
+            for _, ep in endpoints or {} do
+                for _, n in path do
+                    if n.row == ep.row and n.col == ep.col then
+                        startEndpoint = { row = ep.row, col = ep.col }; break
+                    end
+                end
+                if startEndpoint then break end
+            end
+            if not startEndpoint then
+                local inPath = {}
+                for _, n in path do inPath[coordKey(n)] = n end
+                for _, n in path do
+                    local neighbours = 0
+                    local dirs = { {n.row-1,n.col}, {n.row+1,n.col}, {n.row,n.col-1}, {n.row,n.col+1} }
+                    for _, d in dirs do
+                        if inPath[`{d[1]}-{d[2]}`] then neighbours += 1 end
+                    end
+                    if neighbours == 1 then
+                        startEndpoint = { row = n.row, col = n.col }; break
+                    end
+                end
+            end
+            if not startEndpoint then
+                startEndpoint = { row = path[1].row, col = path[1].col }
+            end
+
+            local remaining = {}
+            for _, n in path do remaining[coordKey(n)] = { row = n.row, col = n.col } end
+
+            local ordered = {}
+            local current = { row = startEndpoint.row, col = startEndpoint.col }
+            table.insert(ordered, table.clone(current))
+            remaining[coordKey(current)] = nil
+
+            while next(remaining) do
+                local foundNext = false
+                for key, node in pairs(remaining) do
+                    if isNeighbourLocal(current.row, current.col, node.row, node.col) then
+                        table.insert(ordered, table.clone(node))
+                        remaining[key] = nil
+                        current = node
+                        foundNext = true
+                        break
+                    end
+                end
+                if not foundNext then break end
+            end
+            return ordered
+        end
+
+        local HintSystem = {}
+        do
+            local function DrawSolutionOneByOne(self, puzzle, delayTime)
+                delayTime = delayTime or 0.03
+                if not puzzle or not puzzle.Solution then return end
+                local totalPaths = #puzzle.Solution
+                local indices = {}
+                for i = 1, totalPaths do table.insert(indices, i) end
+                for i = #indices, 2, -1 do
+                    local j = math.random(1, i)
+                    indices[i], indices[j] = indices[j], indices[i]
+                end
+                for _, colorIndex in indices do
+                    local path = puzzle.Solution[colorIndex]
+                    local endpoints = puzzle.targetPairs[colorIndex]
+                    local orderedPath = orderPathFromEndpoints(path, endpoints)
+                    puzzle.paths[colorIndex] = {}
+                    for i = 0, #orderedPath - 1 do
+                        local node = orderedPath[i + 1]
+                        table.insert(puzzle.paths[colorIndex], { row = node.row, col = node.col })
+                        local prev = orderedPath[i]
+                        local nextNode = orderedPath[i + 2]
+                        local conn = getConnections(prev, node, nextNode)
+                        puzzle.gridConnections = puzzle.gridConnections or {}
+                        puzzle.gridConnections[`{node.row}-{node.col}`] = conn
+                        puzzle:updateGui()
+                        task.wait(delayTime)
+                    end
+                    puzzle:checkForWin()
+                end
+                puzzle:checkForWin()
+            end
+            HintSystem.DrawSolutionOneByOne = DrawSolutionOneByOne
+
+            local function DrawSolutionInstantly(self, puzzle, delayTime)
+                delayTime = delayTime or 0.03
+                if not puzzle or not puzzle.Solution then return end
+                for colorIndex = 0, #puzzle.Solution - 1 do
+                    puzzle.paths[colorIndex + 1] = {}
+                end
+                local finished = false
+                local step = 1
+                while not finished do
+                    finished = true
+                    for colorIndex = 0, #puzzle.Solution - 1 do
+                        local path = puzzle.Solution[colorIndex + 1]
+                        local endpoints = puzzle.targetPairs[colorIndex + 1]
+                        local orderedPath = orderPathFromEndpoints(path, endpoints)
+                        puzzle.paths[colorIndex + 1] = {}
+                        for _, node in orderedPath do
+                            table.insert(puzzle.paths[colorIndex + 1], { row = node.row, col = node.col })
+                        end
+                    end
+                    puzzle:updateGui()
+                    task.wait(delayTime)
+                    step += 1
+                end
+                puzzle:checkForWin()
+            end
+            HintSystem.DrawSolutionInstantly = DrawSolutionInstantly
+        end
+
+        local bb = ReplicatedStorage:WaitForChild("Modules"):FindFirstChild("Misc")
+        if bb then bb = bb:FindFirstChild("FlowGameManager") end
+        if bb then bb = bb:FindFirstChild("FlowGame") end
+        if bb then
+            local FlowGameModule = require(bb)
+            local old = FlowGameModule.new
+            FlowGameModule.new = function(...)
+                local puzzle = old(...)
+                task.spawn(function()
+                    HintSystem:DrawSolutionOneByOne(puzzle, generatorCooldown)
+                end)
+                return puzzle
+            end
+        end
+    end
 })
+
 GeneratorTab:CreateSlider({
-	Name = "Auto Generator Delay",
-	Range = {0, 0.2},
-	Increment = 0.01,
-	Suffix = "s",
-	CurrentValue = generatorCooldown,
-	Callback = function(val)
-		generatorCooldown = val
-	end
+    Name = "Auto Generator Delay",
+    Range = {0, 0.2},
+    Increment = 0.01,
+    Suffix = "s",
+    CurrentValue = generatorCooldown,
+    Callback = function(val) generatorCooldown = val end
 })
+
 --================= ESP =================
 local espKillers = false
 local espSurvivors = false
@@ -320,246 +213,218 @@ local playerCharacter = lp.Character
 local playerRoot = playerCharacter and playerCharacter:FindFirstChild("HumanoidRootPart")
 
 -- Distance-based transparency settings
-local MAX_DISTANCE = 500 -- Max distance for ESP visibility
-local MIN_TRANSPARENCY = 0.2  -- Minimum transparency (farthest)
-local MAX_TRANSPARENCY = 0.8  -- Maximum transparency (closest)
-
+local MAX_DISTANCE = 500
+local MIN_TRANSPARENCY = 0.2  -- farthest
+local MAX_TRANSPARENCY = 0.8  -- closest
 local function getDistanceTransparency(distance)
-	distance = math.clamp(distance, 0, MAX_DISTANCE)
-	-- Closer = MORE transparent (0.8), Farther = LESS transparent (0.2)
-	local alpha = MIN_TRANSPARENCY + (MAX_TRANSPARENCY - MIN_TRANSPARENCY) * (1 - distance / MAX_DISTANCE)
-	return alpha
+    distance = math.clamp(distance, 0, MAX_DISTANCE)
+    local alpha = MIN_TRANSPARENCY + (MAX_TRANSPARENCY - MIN_TRANSPARENCY) * (1 - distance / MAX_DISTANCE)
+    return alpha
 end
 
 local function findFirstBasePart(obj)
-	if not obj or not obj:IsDescendantOf(Workspace) then return nil end
-	if obj:IsA("BasePart") then return obj end
-	return obj:FindFirstChildWhichIsA("BasePart", true)
+    if not obj or not obj:IsDescendantOf(Workspace) then return nil end
+    if obj:IsA("BasePart") then return obj end
+    return obj:FindFirstChildWhichIsA("BasePart", true)
 end
 
--- ENHANCED: Universal Killer ESP (works on ALL skins)
+-- FIXED: Killer ESP now uses the **entire model** as Adornee
 local function applyKillerESP(killer)
-	if activeHighlights[killer] then return end
-
-	-- Priority 1: Try to find any renderable part
-	local targetPart = nil
-
-	-- 1. Try HumanoidRootPart (most common)
-	targetPart = killer:FindFirstChild("HumanoidRootPart")
-	
-	-- 2. Try any MeshPart
-	if not targetPart then
-		targetPart = killer:FindFirstChildWhichIsA("MeshPart", true)
-	end
-
-	-- 3. Try any Part (including BasePart)
-	if not targetPart then
-		targetPart = killer:FindFirstChildWhichIsA("BasePart", true)
-	end
-
-	-- 4. Fallback: Use the primary model itself as Adornee
-	if not targetPart then
-		targetPart = killer
-	end
-
-	-- Create Highlight
-	local h = Instance.new("Highlight")
-	h.Name = "ESP_Highlight"
-	h.Adornee = targetPart
-	h.FillColor = Color3.fromRGB(255, 0, 0)
-	h.OutlineColor = Color3.new(1, 0, 0)
-	h.FillTransparency = MIN_TRANSPARENCY  -- Initial
-	h.OutlineTransparency = 0.1
-	h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	h.Parent = killer
-	activeHighlights[killer] = h
+    if activeHighlights[killer] then return end
+    local h = Instance.new("Highlight")
+    h.Name = "ESP_Highlight"
+    h.Adornee = killer                     -- Full model = visible on ALL skins
+    h.FillColor = Color3.fromRGB(255, 0, 0)
+    h.OutlineColor = Color3.new(1, 0, 0)
+    h.FillTransparency = MIN_TRANSPARENCY
+    h.OutlineTransparency = 0.1
+    h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    h.Parent = Workspace                   -- Consistent parenting
+    activeHighlights[killer] = h
 end
 
 local function updateESPTransparency(obj, highlight)
-	if not highlight or not playerRoot then return end
-	
-	local rootPart = findFirstBasePart(obj)
-	if not rootPart then return end
-	
-	local distance = (rootPart.Position - playerRoot.Position).Magnitude
-	local transparency = getDistanceTransparency(distance)
-	
-	highlight.FillTransparency = transparency
-	highlight.OutlineTransparency = math.clamp(transparency * 0.5, 0, 0.5)
+    if not highlight or not playerRoot then return end
+    local rootPart = findFirstBasePart(obj)
+    if not rootPart then return end
+    local distance = (rootPart.Position - playerRoot.Position).Magnitude
+    local transparency = getDistanceTransparency(distance)
+    highlight.FillTransparency = transparency
+    highlight.OutlineTransparency = math.clamp(transparency * 0.5, 0, 0.5)
 end
 
 local function removeHighlight(obj)
-	local h = activeHighlights[obj]
-	if h then
-		h:Destroy()
-		activeHighlights[obj] = nil
-	end
-	local billboard = obj:FindFirstChild("ESP_Billboard")
-	if billboard then billboard:Destroy() end
+    local h = activeHighlights[obj]
+    if h then h:Destroy(); activeHighlights[obj] = nil end
+    local billboard = obj:FindFirstChild("ESP_Billboard")
+    if billboard then billboard:Destroy() end
 end
 
 local function applyItemESP(obj)
-	if activeHighlights[obj] then return end
-	local part = findFirstBasePart(obj)
-	if not part then return end
-	
-	local h = Instance.new("Highlight")
-	h.Name = "ESP_Highlight"
-	h.Adornee = obj
-	h.FillColor = Color3.fromRGB(0, 0, 139)
-	h.OutlineColor = Color3.new(0, 0, 139)
-	h.FillTransparency = MIN_TRANSPARENCY
-	h.OutlineTransparency = 0.1
-	h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	h.Parent = Workspace
-	activeHighlights[obj] = h
-	
-	-- Name tag
-	if not obj:FindFirstChild("ESP_Billboard") then
-		local billboard = Instance.new("BillboardGui")
-		billboard.Name = "ESP_Billboard"
-		billboard.Size = UDim2.new(0,100,0,30)
-		billboard.StudsOffset = Vector3.new(0,3,0)
-		billboard.AlwaysOnTop = true
-		billboard.Adornee = part
-		local textLabel = Instance.new("TextLabel")
-		textLabel.Size = UDim2.new(1,0,1,0)
-		textLabel.BackgroundTransparency = 1
-		textLabel.TextColor3 = Color3.fromRGB(0,0,139)
-		textLabel.Font = Enum.Font.SourceSansBold
-		textLabel.TextSize = 14
-		textLabel.Text = obj.Name
-		textLabel.Parent = billboard
-		billboard.Parent = obj
-	end
+    if activeHighlights[obj] then return end
+    local part = findFirstBasePart(obj)
+    if not part then return end
+    local h = Instance.new("Highlight")
+    h.Name = "ESP_Highlight"
+    h.Adornee = obj
+    h.FillColor = Color3.fromRGB(0, 0, 139)
+    h.OutlineColor = Color3.new(0, 0, 139)
+    h.FillTransparency = MIN_TRANSPARENCY
+    h.OutlineTransparency = 0.1
+    h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    h.Parent = Workspace
+    activeHighlights[obj] = h
+
+    if not obj:FindFirstChild("ESP_Billboard") then
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "ESP_Billboard"
+        billboard.Size = UDim2.new(0,100,0,30)
+        billboard.StudsOffset = Vector3.new(0,3,0)
+        billboard.AlwaysOnTop = true
+        billboard.Adornee = part
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1,0,1,0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.TextColor3 = Color3.fromRGB(0,0,139)
+        textLabel.Font = Enum.Font.SourceSansBold
+        textLabel.TextSize = 14
+        textLabel.Text = obj.Name
+        textLabel.Parent = billboard
+        billboard.Parent = obj
+    end
 end
 
 local function refreshESP()
-	local mapFolder = Workspace:FindFirstChild("Map") and Workspace.Map:FindFirstChild("Ingame") and Workspace.Map.Ingame:FindFirstChild("Map")
-	
-	-- Update player character reference
-	playerCharacter = lp.Character
-	playerRoot = playerCharacter and playerCharacter:FindFirstChild("HumanoidRootPart")
-	
-	-- KILLERS ESP (Universal + Distance)
-	local killersFolder = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
-	if killersFolder then
-		for _, k in ipairs(killersFolder:GetChildren()) do
-			if espKillers and k ~= playerCharacter then
-				applyKillerESP(k)
-			else
-				removeHighlight(k)
-			end
-		end
-	end
-	
-	-- Survivors ESP
-	local survivorsFolder = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Survivors")
-	if survivorsFolder then
-		for _, s in ipairs(survivorsFolder:GetChildren()) do
-			if espSurvivors and s ~= playerCharacter and findFirstBasePart(s) then
-				if not activeHighlights[s] then
-					local h = Instance.new("Highlight")
-					h.Name = "ESP_Highlight"
-					h.Adornee = s
-					h.FillColor = Color3.fromRGB(255,255,255)
-					h.OutlineColor = Color3.new(1,1,1)
-					h.FillTransparency = MIN_TRANSPARENCY
-					h.OutlineTransparency = 0.1
-					h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-					h.Parent = Workspace
-					activeHighlights[s] = h
-				end
-			else
-				removeHighlight(s)
-			end
-		end
-	end
-	
-	-- Items and Generators
-	if mapFolder then
-		for _, obj in ipairs(mapFolder:GetChildren()) do
-			-- Items
-			if espItems and (obj.Name == "Medkit" or obj.Name == "BloxyCola") then
-				applyItemESP(obj)
-			elseif (obj.Name == "Medkit" or obj.Name == "BloxyCola") then 
-				removeHighlight(obj) 
-			end
-			
-			-- Generators
-			if espGenerators and obj.Name == "Generator" then
-				local progress = obj:FindFirstChild("Progress")
-				if progress and progress.Value < 100 then
-					if not activeHighlights[obj] then
-						local h = Instance.new("Highlight")
-						h.Name = "ESP_Highlight"
-						h.Adornee = obj
-						h.FillColor = Color3.fromRGB(255,255,0)
-						h.OutlineColor = Color3.new(1,1,0)
-						h.FillTransparency = MIN_TRANSPARENCY
-						h.OutlineTransparency = 0.1
-						h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-						h.Parent = Workspace
-						activeHighlights[obj] = h
-					end
-				else
-					removeHighlight(obj)
-				end
-			elseif obj.Name == "Generator" then
-				removeHighlight(obj)
-			end
-		end
-	end
+    local mapFolder = Workspace:FindFirstChild("Map") and Workspace.Map:FindFirstChild("Ingame") and Workspace.Map.Ingame:FindFirstChild("Map")
+    playerCharacter = lp.Character
+    playerRoot = playerCharacter and playerCharacter:FindFirstChild("HumanoidRootPart")
+
+    -- KILLERS
+    local killersFolder = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
+    if killersFolder then
+        for _, k in ipairs(killersFolder:GetChildren()) do
+            if espKillers and k ~= playerCharacter then
+                applyKillerESP(k)
+            else
+                removeHighlight(k)
+            end
+        end
+    end
+
+    -- SURVIVORS
+    local survivorsFolder = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Survivors")
+    if survivorsFolder then
+        for _, s in ipairs(survivorsFolder:GetChildren()) do
+            if espSurvivors and s ~= playerCharacter and findFirstBasePart(s) then
+                if not activeHighlights[s] then
+                    local h = Instance.new("Highlight")
+                    h.Name = "ESP_Highlight"
+                    h.Adornee = s
+                    h.FillColor = Color3.fromRGB(255,255,255)
+                    h.OutlineColor = Color3.new(1,1,1)
+                    h.FillTransparency = MIN_TRANSPARENCY
+                    h.OutlineTransparency = 0.1
+                    h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    h.Parent = Workspace
+                    activeHighlights[s] = h
+                end
+            else
+                removeHighlight(s)
+            end
+        end
+    end
+
+    -- ITEMS & GENERATORS
+    if mapFolder then
+        for _, obj in ipairs(mapFolder:GetChildren()) do
+            -- Items
+            if espItems and (obj.Name == "Medkit" or obj.Name == "BloxyCola") then
+                applyItemESP(obj)
+            elseif (obj.Name == "Medkit" or obj.Name == "BloxyCola") then
+                removeHighlight(obj)
+            end
+
+            -- Generators
+            if espGenerators and obj.Name == "Generator" then
+                local progress = obj:FindFirstChild("Progress")
+                if progress and progress.Value < 100 then
+                    if not activeHighlights[obj] then
+                        local h = Instance.new("Highlight")
+                        h.Name = "ESP_Highlight"
+                        h.Adornee = obj
+                        h.FillColor = Color3.fromRGB(255,255,0)
+                        h.OutlineColor = Color3.new(1,1,0)
+                        h.FillTransparency = MIN_TRANSPARENCY
+                        h.OutlineTransparency = 0.1
+                        h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                        h.Parent = Workspace
+                        activeHighlights[obj] = h
+                    end
+                else
+                    removeHighlight(obj)
+                end
+            elseif obj.Name == "Generator" then
+                removeHighlight(obj)
+            end
+        end
+    end
 end
 
--- HIGH FREQUENCY UPDATE LOOP (every frame for smooth distance transparency)
+-- Transparency update loop (smooth)
 task.spawn(function()
-	while task.wait(0.1) do  -- 10 FPS update for smooth transparency
-		if playerRoot and (espKillers or espSurvivors or espItems or espGenerators) then
-			for obj, highlight in pairs(activeHighlights) do
-				updateESPTransparency(obj, highlight)
-			end
-		end
-	end
+    while task.wait(0.1) do
+        if playerRoot and (espKillers or espSurvivors or espItems or espGenerators) then
+            for obj, hl in pairs(activeHighlights) do
+                updateESPTransparency(obj, hl)
+            end
+        end
+    end
 end)
 
--- Background refresh loop (every 2s for adding new ESPs)
+-- Refresh loop (adds new entities)
 task.spawn(function()
-	while task.wait(2) do
-		if espKillers or espSurvivors or espItems or espGenerators then
-			refreshESP()
-		end
-	end
+    while task.wait(2) do
+        if espKillers or espSurvivors or espItems or espGenerators then
+            refreshESP()
+        end
+    end
 end)
 
--- ESP Toggles
+-- ESP Toggles (with instant refresh)
 ESPTab:CreateToggle({
-	Name = "Killers ESP",
-	CurrentValue = false,
-	Callback = function(val)
-		espKillers = val
-	end
+    Name = "Killers ESP",
+    CurrentValue = false,
+    Callback = function(val)
+        espKillers = val
+        refreshESP()
+    end
 })
+
 ESPTab:CreateToggle({
-	Name = "Survivors ESP",
-	CurrentValue = false,
-	Callback = function(val)
-		espSurvivors = val
-	end
+    Name = "Survivors ESP",
+    CurrentValue = false,
+    Callback = function(val)
+        espSurvivors = val
+        refreshESP()
+    end
 })
+
 ESPTab:CreateToggle({
-	Name = "Items ESP",
-	CurrentValue = false,
-	Callback = function(val)
-		espItems = val
-	end
+    Name = "Items ESP",
+    CurrentValue = false,
+    Callback = function(val)
+        espItems = val
+        refreshESP()
+    end
 })
+
 ESPTab:CreateToggle({
-	Name = "Generators ESP",
-	CurrentValue = false,
-	Callback = function(val)
-		espGenerators = val
-	end
+    Name = "Generators ESP",
+    CurrentValue = false,
+    Callback = function(val)
+        espGenerators = val
+        refreshESP()
+    end
 })
 
 --================= CONFIG =================
