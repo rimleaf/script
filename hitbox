@@ -60,7 +60,7 @@ local Aimbot = {
     preferBack = false,          -- true = aim at back, false = aim at front
     meleeLockDuration = 0.45,     -- how long melee aimbot stays locked (seconds)
     meleePredict = true,         -- enable fixed stud prediction
-    meleePredictStuds = 3,       -- FIXED studs ahead (3-6 works great)
+    meleePredictStuds = 2,       -- FIXED studs ahead (3-6 works great)
     deadTargetGrace = 0.5        -- target dead players for this many seconds
 }
 
@@ -124,7 +124,7 @@ local function getMeleePredictedPosition(targetHRP, myPos)
     local predictDist = Aimbot.meleePredictStuds
     
     -- Only predict if they're actually moving fast enough (works for ragdolls too)
-    if velocity.Magnitude > 5 then
+    if velocity.Magnitude > 0.1 then
         return targetHRP.Position + moveDir * predictDist
     else
         return targetHRP.Position
