@@ -150,7 +150,7 @@ Remote.OnClientEvent:Connect(function(action, data)
             local connA
 			if humanoid then
 				humanoid.AutoRotate = false
-			return
+			end
             connA = RunService.Heartbeat:Connect(function()
                 if os.clock() - startA >= Aimbot.lockDuration then
                     connA:Disconnect()
