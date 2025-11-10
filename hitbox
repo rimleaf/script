@@ -97,14 +97,11 @@ local function aimAtTarget(target)
 	local myHRP = client.Character:FindFirstChild("HumanoidRootPart")
 	if not targetHRP or not myHRP then return end
 
-	-- compute desired look vector: either same as target's look, or opposite (their back)
-	local desiredLook = targetHRP.CFrame.LookVector
-	if Aimbot.preferBack then
-		desiredLook = -desiredLook
-	end
+	-- aim at a point 1.5 studs ahead of the target's facing direction
+	local aheadPoint = targetHRP.Position + targetHRP.CFrame.LookVector * 1.5
 
-	-- build a CFrame that keeps our position but rotates to the desired look direction
-	local newCFrame = CFrame.new(myHRP.Position, myHRP.Position + desiredLook)
+	-- build a CFrame that keeps our position but rotates to look at the ahead point
+	local newCFrame = CFrame.new(myHRP.Position, aheadPoint)
 	-- apply directly; this will instantly rotate the player to face the direction
 	myHRP.CFrame = newCFrame
 end
