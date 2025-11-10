@@ -82,4 +82,16 @@ Remote.OnClientEvent:Connect(function(action, data)
             ExtendHitbox(35)
         end)
     end
+    if (abilityName == "Dagger") then
+
+        local start = os.clock()
+        local conn
+        conn = RunService.Heartbeat:Connect(function()
+            if os.clock() - start >= 2 then
+                conn:Disconnect()
+                return
+            end
+            ExtendHitbox(-10)
+        end)
+    end
 end)
