@@ -141,7 +141,7 @@ Remote.OnClientEvent:Connect(function(action, data)
                 connE:Disconnect()
                 return
             end
-            ExtendHitbox(-5)
+            --ExtendHitbox(-5)
         end)
 
         -- Separate aimbot routine (runs independently)
