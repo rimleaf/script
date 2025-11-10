@@ -1,12 +1,9 @@
--- Lead Hub (optimized + restored original Killer & Item ESP behavior with forced Killer highlights)
-
+-- Lead Hub (optimized + restored original Killer & Item ESP behavior with forced Killer highlights + Distance Transparency)
 -- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-
 local lp = Players.LocalPlayer
-
 -- Rayfield
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local Window = Rayfield:CreateWindow({
@@ -17,14 +14,11 @@ local Window = Rayfield:CreateWindow({
 	Discord = {Enabled = false},
 	KeySystem = false
 })
-
 -- Tabs
 local GeneratorTab = Window:CreateTab("Generators", 4483362458)
 local ESPTab = Window:CreateTab("ESP", 4483362458)
-
 --================= GENERATORS =================
 local generatorCooldown = 0.12
-
 GeneratorTab:CreateToggle({
 	Name = "Auto Generator",
 	CurrentValue = false,
@@ -306,7 +300,6 @@ GeneratorTab:CreateToggle({
 		return nil
 	end
 })
-
 GeneratorTab:CreateSlider({
 	Name = "Auto Generator Delay",
 	Range = {0, 0.2},
@@ -317,14 +310,26 @@ GeneratorTab:CreateSlider({
 		generatorCooldown = val
 	end
 })
-
 --================= ESP =================
 local espKillers = false
 local espSurvivors = false
 local espItems = false
 local espGenerators = false
-
 local activeHighlights = {}
+local playerCharacter = lp.Character
+local playerRoot = playerCharacter and playerCharacter:FindFirstChild("HumanoidRootPart")
+
+-- Distance-based transparency settings
+local MAX_DISTANCE = 500 -- Max distance for ESP visibility
+local MIN_TRANSPARENCY = 0.2  -- Minimum transparency (farthest)
+local MAX_TRANSPARENCY = 0.8  -- Maximum transparency (closest)
+
+local function getDistanceTransparency(distance)
+	distance = math.clamp(distance, 0, MAX_DISTANCE)
+	-- Closer = MORE transparent (0.8), Farther = LESS transparent (0.2)
+	local alpha = MIN_TRANSPARENCY + (MAX_TRANSPARENCY - MIN_TRANSPARENCY) * (1 - distance / MAX_DISTANCE)
+	return alpha
+end
 
 local function findFirstBasePart(obj)
 	if not obj or not obj:IsDescendantOf(Workspace) then return nil end
@@ -332,37 +337,55 @@ local function findFirstBasePart(obj)
 	return obj:FindFirstChildWhichIsA("BasePart", true)
 end
 
--- FORCE HIGHLIGHT (no BasePart needed)
-local function forceHighlight(obj, color, fillTrans, outlineTrans)
-	if activeHighlights[obj] then return end
+-- ENHANCED: Universal Killer ESP (works on ALL skins)
+local function applyKillerESP(killer)
+	if activeHighlights[killer] then return end
 
+	-- Priority 1: Try to find any renderable part
+	local targetPart = nil
+
+	-- 1. Try HumanoidRootPart (most common)
+	targetPart = killer:FindFirstChild("HumanoidRootPart")
+	
+	-- 2. Try any MeshPart
+	if not targetPart then
+		targetPart = killer:FindFirstChildWhichIsA("MeshPart", true)
+	end
+
+	-- 3. Try any Part (including BasePart)
+	if not targetPart then
+		targetPart = killer:FindFirstChildWhichIsA("BasePart", true)
+	end
+
+	-- 4. Fallback: Use the primary model itself as Adornee
+	if not targetPart then
+		targetPart = killer
+	end
+
+	-- Create Highlight
 	local h = Instance.new("Highlight")
 	h.Name = "ESP_Highlight"
-	h.Adornee = obj
-	h.FillColor = color
-	h.OutlineColor = Color3.new(0,0,0)
-	h.FillTransparency = fillTrans
-	h.OutlineTransparency = outlineTrans
-	h.Parent = Workspace
-
-	activeHighlights[obj] = h
+	h.Adornee = targetPart
+	h.FillColor = Color3.fromRGB(255, 0, 0)
+	h.OutlineColor = Color3.new(1, 0, 0)
+	h.FillTransparency = MIN_TRANSPARENCY  -- Initial
+	h.OutlineTransparency = 0.1
+	h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	h.Parent = killer
+	activeHighlights[killer] = h
 end
 
-local function addHighlight(obj, color, fillTrans, outlineTrans)
-	if activeHighlights[obj] then return end
-	local part = findFirstBasePart(obj)
-	if not part then return end
-
-	local h = Instance.new("Highlight")
-	h.Name = "ESP_Highlight"
-	h.Adornee = obj
-	h.FillColor = color
-	h.OutlineColor = Color3.new(0,0,0)
-	h.FillTransparency = fillTrans
-	h.OutlineTransparency = outlineTrans
-	h.Parent = Workspace
-
-	activeHighlights[obj] = h
+local function updateESPTransparency(obj, highlight)
+	if not highlight or not playerRoot then return end
+	
+	local rootPart = findFirstBasePart(obj)
+	if not rootPart then return end
+	
+	local distance = (rootPart.Position - playerRoot.Position).Magnitude
+	local transparency = getDistanceTransparency(distance)
+	
+	highlight.FillTransparency = transparency
+	highlight.OutlineTransparency = math.clamp(transparency * 0.5, 0, 0.5)
 end
 
 local function removeHighlight(obj)
@@ -379,9 +402,19 @@ local function applyItemESP(obj)
 	if activeHighlights[obj] then return end
 	local part = findFirstBasePart(obj)
 	if not part then return end
-
-	addHighlight(obj, Color3.fromRGB(0,0,139), 0.6, 0.6)
-
+	
+	local h = Instance.new("Highlight")
+	h.Name = "ESP_Highlight"
+	h.Adornee = obj
+	h.FillColor = Color3.fromRGB(0, 0, 139)
+	h.OutlineColor = Color3.new(0, 0, 139)
+	h.FillTransparency = MIN_TRANSPARENCY
+	h.OutlineTransparency = 0.1
+	h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	h.Parent = Workspace
+	activeHighlights[obj] = h
+	
+	-- Name tag
 	if not obj:FindFirstChild("ESP_Billboard") then
 		local billboard = Instance.new("BillboardGui")
 		billboard.Name = "ESP_Billboard"
@@ -389,7 +422,6 @@ local function applyItemESP(obj)
 		billboard.StudsOffset = Vector3.new(0,3,0)
 		billboard.AlwaysOnTop = true
 		billboard.Adornee = part
-
 		local textLabel = Instance.new("TextLabel")
 		textLabel.Size = UDim2.new(1,0,1,0)
 		textLabel.BackgroundTransparency = 1
@@ -398,51 +430,78 @@ local function applyItemESP(obj)
 		textLabel.TextSize = 14
 		textLabel.Text = obj.Name
 		textLabel.Parent = billboard
-
 		billboard.Parent = obj
 	end
 end
 
 local function refreshESP()
 	local mapFolder = Workspace:FindFirstChild("Map") and Workspace.Map:FindFirstChild("Ingame") and Workspace.Map.Ingame:FindFirstChild("Map")
-
-	-- KILLERS ALWAYS HIGHLIGHT
+	
+	-- Update player character reference
+	playerCharacter = lp.Character
+	playerRoot = playerCharacter and playerCharacter:FindFirstChild("HumanoidRootPart")
+	
+	-- KILLERS ESP (Universal + Distance)
 	local killersFolder = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
 	if killersFolder then
 		for _, k in ipairs(killersFolder:GetChildren()) do
-			if espKillers and k ~= Players.LocalPlayer.Character then
-				forceHighlight(k, Color3.fromRGB(255,0,0), 0.5, 0.3)
+			if espKillers and k ~= playerCharacter then
+				applyKillerESP(k)
 			else
 				removeHighlight(k)
 			end
 		end
 	end
-
-	-- Survivors
+	
+	-- Survivors ESP
 	local survivorsFolder = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Survivors")
 	if survivorsFolder then
 		for _, s in ipairs(survivorsFolder:GetChildren()) do
-			if espSurvivors and s ~= Players.LocalPlayer.Character and findFirstBasePart(s) then
-				addHighlight(s, Color3.fromRGB(255,255,255), 0.5, 0.3)
+			if espSurvivors and s ~= playerCharacter and findFirstBasePart(s) then
+				if not activeHighlights[s] then
+					local h = Instance.new("Highlight")
+					h.Name = "ESP_Highlight"
+					h.Adornee = s
+					h.FillColor = Color3.fromRGB(255,255,255)
+					h.OutlineColor = Color3.new(1,1,1)
+					h.FillTransparency = MIN_TRANSPARENCY
+					h.OutlineTransparency = 0.1
+					h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+					h.Parent = Workspace
+					activeHighlights[s] = h
+				end
 			else
 				removeHighlight(s)
 			end
 		end
 	end
-
+	
 	-- Items and Generators
 	if mapFolder then
 		for _, obj in ipairs(mapFolder:GetChildren()) do
+			-- Items
 			if espItems and (obj.Name == "Medkit" or obj.Name == "BloxyCola") then
 				applyItemESP(obj)
-			else
-				if (obj.Name == "Medkit" or obj.Name == "BloxyCola") then removeHighlight(obj) end
+			elseif (obj.Name == "Medkit" or obj.Name == "BloxyCola") then 
+				removeHighlight(obj) 
 			end
-
+			
+			-- Generators
 			if espGenerators and obj.Name == "Generator" then
 				local progress = obj:FindFirstChild("Progress")
 				if progress and progress.Value < 100 then
-					addHighlight(obj, Color3.fromRGB(255,255,0), 0.5, 0.3)
+					if not activeHighlights[obj] then
+						local h = Instance.new("Highlight")
+						h.Name = "ESP_Highlight"
+						h.Adornee = obj
+						h.FillColor = Color3.fromRGB(255,255,0)
+						h.OutlineColor = Color3.new(1,1,0)
+						h.FillTransparency = MIN_TRANSPARENCY
+						h.OutlineTransparency = 0.1
+						h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+						h.Parent = Workspace
+						activeHighlights[obj] = h
+					end
 				else
 					removeHighlight(obj)
 				end
@@ -453,7 +512,18 @@ local function refreshESP()
 	end
 end
 
--- Background loop (every 2s)
+-- HIGH FREQUENCY UPDATE LOOP (every frame for smooth distance transparency)
+task.spawn(function()
+	while task.wait(0.1) do  -- 10 FPS update for smooth transparency
+		if playerRoot and (espKillers or espSurvivors or espItems or espGenerators) then
+			for obj, highlight in pairs(activeHighlights) do
+				updateESPTransparency(obj, highlight)
+			end
+		end
+	end
+end)
+
+-- Background refresh loop (every 2s for adding new ESPs)
 task.spawn(function()
 	while task.wait(2) do
 		if espKillers or espSurvivors or espItems or espGenerators then
@@ -470,7 +540,6 @@ ESPTab:CreateToggle({
 		espKillers = val
 	end
 })
-
 ESPTab:CreateToggle({
 	Name = "Survivors ESP",
 	CurrentValue = false,
@@ -478,7 +547,6 @@ ESPTab:CreateToggle({
 		espSurvivors = val
 	end
 })
-
 ESPTab:CreateToggle({
 	Name = "Items ESP",
 	CurrentValue = false,
@@ -486,7 +554,6 @@ ESPTab:CreateToggle({
 		espItems = val
 	end
 })
-
 ESPTab:CreateToggle({
 	Name = "Generators ESP",
 	CurrentValue = false,
@@ -497,5 +564,4 @@ ESPTab:CreateToggle({
 
 --================= CONFIG =================
 Rayfield:LoadConfiguration()
-
-print("[Lead Hub] ESP updated. Killers now always have highlight.")
+print("[Lead Hub] ESP updated with Distance Transparency + Universal Killer ESP!")
