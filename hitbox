@@ -144,7 +144,7 @@ local function aimAtMeleeTarget(target)
 
     -- Look direction: back or front (uses target's last facing)
     local lookDir = Aimbot.preferBack and -targetHRP.CFrame.LookVector or targetHRP.CFrame.LookVector
-    local aimPoint = predictedPos + lookDir * 2
+    local aimPoint = predictedPos + lookDir * 1
 
     -- Smooth CFrame.lookAt rotation
     myHRP.CFrame = CFrame.lookAt(myHRP.Position, aimPoint)
@@ -170,7 +170,7 @@ Remote.OnClientEvent:Connect(function(action, data)
                 conn:Disconnect()
                 return
             end
-            ExtendHitbox(40)
+            ExtendHitbox(43)
         end)
         
         -- MELEE AIMBOT WITH DEAD TARGET GRACE + FIXED STUD PREDICTION
