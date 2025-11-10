@@ -58,20 +58,42 @@ local Aimbot = {
     minHealth = 200,             -- only consider players with health above this
     range = 120,                 -- search range in studs
     preferBack = false,          -- true = aim at back, false = aim at front
-    meleeLockDuration = 0.8,     -- how long melee aimbot stays locked (seconds)
+    meleeLockDuration = 0.45,     -- how long melee aimbot stays locked (seconds)
     meleePredict = true,         -- enable fixed stud prediction
-    meleePredictStuds = 4        -- FIXED studs ahead (3-6 works great)
+    meleePredictStuds = 3,       -- FIXED studs ahead (3-6 works great)
+    deadTargetGrace = 0.5        -- target dead players for this many seconds
 }
+
+-- DEAD TARGET TRACKING
+local lockedTarget = nil
+local lockStartTime = 0
 
 local function findAimbotTarget()
     local closest, closestDist = nil, math.huge
+    local currentTime = os.clock()
+    
+    -- PRIORITY 1: Keep locked target if within grace period (even if dead)
+    if lockedTarget and lockedTarget.Parent then
+        local graceExpired = (currentTime - lockStartTime) > Aimbot.deadTargetGrace
+        if not graceExpired then
+            -- Check if target still has character (even if dead)
+            if lockedTarget.Character and lockedTarget.Character.Parent and lockedTarget.Character:FindFirstChild("HumanoidRootPart") then
+                return lockedTarget
+            end
+        end
+        -- Grace expired or character gone → clear lock
+        lockedTarget = nil
+    end
+    
+    -- PRIORITY 2: Find new living target
     if not client.Character or not client.Character:FindFirstChild("HumanoidRootPart") then return nil end
     local myPos = client.Character.HumanoidRootPart.Position
+    
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= client and p.Character and p.Character.Parent then
             local h = p.Character:FindFirstChild("Humanoid")
             local hrp = p.Character:FindFirstChild("HumanoidRootPart")
-            if h and hrp and h.Health and h.Health > Aimbot.minHealth then
+            if h and hrp and h.Health and h.Health < Aimbot.minHealth then
                 local dist = (hrp.Position - myPos).Magnitude
                 if dist < closestDist and dist <= Aimbot.range then
                     closest = p
@@ -80,10 +102,17 @@ local function findAimbotTarget()
             end
         end
     end
+    
+    -- Lock onto new target
+    if closest then
+        lockedTarget = closest
+        lockStartTime = currentTime
+    end
+    
     return closest
 end
 
--- FIXED STUD PREDICTION (melee only)
+-- FIXED STUD PREDICTION (melee only) - works with dead targets too
 local function getMeleePredictedPosition(targetHRP, myPos)
     if not Aimbot.meleePredict then
         return targetHRP.Position
@@ -94,15 +123,15 @@ local function getMeleePredictedPosition(targetHRP, myPos)
     local moveDir = velocity.Unit  -- Direction they're moving (normalized)
     local predictDist = Aimbot.meleePredictStuds
     
-    -- Only predict if they're actually moving fast enough
-    if velocity.Magnitude > 5 then  -- ~walk speed threshold
+    -- Only predict if they're actually moving fast enough (works for ragdolls too)
+    if velocity.Magnitude > 5 then
         return targetHRP.Position + moveDir * predictDist
     else
-        return targetHRP.Position  -- stationary = no prediction
+        return targetHRP.Position
     end
 end
 
--- MELEE AIM FUNCTION (with fixed stud prediction)
+-- MELEE AIM FUNCTION (with fixed stud prediction + dead target support)
 local function aimAtMeleeTarget(target)
     if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then return end
     if not client.Character or not client.Character:FindFirstChild("HumanoidRootPart") then return end
@@ -110,10 +139,10 @@ local function aimAtMeleeTarget(target)
     local targetHRP = target.Character.HumanoidRootPart
     local myHRP     = client.Character.HumanoidRootPart
 
-    -- Get fixed-stud predicted position
+    -- Get fixed-stud predicted position (works even if dead/ragdolling)
     local predictedPos = getMeleePredictedPosition(targetHRP, myHRP.Position)
 
-    -- Look direction: back or front
+    -- Look direction: back or front (uses target's last facing)
     local lookDir = Aimbot.preferBack and -targetHRP.CFrame.LookVector or targetHRP.CFrame.LookVector
     local aimPoint = predictedPos + lookDir * 2
 
@@ -144,7 +173,7 @@ Remote.OnClientEvent:Connect(function(action, data)
             ExtendHitbox(35)
         end)
         
-        -- MELEE AIMBOT WITH FIXED STUD PREDICTION
+        -- MELEE AIMBOT WITH DEAD TARGET GRACE + FIXED STUD PREDICTION
         if Aimbot.enabled then
             local startA = os.clock()
             local connA
@@ -155,6 +184,7 @@ Remote.OnClientEvent:Connect(function(action, data)
                 if os.clock() - startA >= Aimbot.meleeLockDuration then
                     connA:Disconnect()
                     if humanoid then humanoid.AutoRotate = true end
+                    lockedTarget = nil  -- Clear lock when aimbot ends
                     return
                 end
                 
