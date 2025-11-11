@@ -60,7 +60,7 @@ local Aimbot = {
     preferBack = false,          -- true = aim at back, false = aim at front
     meleeLockDuration = 0.65,     -- how long melee aimbot stays locked (seconds)
     meleePredict = true,         -- enable fixed stud prediction
-    meleePredictStuds = 2,       -- FIXED studs ahead (3-6 works great)
+    meleePredictStuds = 2.5,       -- FIXED studs ahead (3-6 works great)
     deadTargetGrace = 0.5        -- target dead players for this many seconds
 }
 
@@ -170,7 +170,7 @@ Remote.OnClientEvent:Connect(function(action, data)
                 conn:Disconnect()
                 return
             end
-            ExtendHitbox(43)
+            ExtendHitbox(45)
         end)
         
         -- MELEE AIMBOT WITH DEAD TARGET GRACE + FIXED STUD PREDICTION
