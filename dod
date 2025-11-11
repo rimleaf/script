@@ -244,16 +244,17 @@ AbilitiesTab:CreateKeybind({Name="Keybind", CurrentKeybind="E", Callback=functio
 local ChosenAbility = "Block"
 AbilitiesTab:CreateDropdown({Name="Choose Ability", Options=AbilityNames, CurrentOption="Block", Callback=function(v) ChosenAbility = v[1] or v end})
 
+-- Fixed Get Ability buttons
 AbilitiesTab:CreateButton({Name="Get Ability", Callback=function()
     local d = table.clone(AbilityDatas[ChosenAbility])
-    d.InputShown = Keybind.Name or tostring(Keybind)
+    d.InputShown = tostring(Keybind)
     CreateAbility(d)
 end})
 
 AbilitiesTab:CreateButton({Name="Get All Abilities", Callback=function()
     for _, name in ipairs(AbilityNames) do
         local d = table.clone(AbilityDatas[name])
-        d.InputShown = Keybind.Name or tostring(Keybind)
+        d.InputShown = tostring(Keybind)
         CreateAbility(d)
     end
 end})
@@ -271,6 +272,46 @@ AbilitiesTab:CreateToggle({Name="Enable Spam", Callback=function(v)
             task.wait(0.1)
         end
     end) end
+end})
+
+-- Cards Section
+local function ConvertDropdownValue(tbl)
+    if type(tbl) == "table" then
+        for _, element in ipairs(tbl) do
+            return tostring(element)
+        end
+    else
+        return tostring(tbl)
+    end
+end
+
+AbilitiesTab:CreateSection("Get Cards")
+
+local CardSettings = {
+    [1] = {"Revolver","Caretaker"},
+    [2] = {"BonusPad","Caretaker"},
+    [3] = {"Revolver","Punch"}
+}
+
+-- First Card
+AbilitiesTab:CreateLabel("First Card Settings")
+AbilitiesTab:CreateDropdown({Name = "First Ability", Options = AbilityNames, CurrentOption = "Revolver", MultiSelection = false, Callback = function(Value) CardSettings[1][1] = ConvertDropdownValue(Value) end})
+AbilitiesTab:CreateDropdown({Name = "Second Ability", Options = AbilityNames, CurrentOption = "Caretaker", MultiSelection = false, Callback = function(Value) CardSettings[1][2] = ConvertDropdownValue(Value) end})
+
+-- Second Card
+AbilitiesTab:CreateLabel("Second Card Settings")
+AbilitiesTab:CreateDropdown({Name = "First Ability", Options = AbilityNames, CurrentOption = "BonusPad", MultiSelection = false, Callback = function(Value) CardSettings[2][1] = ConvertDropdownValue(Value) end})
+AbilitiesTab:CreateDropdown({Name = "Second Ability", Options = AbilityNames, CurrentOption = "Caretaker", MultiSelection = false, Callback = function(Value) CardSettings[2][2] = ConvertDropdownValue(Value) end})
+
+-- Third Card
+AbilitiesTab:CreateLabel("Third Card Settings")
+AbilitiesTab:CreateDropdown({Name = "First Ability", Options = AbilityNames, CurrentOption = "Revolver", MultiSelection = false, Callback = function(Value) CardSettings[3][1] = ConvertDropdownValue(Value) end})
+AbilitiesTab:CreateDropdown({Name = "Second Ability", Options = AbilityNames, CurrentOption = "Punch", MultiSelection = false, Callback = function(Value) CardSettings[3][2] = ConvertDropdownValue(Value) end})
+
+-- Summon Button
+AbilitiesTab:CreateButton({Name = "Summon Chosen Cards", Callback = function()
+    local UIModule = require(LocalPlayer.PlayerGui.MainGui.Client.Modules.Ability)
+    pcall(function() UIModule.AbilitySelection(unpack(CardSettings)) end)
 end})
 
 Notify("DOD Lite Loaded", "Config removed, running clean.", 5, true)
