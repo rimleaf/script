@@ -191,81 +191,91 @@ ESPTab:CreateButton({Name = "Refresh ESP", Callback = function()
     Notify("ESP Refreshed", "", 2, true)
 end})
 
--- Abilities Tab – Keybind Spammers Only
-local AbilitiesTab = Window:CreateTab("Abilities", 0)
+function ConvertDropdownValue(tbl)
+    if type(tbl) == "table" then
+        for _,element in ipairs(tbl) do
+            return tostring(element)
+                end
+            else
+        return tostring(tbl)
+    end
+end
 
-local SpamAbility1 = "Hotdog"
-local SpamAbility2 = "Punch"
-local Keybind1 = Enum.KeyCode.E
-local Keybind2 = Enum.KeyCode.R
-local AutoSpamKeys = {}
+-- Abilities Tab – Only 2 Abilities + 2 Keybinds
+local Tab_Abilities = Window:CreateTab("Abilities", 0)
 
--- First Ability Dropdown & Keybind
-AbilitiesTab:CreateDropdown({
+-- Ability 1
+local Ability1 = "Block"
+local Keybind1 = Enum.KeyCode.F
+
+Tab_Abilities:CreateDropdown({
     Name = "Ability 1",
     Options = AbilityNames,
-    CurrentOption = SpamAbility1,
-    Callback = function(v)
-        SpamAbility1 = v[1] or v
-    end
-})
-AbilitiesTab:CreateKeybind({
-    Name = "Ability 1 Keybind",
-    CurrentKeybind = Keybind1.Name,
-    Callback = function(v)
-        Keybind1 = Enum.KeyCode[v]
-    end
+    CurrentOption = Ability1,
+    MultiSelection = false,
+    Callback = function(Value)
+        Ability1 = ConvertDropdownValue(Value)
+    end,
 })
 
--- Second Ability Dropdown & Keybind
-AbilitiesTab:CreateDropdown({
+Tab_Abilities:CreateKeybind({
+    Name = "Keybind 1",
+    CurrentKeybind = Keybind1.Name,
+    HoldToInteract = false,
+    Callback = function(Value)
+        local success, code = pcall(function() return Enum.KeyCode[Value] end)
+        if success and code then
+            Keybind1 = code
+        end
+    end,
+})
+
+-- Ability 2
+local Ability2 = "Hotdog"
+local Keybind2 = Enum.KeyCode.T
+
+Tab_Abilities:CreateDropdown({
     Name = "Ability 2",
     Options = AbilityNames,
-    CurrentOption = SpamAbility2,
-    Callback = function(v)
-        SpamAbility2 = v[1] or v
-    end
-})
-AbilitiesTab:CreateKeybind({
-    Name = "Ability 2 Keybind",
-    CurrentKeybind = Keybind2.Name,
-    Callback = function(v)
-        Keybind2 = Enum.KeyCode[v]
-    end
+    CurrentOption = Ability2,
+    MultiSelection = false,
+    Callback = function(Value)
+        Ability2 = ConvertDropdownValue(Value)
+    end,
 })
 
--- Input Detection – Spammable Keys
+Tab_Abilities:CreateKeybind({
+    Name = "Keybind 2",
+    CurrentKeybind = Keybind2.Name,
+    HoldToInteract = false,
+    Callback = function(Value)
+        local success, code = pcall(function() return Enum.KeyCode[Value] end)
+        if success and code then
+            Keybind2 = code
+        end
+    end,
+})
+
+-- Use abilities safely
+local RepEvents = game:GetService("ReplicatedStorage"):WaitForChild("Events")
+local UseAbilityRemote = RepEvents:WaitForChild("RemoteFunctions"):WaitForChild("UseAbility")
+
+local function UseAbilitySafe(abilityName)
+    pcall(function()
+        UseAbilityRemote:InvokeServer(tostring(abilityName))
+    end)
+end
+
+-- Keybind detection
 local UserInputService = game:GetService("UserInputService")
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    local rf = ReplicatedStorage.Events.RemoteFunctions.UseAbility
+    if gameProcessed or input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 
-    if input.UserInputType == Enum.UserInputType.Keyboard then
-        if input.KeyCode == Keybind1 and not AutoSpamKeys[Keybind1] then
-            AutoSpamKeys[Keybind1] = true
-            task.spawn(function()
-                while AutoSpamKeys[Keybind1] do
-                    pcall(function() rf:InvokeServer(SpamAbility1) end)
-                    task.wait(0.1)
-                end
-            end)
-        elseif input.KeyCode == Keybind2 and not AutoSpamKeys[Keybind2] then
-            AutoSpamKeys[Keybind2] = true
-            task.spawn(function()
-                while AutoSpamKeys[Keybind2] do
-                    pcall(function() rf:InvokeServer(SpamAbility2) end)
-                    task.wait(0.1)
-                end
-            end)
-        end
+    if input.KeyCode == Keybind1 then
+        spawn(function() UseAbilitySafe(Ability1) end)
     end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Keyboard then
-        if AutoSpamKeys[input.KeyCode] then
-            AutoSpamKeys[input.KeyCode] = false
-        end
+    if input.KeyCode == Keybind2 then
+        spawn(function() UseAbilitySafe(Ability2) end)
     end
 end)
 
