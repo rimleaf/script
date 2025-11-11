@@ -1,0 +1,360 @@
+if getgenv then
+	getgenv().hub_name = "DOD Lite"
+else
+	_G.hub_name = "DOD Lite"
+end
+
+-- === [ Core Setup & Asset Handling ] ===
+local temp_msg = Instance.new("Message", game.CoreGui)
+temp_msg.Text = "Loading..."
+
+local HaveWorkspaceAccess = function()
+	return isfile and writefile and readfile and isfolder and makefolder
+end
+
+local CreateFile = function(f, c) writefile(f, c) end
+local IsFile = function(f) return isfile(f) end
+local GetFile = function(f) return readfile(f) end
+
+local function TableToLuauString(tbl)
+	local str = "return {\n"
+	for k, v in pairs(tbl) do
+		if type(v) == "table" then
+			str = str .. '\t["' .. k .. '"] = ' .. TableToLuauString(v) .. ";\n"
+		else
+			str = str .. '\t["' .. k .. '"] = ' .. (type(v) == "string" and '"'..v..'"' or tostring(v)) .. ";\n"
+		end
+	end
+	str = str .. "}"
+	return str
+end
+
+-- Config Folder
+local ConfigFolder = "DOD_Config"
+local ConfigFile = ConfigFolder .. "/config.luau"
+
+if HaveWorkspaceAccess() then
+	if not isfolder(ConfigFolder) then makefolder(ConfigFolder) end
+end
+
+-- === [ Rayfield UI ] ===
+temp_msg.Text = "Loading UI..."
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+temp_msg:Destroy()
+
+local function Notify(title, content, time, success)
+	Rayfield:Notify({
+		Title = title,
+		Content = content,
+		Duration = time or 4,
+		Image = success and 136186846844342 or 71508738660632,
+	})
+end
+
+-- === [ Configuration System ] ===
+local DefaultConfig = {
+	Stamina = {
+		MaxStamina = 100,
+		WalkSpeed = 16,
+		SprintSpeed = 25,
+		NoLoss = false,
+		NoFatigue = false
+	},
+	Visuals = {
+		SurvivorESP = { Enabled = false, Color = Color3.fromRGB(0, 255, 0) },
+		KillerESP = { Enabled = false, Color = Color3.fromRGB(255, 0, 0) }
+	}
+}
+
+local Config = DefaultConfig
+
+local function LoadConfig()
+	if HaveWorkspaceAccess() and IsFile(ConfigFile) then
+		local success, loaded = pcall(function()
+			return loadstring(GetFile(ConfigFile))()
+		end)
+		if success and type(loaded) == "table" then
+			Config = loaded
+			Notify("Config Loaded", "Settings restored.", 3, true)
+		end
+	end
+end
+
+local function SaveConfig()
+	if HaveWorkspaceAccess() then
+		CreateFile(ConfigFile, TableToLuauString(Config))
+		Notify("Config Saved", "Settings saved.", 3, true)
+	end
+end
+
+LoadConfig()
+
+-- === [ Player & Character Setup ] ===
+local LocalPlayer = game.Players.LocalPlayer
+local Character, Humanoid, HumanoidRootPart
+
+local function UpdateCharacter()
+	Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+	Humanoid = Character:WaitForChild("Humanoid")
+	HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+end
+
+LocalPlayer.CharacterAdded:Connect(UpdateCharacter)
+UpdateCharacter()
+
+-- === [ Stamina Module ] ===
+local StaminaModule
+pcall(function()
+	StaminaModule = require(LocalPlayer.PlayerGui:WaitForChild("MainGui").Client.Modules.Movement)
+end)
+
+local function SetStaminaProperty(prop, val)
+	if prop == "MaxStamina" then
+		Character:SetAttribute("MaxStamina", val)
+	elseif prop == "Stamina" and StaminaModule then
+		StaminaModule.Stamina = val
+	elseif prop == "Fatigue" then
+		Character:SetAttribute("Fatigue", val)
+	elseif prop == "WalkSpeed" then
+		Humanoid.WalkSpeed = val
+	elseif prop == "SprintSpeed" then
+		Character:SetAttribute("SprintSpeed", val)
+	end
+end
+
+-- === [ ESP System ] ===
+local ESP = { Boxes = {}, Names = {}, Connections = {} }
+
+local function CreateBox(color)
+	local box = Drawing.new("Square")
+	box.Visible = false
+	box.Color = color
+	box.Thickness = 2
+	box.Filled = false
+	box.Transparency = 1
+	return box
+end
+
+local function CreateName(color)
+	local name = Drawing.new("Text")
+	name.Visible = false
+	name.Color = color
+	name.Size = 16
+	name.Center = true
+	name.Outline = true
+	name.Font = 2
+	return name
+end
+
+local function AddESP(player, isKiller)
+	if player == LocalPlayer then return end
+	local char = player.Character
+	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+
+	local color = isKiller and Config.Visuals.KillerESP.Color or Config.Visuals.SurvivorESP.Color
+	local box = CreateBox(color)
+	local name = CreateName(color)
+
+	ESP.Boxes[player] = box
+	ESP.Names[player] = name
+
+	local conn
+	conn = game:GetService("RunService").RenderStepped:Connect(function()
+		if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then
+			box.Visible = false
+			name.Visible = false
+			if conn then conn:Disconnect() end
+			return
+		end
+
+		local root = char.HumanoidRootPart
+		local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(root.Position)
+
+		if onScreen then
+			local headY = workspace.CurrentCamera:WorldToViewportPoint(root.Position + Vector3.new(0, 3, 0)).Y
+			local feetY = workspace.CurrentCamera:WorldToViewportPoint(root.Position - Vector3.new(0, 3, 0)).Y
+			local sizeY = (headY - feetY) / 2
+			local sizeX = sizeY * 1.5
+
+			box.Size = Vector2.new(sizeX, sizeY * 2)
+			box.Position = Vector2.new(screenPos.X - sizeX / 2, screenPos.Y - sizeY)
+			box.Visible = (isKiller and Config.Visuals.KillerESP.Enabled) or (not isKiller and Config.Visuals.SurvivorESP.Enabled)
+
+			name.Text = player.Name
+			name.Position = Vector2.new(screenPos.X, screenPos.Y - sizeY - 20)
+			name.Visible = box.Visible
+		else
+			box.Visible = false
+			name.Visible = false
+		end
+	end)
+
+	ESP.Connections[player] = conn
+end
+
+local function RemoveESP(player)
+	if ESP.Boxes[player] then ESP.Boxes[player]:Remove() end
+	if ESP.Names[player] then ESP.Names[player]:Remove() end
+	if ESP.Connections[player] then ESP.Connections[player]:Disconnect() end
+	ESP.Boxes[player], ESP.Names[player], ESP.Connections[player] = nil, nil, nil
+end
+
+local function UpdateESP()
+	for _, player in ipairs(game.Players:GetPlayers()) do
+		if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			local isKiller = workspace.GameAssets.Teams.Killer:FindFirstChild(player.Name) ~= nil
+			if not ESP.Boxes[player] then
+				AddESP(player, isKiller)
+			end
+		end
+	end
+end
+
+game.Players.PlayerAdded:Connect(function(p)
+	p.CharacterAdded:Connect(function()
+		task.wait(1)
+		local isKiller = workspace.GameAssets.Teams.Killer:FindFirstChild(p.Name) ~= nil
+		AddESP(p, isKiller)
+	end)
+end)
+
+game.Players.PlayerRemoving:Connect(RemoveESP)
+task.spawn(function()
+	while task.wait(1) do UpdateESP() end
+end)
+
+-- === [ Rayfield Window ] ===
+local Window = Rayfield:CreateWindow({
+	Name = "DOD Lite",
+	LoadingTitle = "DOD Lite",
+	LoadingSubtitle = "Stamina • ESP • Abilities",
+	ConfigurationSaving = { Enabled = false },
+	KeySystem = false
+})
+
+-- === [ Stamina Tab ] ===
+local StaminaTab = Window:CreateTab("Stamina", 0)
+
+StaminaTab:CreateToggle({
+	Name = "No Stamina Loss",
+	CurrentValue = Config.Stamina.NoLoss,
+	Callback = function(val)
+		Config.Stamina.NoLoss = val
+		if val then
+			task.spawn(function()
+				while Config.Stamina.NoLoss and Character and Character:GetAttribute("MaxStamina") do
+					SetStaminaProperty("Stamina", Character:GetAttribute("MaxStamina"))
+					task.wait(0.1)
+				end
+			end)
+		end
+		SaveConfig()
+	end
+})
+
+StaminaTab:CreateToggle({
+	Name = "No Fatigue",
+	CurrentValue = Config.Stamina.NoFatigue,
+	Callback = function(val)
+		Config.Stamina.NoFatigue = val
+		if val then
+			task.spawn(function()
+				while Config.Stamina.NoFatigue and Character:GetAttribute("Fatigue") do
+					SetStaminaProperty("Fatigue", false)
+					task.wait(0.1)
+				end
+			end)
+		end
+		SaveConfig()
+	end
+})
+
+StaminaTab:CreateInput({
+	Name = "Max Stamina",
+	PlaceholderText = "100",
+	NumbersOnly = true,
+	CurrentValue = Config.Stamina.MaxStamina,
+	Callback = function(val)
+		Config.Stamina.MaxStamina = tonumber(val) or 100
+		SetStaminaProperty("MaxStamina", Config.Stamina.MaxStamina)
+		SaveConfig()
+	end
+})
+
+StaminaTab:CreateInput({
+	Name = "Walk Speed",
+	PlaceholderText = "16",
+	NumbersOnly = true,
+	CurrentValue = Config.Stamina.WalkSpeed,
+	Callback = function(val)
+		Config.Stamina.WalkSpeed = tonumber(val) or 16
+		SetStaminaProperty("WalkSpeed", Config.Stamina.WalkSpeed)
+		SaveConfig()
+	end
+})
+
+StaminaTab:CreateInput({
+	Name = "Sprint Speed",
+	PlaceholderText = "25",
+	NumbersOnly = true,
+	CurrentValue = Config.Stamina.SprintSpeed,
+	Callback = function(val)
+		Config.Stamina.SprintSpeed = tonumber(val) or 25
+		SetStaminaProperty("SprintSpeed", Config.Stamina.SprintSpeed)
+		SaveConfig()
+	end
+})
+
+-- === [ Abilities Tab ] ===
+local AbilitiesTab = Window:CreateTab("Abilities", 0)
+
+AbilitiesTab:CreateButton({
+	Name = "Infinite Stamina",
+	Callback = function()
+		SetStaminaProperty("MaxStamina", math.huge)
+		SetStaminaProperty("Stamina", math.huge)
+		Notify("Success", "Infinite Stamina Enabled", 3, true)
+	end
+})
+
+AbilitiesTab:CreateButton({
+	Name = "Speed Boost",
+	Callback = function()
+		Humanoid.WalkSpeed = 50
+		SetStaminaProperty("SprintSpeed", 70)
+		Notify("Success", "Speed Boost Applied", 3, true)
+	end
+})
+
+AbilitiesTab:CreateButton({
+	Name = "Toggle Jump",
+	Callback = function()
+		local canJump = Humanoid.JumpPower > 0
+		Humanoid.JumpPower = canJump and 0 or 50
+		Notify("Jump " .. (canJump and "Disabled" or "Enabled"), "", 3, true)
+	end
+})
+
+-- === [ Visuals Tab ] ===
+local VisualsTab = Window:CreateTab("Visuals", 0)
+
+VisualsTab:CreateToggle({
+	Name = "Survivor ESP",
+	CurrentValue = Config.Visuals.SurvivorESP.Enabled,
+	Callback = function(val)
+		Config.Visuals.SurvivorESP.Enabled = val
+		SaveConfig()
+	end
+})
+
+VisualsTab:CreateToggle({
+	Name = "Killer ESP",
+	CurrentValue = Config.Visuals.KillerESP.Enabled,
+	Callback = function(val)
+		Config.Visuals.KillerESP.Enabled = val
+		SaveConfig()
+	end
+})
+
+-- === [ Save on Close ] ===
+game:BindToClose(SaveConfig)
