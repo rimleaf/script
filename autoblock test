@@ -1,1 +1,157 @@
 
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Rep = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+
+local client = Players.LocalPlayer
+
+repeat task.wait() until client and client.Character
+
+local char = client.Character
+local humanoid = char:WaitForChild("Humanoid")
+local root = char:WaitForChild("HumanoidRootPart")
+
+client.CharacterAdded:Connect(function(newChar)
+	char = newChar
+	humanoid = char:WaitForChild("Humanoid")
+	root = char:WaitForChild("HumanoidRootPart")
+end)
+
+-- Remote reference
+local Remote = Rep:WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent")
+
+-- Visual feedback setup
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ParryFeedback"
+screenGui.Parent = client:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+
+local parryFrame = Instance.new("Frame")
+parryFrame.Name = "ParryFrame"
+parryFrame.Size = UDim2.new(1, 0, 1, 0)
+parryFrame.Position = UDim2.new(0, 0, 0, 0)
+parryFrame.BackgroundColor3 = Color3.fromRGB(255, 215, 0) -- Gold
+parryFrame.BackgroundTransparency = 1
+parryFrame.BorderSizePixel = 0
+parryFrame.Parent = screenGui
+
+local parryLabel = Instance.new("TextLabel")
+parryLabel.Size = UDim2.new(0, 300, 0, 100)
+parryLabel.Position = UDim2.new(0.5, -150, 0.3, 0)
+parryLabel.BackgroundTransparency = 1
+parryLabel.Text = "PARRY!"
+parryLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+parryLabel.TextScaled = true
+parryLabel.Font = Enum.Font.GothamBold
+parryLabel.Parent = parryFrame
+
+-- Tween info for flash effect
+local flashTweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, 4, true)
+local scaleTweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0)
+
+local function showParryFeedback()
+	-- Reset frame
+	parryFrame.BackgroundTransparency = 1
+	parryLabel.Size = UDim2.new(0, 300, 0, 100)
+	parryLabel.Position = UDim2.new(0.5, -150, 0.3, 0)
+	
+	-- Flash effect
+	local flashTween = TweenService:Create(parryFrame, flashTweenInfo, {BackgroundTransparency = 0.4})
+	flashTween:Play()
+	
+	-- Scale up and shake text
+	local scaleTween = TweenService:Create(parryLabel, scaleTweenInfo, {Size = UDim2.new(0, 400, 0, 130)})
+	scaleTween:Play()
+	
+	-- Shake effect
+	local shakeConnection
+	local shakeTime = 0
+	shakeConnection = RunService.Heartbeat:Connect(function()
+		shakeTime += RunService.Heartbeat:Wait()
+		if shakeTime >= 0.5 then
+			shakeConnection:Disconnect()
+			return
+		end
+		
+		local offsetX = math.random(-10, 10)
+		local offsetY = math.random(-5, 5)
+		parryLabel.Position = UDim2.new(0.5, -150 + offsetX, 0.3, offsetY)
+	end)
+	
+	-- Fade out
+	task.wait(0.6)
+	local fadeTween = TweenService:Create(parryFrame, TweenInfo.new(0.4), {BackgroundTransparency = 1})
+	fadeTween:Play()
+end
+
+local function getAbilityName(v)
+	if typeof(v) == "buffer" then
+		return buffer.tostring(v)
+	end
+	return v
+end
+
+local function cleanName(name)
+    return tostring(name):gsub("\"", "")
+end
+
+local function Parry()
+	Remote:FireServer("UseActorAbility", {"Block"})
+	showParryFeedback()  -- Visual feedback when we parry
+end
+
+Remote.OnClientEvent:Connect(function(action, data)
+    if action ~= "UseActorAbility" then return end
+    if typeof(data) ~= "table" or not data[1] then return end
+
+    local abilityName = cleanName(getAbilityName(data[1]))
+
+    if (abilityName == "Carving Slash" or
+        abilityName == "Slash" or
+        abilityName == "Stab" or
+        abilityName == "Punch") then
+
+        local actor = data[2]
+        if not actor or actor == char then return end
+
+        local start = os.clock()
+        local conn
+        conn = RunService.Heartbeat:Connect(function()
+            if os.clock() - start >= 1.5 then
+                conn:Disconnect()
+                return
+            end
+
+            if not actor.Parent or not actor:FindFirstChild("HumanoidRootPart") or not actor:FindFirstChild("Humanoid") or not root.Parent then
+                conn:Disconnect()
+                return
+            end
+
+            local actorHRP = actor.HumanoidRootPart
+            local actorHum = actor.Humanoid
+
+            if actorHum.Health <= 200 then
+                conn:Disconnect()
+                return
+            end
+
+            local dist = (root.Position - actorHRP.Position).Magnitude
+            if dist > 18 then
+                conn:Disconnect()
+                return
+            end
+
+            local toUs = (root.Position - actorHRP.Position).Unit
+            local look = actorHRP.CFrame.LookVector
+            local dot = look:Dot(toUs)
+
+            if dot < 0.5 then
+                conn:Disconnect()
+                return
+            end
+
+            Parry()
+        end)
+    end
+end)
