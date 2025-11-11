@@ -21,7 +21,7 @@ local function Notify(t, c, time, success)
 end
 
 local Config = {
-    Stamina = {MaxStamina=105, WalkSpeed=17, SprintSpeed=26, NoLoss=false, NoFatigue=false},
+    Stamina = {MaxStamina=105, SprintSpeed=26, NoLoss=false, NoFatigue=false},
     Visuals = {SurvivorESP={Enabled=false}, KillerESP={Enabled=false}},
 }
 
@@ -52,7 +52,6 @@ local function ApplyStamina()
     pcall(function()
         Character:SetAttribute("MaxStamina", Config.Stamina.MaxStamina)
         Character:SetAttribute("SprintSpeed", Config.Stamina.SprintSpeed)
-        Humanoid.WalkSpeed = Config.Stamina.WalkSpeed
     end)
     if Config.Stamina.NoLoss and StaminaModule then
         StaminaModule.Stamina = Config.Stamina.MaxStamina
@@ -116,7 +115,6 @@ local function UpdateESP(p)
 
     h.Enabled = enabled
 end
-
 
 local function ApplyESP(p)
     if p == LocalPlayer or not p.Character then return end
@@ -209,11 +207,6 @@ StaminaTab:CreateInput({
 })
 
 StaminaTab:CreateInput({
-    Name = "Walk Speed", PlaceholderText = "16", NumbersOnly = true,
-    Callback = function(v) Config.Stamina.WalkSpeed = tonumber(v) or 16 end
-})
-
-StaminaTab:CreateInput({
     Name = "Sprint Speed", PlaceholderText = "25", NumbersOnly = true,
     Callback = function(v) Config.Stamina.SprintSpeed = tonumber(v) or 25 end
 })
@@ -279,20 +272,5 @@ AbilitiesTab:CreateToggle({Name="Enable Spam", Callback=function(v)
         end
     end) end
 end})
-
-local AI1, AI2, AutoInject = "", "", false
-AbilitiesTab:CreateSection("Auto Inject (Round Start)")
-AbilitiesTab:CreateToggle({Name="Auto Inject", Callback=function(v) AutoInject = v end})
-AbilitiesTab:CreateDropdown({Name="Ability 1", Options=AbilityNames, Callback=function(v) AI1 = v[1] end})
-AbilitiesTab:CreateDropdown({Name="Ability 2", Options=AbilityNames, Callback=function(v) AI2 = v[1] end})
-
-Workspace.GameAssets.Teams.DescendantAdded:Connect(function(child)
-    if child.Name == LocalPlayer.Name and child.Parent.Name == "Survivor" and AutoInject then
-        task.wait(8)
-        local ev = ReplicatedStorage.Events.RemoteEvents.AbilitySelection
-        pcall(function() if AI1 ~= "" then ev:FireServer(AI1) end end)
-        pcall(function() if AI2 ~= "" then ev:FireServer(AI2) end end)
-    end
-end)
 
 Notify("DOD Lite Loaded", "Config removed, running clean.", 5, true)
