@@ -1,0 +1,51 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/necessities"))()
+wait(0.1)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/stamina"))()
+wait(0.2)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rimleaf/script/refs/heads/main/hitbox%20test"))()
+wait(0.3)
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local Lighting = game:GetService("Lighting")
+
+-- Desired settings
+local MAX_ZOOM = 99
+local FOV = 100
+local AMBIENT_BRIGHTNESS = Color3.fromRGB(200, 200, 200) -- brighter ambient
+local OUTDOOR_BRIGHTNESS = Color3.fromRGB(180, 180, 180) -- brighter outdoor
+local BRIGHTNESS_LEVEL = 2.4 -- increase overall brightness
+
+-- Function to lock camera
+local function lockCamera()
+    camera.FieldOfView = FOV
+    player.CameraMaxZoomDistance = MAX_ZOOM
+end
+
+-- Initial lock
+lockCamera()
+
+-- Listen for changes
+player:GetPropertyChangedSignal("CameraMaxZoomDistance"):Connect(function()
+    player.CameraMaxZoomDistance = MAX_ZOOM
+end)
+
+camera:GetPropertyChangedSignal("FieldOfView"):Connect(function()
+    camera.FieldOfView = FOV
+end)
+
+-- Brighten surroundings
+Lighting.Ambient = AMBIENT_BRIGHTNESS
+Lighting.OutdoorAmbient = OUTDOOR_BRIGHTNESS
+Lighting.Brightness = BRIGHTNESS_LEVEL
+
+-- Optional: lock lighting in case something tries to change it
+Lighting:GetPropertyChangedSignal("Ambient"):Connect(function()
+    Lighting.Ambient = AMBIENT_BRIGHTNESS
+end)
+Lighting:GetPropertyChangedSignal("OutdoorAmbient"):Connect(function()
+    Lighting.OutdoorAmbient = OUTDOOR_BRIGHTNESS
+end)
+Lighting:GetPropertyChangedSignal("Brightness"):Connect(function()
+    Lighting.Brightness = BRIGHTNESS_LEVEL
+end)
