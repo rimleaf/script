@@ -1,4 +1,4 @@
--- Lead Hub (optimized + restored original Killer & Item ESP behavior with forced Killer highlights + Distance Transparency)
+-- Lead Hub (Fixed ESP + Optimized Generator + Distance Transparency)
 -- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -13,6 +13,7 @@ local Window = Rayfield:CreateWindow({
     LoadingTitle = "Lead Hub",
     LoadingSubtitle = "by Lead",
     ConfigurationSaving = { Enabled = true, FolderName = "LeadHub", FileName = "Settings" },
+    Discord = { Enabled = false },
     KeySystem = false
 })
 
@@ -22,145 +23,160 @@ local ESPTab = Window:CreateTab("ESP", 4483362458)
 
 --================= GENERATORS =================
 local generatorCooldown = 0.12
+local FlowGameHooked = false
+
+local function getDirection(cr, cc, or_, oc)
+    if or_ < cr then return "up" end
+    if or_ > cr then return "down" end
+    if oc < cc then return "left" end
+    if oc > cc then return "right" end
+end
+
+local function getConnections(prev, curr, nextnode)
+    local conn = {}
+    if prev and curr then
+        local dir = getDirection(curr.row, curr.col, prev.row, prev.col)
+        if dir == "up" then dir = "down"
+        elseif dir == "down" then dir = "up"
+        elseif dir == "left" then dir = "right"
+        elseif dir == "right" then dir = "left" end
+        if dir then conn[dir] = true end
+    end
+    if nextnode and curr then
+        local dir = getDirection(curr.row, curr.col, nextnode.row, nextnode.col)
+        if dir then conn[dir] = true end
+    end
+    return conn
+end
+
+local function isNeighbourLocal(r1, c1, r2, c2)
+    if r2 == r1 - 1 and c2 == c1 then return "up" end
+    if r2 == r1 + 1 and c2 == c1 then return "down" end
+    if r2 == r1 and c2 == c1 - 1 then return "left" end
+    if r2 == r1 and c2 == c1 + 1 then return "right" end
+end
+
+local function coordKey(node) return node.row .. "-" .. node.col end
+
+local function orderPathFromEndpoints(path, endpoints)
+    if not path or #path == 0 then return path end
+    
+    local startEndpoint
+    for _, ep in endpoints or {} do
+        for _, n in path do
+            if n.row == ep.row and n.col == ep.col then
+                startEndpoint = { row = ep.row, col = ep.col }
+                break
+            end
+        end
+        if startEndpoint then break end
+    end
+    
+    if not startEndpoint then
+        local inPath = {}
+        for _, n in path do inPath[coordKey(n)] = n end
+        for _, n in path do
+            local neighbours = 0
+            local dirs = {{n.row-1,n.col}, {n.row+1,n.col}, {n.row,n.col-1}, {n.row,n.col+1}}
+            for _, d in dirs do
+                if inPath[d[1] .. "-" .. d[2]] then neighbours += 1 end
+            end
+            if neighbours == 1 then
+                startEndpoint = { row = n.row, col = n.col }
+                break
+            end
+        end
+    end
+    
+    if not startEndpoint then
+        startEndpoint = { row = path[1].row, col = path[1].col }
+    end
+    
+    local remaining = {}
+    for _, n in path do remaining[coordKey(n)] = { row = n.row, col = n.col } end
+    
+    local ordered = {table.clone(startEndpoint)}
+    remaining[coordKey(startEndpoint)] = nil
+    local current = startEndpoint
+    
+    while next(remaining) do
+        local foundNext = false
+        for key, node in pairs(remaining) do
+            if isNeighbourLocal(current.row, current.col, node.row, node.col) then
+                table.insert(ordered, table.clone(node))
+                remaining[key] = nil
+                current = node
+                foundNext = true
+                break
+            end
+        end
+        if not foundNext then break end
+    end
+    
+    return ordered
+end
+
+local function DrawSolutionOneByOne(puzzle, delayTime)
+    delayTime = delayTime or 0.03
+    if not puzzle or not puzzle.Solution then return end
+    
+    local totalPaths = #puzzle.Solution
+    local indices = {}
+    for i = 1, totalPaths do table.insert(indices, i) end
+    
+    for i = #indices, 2, -1 do
+        local j = math.random(1, i)
+        indices[i], indices[j] = indices[j], indices[i]
+    end
+    
+    for _, colorIndex in indices do
+        local path = puzzle.Solution[colorIndex]
+        local endpoints = puzzle.targetPairs[colorIndex]
+        local orderedPath = orderPathFromEndpoints(path, endpoints)
+        puzzle.paths[colorIndex] = {}
+        
+        for i = 0, #orderedPath - 1 do
+            local node = orderedPath[i + 1]
+            table.insert(puzzle.paths[colorIndex], { row = node.row, col = node.col })
+            local prev = orderedPath[i]
+            local nextNode = orderedPath[i + 2]
+            local conn = getConnections(prev, node, nextNode)
+            puzzle.gridConnections = puzzle.gridConnections or {}
+            puzzle.gridConnections[coordKey(node)] = conn
+            puzzle:updateGui()
+            task.wait(delayTime)
+        end
+        puzzle:checkForWin()
+    end
+    puzzle:checkForWin()
+end
 
 GeneratorTab:CreateToggle({
     Name = "Auto Generator",
     CurrentValue = false,
     Callback = function(enabled)
-        if not enabled then return end
-
-        local bb = ReplicatedStorage:WaitForChild("Modules", 5)
-        if not bb then return end
-        bb = bb:FindFirstChild("Misc")
-        if not bb then return end
-        bb = bb:FindFirstChild("FlowGameManager")
-        if not bb then return end
-        bb = bb:FindFirstChild("FlowGame")
-        if not bb then return end
-
-        local FlowGameModule = require(bb)
-        local old = FlowGameModule.new
-
-        local function getDirection(cr, cc, or_, oc)
-            if or_ < cr then return "up" end
-            if or_ > cr then return "down" end
-            if oc < cc then return "left" end
-            if oc > cc then return "right" end
-        end
-
-        local function getConnections(prev, curr, nextnode)
-            local conn = {}
-            if prev and curr then
-                local dir = getDirection(curr.row, curr.col, prev.row, prev.col)
-                if dir == "up" then dir = "down"
-                elseif dir == "down" then dir = "up"
-                elseif dir == "left" then dir = "right"
-                elseif dir == "right" then dir = "left" end
-                if dir then conn[dir] = true end
-            end
-            if nextnode and curr then
-                local dir = getDirection(curr.row, curr.col, nextnode.row, nextnode.col)
-                if dir then conn[dir] = true end
-            end
-            return conn
-        end
-
-        local function isNeighbourLocal(r1, c1, r2, c2)
-            return (r2 == r1 - 1 and c2 == c1 and "up") or
-                   (r2 == r1 + 1 and c2 == c1 and "down") or
-                   (r2 == r1 and c2 == c1 - 1 and "left") or
-                   (r2 == r1 and c2 == c1 + 1 and "right")
-        end
-
-        local function coordKey(node) return node.row .. "-" .. node.col end
-
-        local function orderPathFromEndpoints(path, endpoints)
-            if not path or #path == 0 then return path end
-
-            local startEndpoint
-            for _, ep in endpoints or {} do
-                for _, n in path do
-                    if n.row == ep.row and n.col == ep.col then
-                        startEndpoint = { row = ep.row, col = ep.col }; break
-                    end
-                end
-                if startEndpoint then break end
-            end
-
-            if not startEndpoint then
-                local inPath = {}
-                for _, n in path do inPath[coordKey(n)] = true end
-                for _, n in path do
-                    local neighbours = 0
-                    for _, d in {{n.row-1,n.col},{n.row+1,n.col},{n.row,n.col-1},{n.row,n.col+1}} do
-                        if inPath[d[1].."-"..d[2]] then neighbours += 1 end
-                    end
-                    if neighbours == 1 then
-                        startEndpoint = { row = n.row, col = n.col }; break
+        if enabled and not FlowGameHooked then
+            FlowGameHooked = true
+            local bb = ReplicatedStorage:WaitForChild("Modules"):FindFirstChild("Misc")
+            if bb then 
+                bb = bb:FindFirstChild("FlowGameManager")
+                if bb then 
+                    bb = bb:FindFirstChild("FlowGame")
+                    if bb then
+                        local FlowGameModule = require(bb)
+                        local old = FlowGameModule.new
+                        FlowGameModule.new = function(...)
+                            local puzzle = old(...)
+                            task.spawn(function()
+                                DrawSolutionOneByOne(puzzle, generatorCooldown)
+                            end)
+                            return puzzle
+                        end
                     end
                 end
             end
-
-            startEndpoint = startEndpoint or { row = path[1].row, col = path[1].col }
-
-            local remaining = {}
-            for _, n in path do remaining[coordKey(n)] = { row = n.row, col = n.col } end
-
-            local ordered = { table.clone(startEndpoint) }
-            remaining[coordKey(startEndpoint)] = nil
-            local current = startEndpoint
-
-            while next(remaining) do
-                local found = false
-                for key, node in pairs(remaining) do
-                    if isNeighbourLocal(current.row, current.col, node.row, node.col) then
-                        table.insert(ordered, table.clone(node))
-                        remaining[key] = nil
-                        current = node
-                        found = true
-                        break
-                    end
-                end
-                if not found then break end
-            end
-
-            return ordered
-        end
-
-        local function DrawSolutionOneByOne(puzzle, delayTime)
-            if not puzzle or not puzzle.Solution then return end
-            local totalPaths = #puzzle.Solution
-            local indices = {}
-            for i = 1, totalPaths do table.insert(indices, i) end
-            for i = #indices, 2, -1 do
-                local j = math.random(1, i)
-                indices[i], indices[j] = indices[j], indices[i]
-            end
-            for _, colorIndex in indices do
-                local path = puzzle.Solution[colorIndex]
-                local endpoints = puzzle.targetPairs[colorIndex]
-                local orderedPath = orderPathFromEndpoints(path, endpoints)
-                puzzle.paths[colorIndex] = {}
-                for i = 0, #orderedPath - 1 do
-                    local node = orderedPath[i + 1]
-                    table.insert(puzzle.paths[colorIndex], { row = node.row, col = node.col })
-                    local prev = orderedPath[i]
-                    local nextNode = orderedPath[i + 2]
-                    local conn = getConnections(prev, node, nextNode)
-                    puzzle.gridConnections = puzzle.gridConnections or {}
-                    puzzle.gridConnections[coordKey(node)] = conn
-                    puzzle:updateGui()
-                    task.wait(delayTime)
-                end
-                puzzle:checkForWin()
-            end
-            puzzle:checkForWin()
-        end
-
-        FlowGameModule.new = function(...)
-            local puzzle = old(...)
-            task.spawn(DrawSolutionOneByOne, puzzle, generatorCooldown)
-            return puzzle
+        elseif not enabled then
+            FlowGameHooked = false
         end
     end
 })
@@ -185,17 +201,22 @@ local MAX_DISTANCE = 500
 local MIN_TRANSPARENCY = 0.2
 local MAX_TRANSPARENCY = 0.8
 
+local playerRoot = nil
+
 local function getDistanceTransparency(distance)
     distance = math.clamp(distance, 0, MAX_DISTANCE)
     return MIN_TRANSPARENCY + (MAX_TRANSPARENCY - MIN_TRANSPARENCY) * (1 - distance / MAX_DISTANCE)
 end
 
 local function findFirstBasePart(obj)
-    return obj and obj:IsDescendantOf(Workspace) and (obj:IsA("BasePart") and obj or obj:FindFirstChildWhichIsA("BasePart", true))
+    if not obj or not obj:IsDescendantOf(Workspace) then return nil end
+    if obj:IsA("BasePart") then return obj end
+    return obj:FindFirstChildWhichIsA("BasePart", true)
 end
 
 local function createHighlight(obj, fillColor, outlineColor)
     if activeHighlights[obj] then return end
+    
     local h = Instance.new("Highlight")
     h.Name = "ESP_Highlight"
     h.Adornee = obj
@@ -209,37 +230,41 @@ local function createHighlight(obj, fillColor, outlineColor)
 end
 
 local function removeHighlight(obj)
-    local h = activeHighlights[obj]
-    if h then h:Destroy(); activeHighlights[obj] = nil end
+    if activeHighlights[obj] then
+        activeHighlights[obj]:Destroy()
+        activeHighlights[obj] = nil
+    end
     local billboard = obj:FindFirstChild("ESP_Billboard")
     if billboard then billboard:Destroy() end
 end
 
 local function applyItemESP(obj)
     local part = findFirstBasePart(obj)
-    if not part or activeHighlights[obj] then return end
-
+    if not part then return end
+    
     createHighlight(obj, Color3.fromRGB(0, 0, 139), Color3.new(0, 0, 139))
-
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "ESP_Billboard"
-    billboard.Size = UDim2.new(0, 100, 0, 30)
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
-    billboard.AlwaysOnTop = true
-    billboard.Adornee = part
-    billboard.Parent = obj
-
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.TextColor3 = Color3.fromRGB(0, 0, 139)
-    textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.TextSize = 14
-    textLabel.Text = obj.Name
-    textLabel.Parent = billboard
+    
+    if not obj:FindFirstChild("ESP_Billboard") then
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "ESP_Billboard"
+        billboard.Size = UDim2.new(0, 100, 0, 30)
+        billboard.StudsOffset = Vector3.new(0, 3, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Adornee = part
+        
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.TextColor3 = Color3.fromRGB(0, 0, 139)
+        textLabel.Font = Enum.Font.SourceSansBold
+        textLabel.TextSize = 14
+        textLabel.Text = obj.Name
+        textLabel.Parent = billboard
+        
+        billboard.Parent = obj
+    end
 end
 
-local playerRoot = nil
 local function updatePlayerRoot()
     local char = lp.Character
     playerRoot = char and char:FindFirstChild("HumanoidRootPart")
@@ -247,40 +272,52 @@ end
 
 local function updateESPTransparency()
     if not playerRoot then return end
+    
     for obj, hl in pairs(activeHighlights) do
         local rootPart = findFirstBasePart(obj)
         if rootPart then
-            local dist = (rootPart.Position - playerRoot.Position).Magnitude
-            local alpha = getDistanceTransparency(dist)
-            hl.FillTransparency = alpha
-            hl.OutlineTransparency = math.clamp(alpha * 0.5, 0, 0.5)
+            local distance = (rootPart.Position - playerRoot.Position).Magnitude
+            local transparency = getDistanceTransparency(distance)
+            hl.FillTransparency = transparency
+            hl.OutlineTransparency = math.clamp(transparency * 0.5, 0, 0.5)
         end
     end
 end
 
-local mapFolder, killersFolder, survivorsFolder
 local function refreshESP()
     updatePlayerRoot()
+    
     if not (espKillers or espSurvivors or espItems or espGenerators) then return end
-
-    mapFolder = mapFolder or (Workspace:FindFirstChild("Map") and Workspace.Map:FindFirstChild("Ingame") and Workspace.Map.Ingame:FindFirstChild("Map"))
-    killersFolder = killersFolder or (Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers"))
-    survivorsFolder = survivorsFolder or (Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Survivors"))
-
+    
     local char = lp.Character
-
+    
+    -- Clean up old highlights first
+    for obj, _ in pairs(activeHighlights) do
+        if not obj.Parent then
+            removeHighlight(obj)
+        end
+    end
+    
     -- KILLERS
+    local killersFolder = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
     if killersFolder and espKillers then
         for _, k in ipairs(killersFolder:GetChildren()) do
-            if k ~= char then
+            if k ~= char and k:IsDescendantOf(Workspace) then
                 createHighlight(k, Color3.fromRGB(255, 0, 0), Color3.new(1, 0, 0))
             else
                 removeHighlight(k)
             end
         end
+    else
+        if killersFolder then
+            for _, k in ipairs(killersFolder:GetChildren()) do
+                removeHighlight(k)
+            end
+        end
     end
-
+    
     -- SURVIVORS
+    local survivorsFolder = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Survivors")
     if survivorsFolder and espSurvivors then
         for _, s in ipairs(survivorsFolder:GetChildren()) do
             if s ~= char and findFirstBasePart(s) then
@@ -289,14 +326,25 @@ local function refreshESP()
                 removeHighlight(s)
             end
         end
+    else
+        if survivorsFolder then
+            for _, s in ipairs(survivorsFolder:GetChildren()) do
+                removeHighlight(s)
+            end
+        end
     end
-
+    
     -- ITEMS & GENERATORS
+    local mapFolder = Workspace:FindFirstChild("Map") and Workspace.Map:FindFirstChild("Ingame") and Workspace.Map.Ingame:FindFirstChild("Map")
     if mapFolder then
         for _, obj in ipairs(mapFolder:GetChildren()) do
             local name = obj.Name
             if name == "Medkit" or name == "BloxyCola" then
-                if espItems then applyItemESP(obj) else removeHighlight(obj) end
+                if espItems then
+                    applyItemESP(obj)
+                else
+                    removeHighlight(obj)
+                end
             elseif name == "Generator" then
                 local progress = obj:FindFirstChild("Progress")
                 if espGenerators and progress and progress.Value < 100 then
@@ -310,37 +358,61 @@ local function refreshESP()
 end
 
 -- ESP Toggles
-local function makeESPToggle(name, varRef)
-    ESPTab:CreateToggle({
-        Name = name,
-        CurrentValue = false,
-        Callback = function(val)
-            _G[varRef] = val  -- Use global for closure safety
-            refreshESP()
-        end
-    })
-end
+ESPTab:CreateToggle({
+    Name = "Killers ESP",
+    CurrentValue = false,
+    Callback = function(val)
+        espKillers = val
+        refreshESP()
+    end
+})
 
-makeESPToggle("Killers ESP", "espKillers")
-makeESPToggle("Survivors ESP", "espSurvivors")
-makeESPToggle("Items ESP", "espItems")
-makeESPToggle("Generators ESP", "espGenerators")
+ESPTab:CreateToggle({
+    Name = "Survivors ESP",
+    CurrentValue = false,
+    Callback = function(val)
+        espSurvivors = val
+        refreshESP()
+    end
+})
+
+ESPTab:CreateToggle({
+    Name = "Items ESP",
+    CurrentValue = false,
+    Callback = function(val)
+        espItems = val
+        refreshESP()
+    end
+})
+
+ESPTab:CreateToggle({
+    Name = "Generators ESP",
+    CurrentValue = false,
+    Callback = function(val)
+        espGenerators = val
+        refreshESP()
+    end
+})
 
 -- Background Loops
 task.spawn(function()
     while task.wait(0.1) do
-        if playerRoot and next(activeHighlights) then
+        if next(activeHighlights) and playerRoot then
             updateESPTransparency()
         end
     end
 end)
 
 task.spawn(function()
-    while task.wait(2) do
+    while task.wait(1.5) do
         refreshESP()
     end
 end)
 
+-- Initial refresh
+task.wait(1)
+refreshESP()
+
 -- Load Config
 Rayfield:LoadConfiguration()
-print("[Lead Hub] Optimized ESP + Auto Generator loaded!")
+print("[Lead Hub] Fully Fixed ESP + Auto Generator Loaded!")
